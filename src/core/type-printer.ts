@@ -250,7 +250,7 @@ function applyBrands(typeStr: string, brands?: BrandInfo[]): string {
   for (const brand of brands) {
     if (brand.fieldPath === "") {
       // Root-level brand: wrap the entire type
-      result = `${result} & { [BRAND]: { ${brand.brandName}: true } }`;
+      result = `${result} & BRAND<"${brand.brandName}">`;
     } else {
       // Field-level brand: find the field and apply brand to its type
       result = applyBrandToField(result, brand.fieldPath, brand.brandName);
@@ -281,7 +281,7 @@ function applyBrandToField(
     const match = typeStr.match(pattern);
     if (match) {
       const [fullMatch, prefix, fieldType, suffix] = match;
-      const brandedType = `${fieldType} & { [BRAND]: { ${brandName}: true } }`;
+      const brandedType = `${fieldType} & BRAND<"${brandName}">`;
       return typeStr.replace(fullMatch, `${prefix}${brandedType}${suffix}`);
     }
   }
@@ -410,7 +410,7 @@ export function generateDeclarationFile(
 
   // Add BRAND import if any result has brands
   if (hasBrands(results)) {
-    lines.push('import { BRAND } from "zod";');
+    lines.push('import type { BRAND } from "zod";');
     lines.push("");
   }
 
