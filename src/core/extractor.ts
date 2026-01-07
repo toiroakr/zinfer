@@ -5,10 +5,19 @@ import {
   TEMP_TYPE_NAMES,
 } from "./normalizer.js";
 import { SchemaDetector } from "./schema-detector.js";
+import { GetterResolver } from "./getter-resolver.js";
+import {
+  SchemaReferenceAnalyzer,
+  SchemaReferenceInfo,
+  UnionReferenceInfo,
+} from "./schema-reference-analyzer.js";
+import { ImportResolver } from "./import-resolver.js";
+import { BrandDetector } from "./brand-detector.js";
 import type {
   ExtractResult,
   FileExtractResult,
   DetectedSchema,
+  BrandInfo,
 } from "./types.js";
 
 // Re-export ExtractResult for backward compatibility
@@ -32,6 +41,10 @@ export interface ExtractOptions {
 export class ZodTypeExtractor {
   private project: Project;
   private schemaDetector: SchemaDetector;
+  private getterResolver: GetterResolver;
+  private referenceAnalyzer: SchemaReferenceAnalyzer;
+  private importResolver: ImportResolver;
+  private brandDetector: BrandDetector;
 
   /**
    * Creates a new ZodTypeExtractor instance.
@@ -42,6 +55,10 @@ export class ZodTypeExtractor {
   constructor(tsconfigPath?: string) {
     this.project = this.createProject(tsconfigPath);
     this.schemaDetector = new SchemaDetector();
+    this.getterResolver = new GetterResolver();
+    this.referenceAnalyzer = new SchemaReferenceAnalyzer();
+    this.importResolver = new ImportResolver();
+    this.brandDetector = new BrandDetector();
   }
 
   /**
@@ -143,20 +160,79 @@ export class ZodTypeExtractor {
   ): ExtractResult[] {
     const results: ExtractResult[] = [];
 
+    // Find and resolve imported schemas
+    const importedSchemas = this.importResolver.findImportedSchemas(
+      sourceFile,
+      this.project
+    );
+
+    // Analyze getter fields for all schemas
+    const getterFieldMap = this.getterResolver.analyzeGetterFields(sourceFile);
+
+    // Build schema names set including imports
+    const schemaNames = new Set(schemas.map((s) => s.name));
+    for (const localName of importedSchemas.keys()) {
+      schemaNames.add(localName);
+    }
+
+    // Analyze cross-schema references
+    const referenceMap = this.referenceAnalyzer.analyzeReferences(
+      sourceFile,
+      schemaNames
+    );
+
+    // Analyze union schema references
+    const unionReferenceMap = this.referenceAnalyzer.analyzeUnionReferences(
+      sourceFile,
+      schemaNames
+    );
+
+    // Detect branded types
+    const brandMap = this.brandDetector.detectBrands(sourceFile, schemaNames);
+
+    // First pass: extract raw types for all schemas
+    const rawTypes = new Map<
+      string,
+      { input: string; output: string; isExported: boolean }
+    >();
+
+    // Extract types from imported schemas first
+    for (const [localName, importInfo] of importedSchemas) {
+      if (!importInfo.resolved) continue;
+
+      const importedSourceFile = this.project.getSourceFile(importInfo.sourceFilePath);
+      if (!importedSourceFile) continue;
+
+      try {
+        this.injectTemporaryTypes(importedSourceFile, importInfo.originalName);
+        const inputType = this.resolveType(importedSourceFile, "__TempInput");
+        const outputType = this.resolveType(importedSourceFile, "__TempOutput");
+
+        // Use local name as the key (how it's referenced in current file)
+        rawTypes.set(localName, {
+          input: inputType,
+          output: outputType,
+          isExported: false, // Imported schemas won't be re-exported
+        });
+      } catch {
+        // Failed to extract imported schema type
+      } finally {
+        this.cleanupTemporaryTypes(importedSourceFile);
+      }
+    }
+
+    // Extract types from local schemas
     for (const schema of schemas) {
-      const { name: schemaName, explicitType } = schema;
+      const { name: schemaName, explicitType, isExported } = schema;
 
-      // If schema has explicit type annotation (z.ZodType<T>), use it directly
       if (explicitType) {
-        // Use explicit type without normalization to preserve circular references
         this.injectExplicitType(sourceFile, explicitType);
-
         try {
           const resolvedType = this.resolveType(sourceFile, "__TempExplicit");
-          results.push({
-            schemaName,
+          rawTypes.set(schemaName, {
             input: resolvedType,
             output: resolvedType,
+            isExported,
           });
         } finally {
           this.cleanupExplicitType(sourceFile);
@@ -164,26 +240,206 @@ export class ZodTypeExtractor {
         continue;
       }
 
-      // Standard extraction using z.input/z.output
       this.injectTemporaryTypes(sourceFile, schemaName);
-
       try {
-        // Resolve types
-        const inputType = this.resolveType(sourceFile, "__TempInput");
-        const outputType = this.resolveType(sourceFile, "__TempOutput");
+        let inputType = this.resolveType(sourceFile, "__TempInput");
+        let outputType = this.resolveType(sourceFile, "__TempOutput");
 
-        results.push({
-          schemaName,
-          input: inputType,
-          output: outputType,
-        });
+        // Resolve getter-based self-references
+        const getterFields = getterFieldMap.get(schemaName);
+        if (getterFields && this.getterResolver.hasSelfReferences(getterFields)) {
+          const inputTypeName = `${schemaName}Input`;
+          const outputTypeName = `${schemaName}Output`;
+          const originalInputType = inputType;
+
+          inputType = this.getterResolver.resolveAnyTypes(
+            inputType,
+            schemaName,
+            getterFields,
+            inputTypeName
+          );
+
+          if (outputType === "any") {
+            outputType = this.getterResolver.resolveAnyTypes(
+              originalInputType,
+              schemaName,
+              getterFields,
+              outputTypeName
+            );
+          } else {
+            outputType = this.getterResolver.resolveAnyTypes(
+              outputType,
+              schemaName,
+              getterFields,
+              outputTypeName
+            );
+          }
+        }
+
+        rawTypes.set(schemaName, { input: inputType, output: outputType, isExported });
       } finally {
-        // Clean up temporary types
         this.cleanupTemporaryTypes(sourceFile);
       }
     }
 
+    // Add imported schemas to results first (so they're defined before use)
+    for (const [localName, importInfo] of importedSchemas) {
+      const raw = rawTypes.get(localName);
+      if (!raw) continue;
+
+      results.push({
+        schemaName: localName,
+        input: raw.input,
+        output: raw.output,
+        isExported: false, // Imported schemas are not re-exported
+      });
+    }
+
+    // Second pass: replace cross-schema references with type names
+    for (const schema of schemas) {
+      const schemaName = schema.name;
+      const raw = rawTypes.get(schemaName);
+      if (!raw) continue;
+
+      // Get brand information for this schema
+      const brands = brandMap.get(schemaName);
+
+      // Check if this schema is a union with member references
+      const unionRef = unionReferenceMap.get(schemaName);
+      if (unionRef && unionRef.memberSchemas.length > 0) {
+        // Build union type from member type names
+        const inputMembers = unionRef.memberSchemas
+          .map((member) => `${member}Input`)
+          .join(" | ");
+        const outputMembers = unionRef.memberSchemas
+          .map((member) => `${member}Output`)
+          .join(" | ");
+
+        results.push({
+          schemaName,
+          input: inputMembers,
+          output: outputMembers,
+          isExported: raw.isExported,
+          brands,
+        });
+        continue;
+      }
+
+      let { input, output } = raw;
+      const refs = referenceMap.get(schemaName) || [];
+
+      // Replace references to other schemas with type names
+      for (const ref of refs) {
+        const refRaw = rawTypes.get(ref.refSchema);
+        if (!refRaw) continue;
+
+        input = this.replaceSchemaReference(
+          input,
+          ref,
+          refRaw.input,
+          `${ref.refSchema}Input`
+        );
+        output = this.replaceSchemaReference(
+          output,
+          ref,
+          refRaw.output,
+          `${ref.refSchema}Output`
+        );
+      }
+
+      results.push({
+        schemaName,
+        input,
+        output,
+        isExported: raw.isExported,
+        brands,
+      });
+    }
+
     return results;
+  }
+
+  /**
+   * Replaces an inline schema reference with a type name.
+   */
+  private replaceSchemaReference(
+    typeStr: string,
+    ref: SchemaReferenceInfo,
+    refTypeStr: string,
+    refTypeName: string
+  ): string {
+    const { fieldPath, isArray, isRecord } = ref;
+
+    // Build the replacement type
+    let replacement = refTypeName;
+    if (isArray) {
+      replacement = `${refTypeName}[]`;
+    }
+
+    // Find the field and replace its value
+    const fieldPatterns = [`${fieldPath}: `, `${fieldPath}?: `];
+
+    for (const pattern of fieldPatterns) {
+      const idx = typeStr.indexOf(pattern);
+      if (idx === -1) continue;
+
+      const valueStart = idx + pattern.length;
+
+      // Find the end of the field value by tracking braces/brackets
+      let depth = 0;
+      let endIdx = valueStart;
+      let inString = false;
+
+      while (endIdx < typeStr.length) {
+        const char = typeStr[endIdx];
+
+        if (char === '"' || char === "'") {
+          inString = !inString;
+        } else if (!inString) {
+          if (char === "{" || char === "[" || char === "(") {
+            depth++;
+          } else if (char === "}" || char === "]" || char === ")") {
+            if (depth === 0) break;
+            depth--;
+          } else if (char === ";" && depth === 0) {
+            break;
+          }
+        }
+        endIdx++;
+      }
+
+      // Extract the current value
+      const currentValue = typeStr.substring(valueStart, endIdx).trim();
+
+      // Check if this looks like an expanded type that should be replaced
+      // Handle: { ... }, readonly { ... }[], SomeType, etc.
+      const valueToCheck = currentValue
+        .replace(/^readonly\s+/, "")
+        .replace(/\[\]$/, "")
+        .trim();
+
+      if (
+        valueToCheck.startsWith("{") ||
+        valueToCheck === refTypeStr ||
+        currentValue.includes("[x: string]:")
+      ) {
+        // Handle record type
+        if (isRecord) {
+          replacement = `{ [x: string]: ${refTypeName} }`;
+        }
+
+        // Preserve readonly prefix for arrays
+        if (isArray && currentValue.startsWith("readonly ")) {
+          replacement = `readonly ${replacement}`;
+        }
+
+        return (
+          typeStr.substring(0, valueStart) + replacement + typeStr.substring(endIdx)
+        );
+      }
+    }
+
+    return typeStr;
   }
 
   /**
@@ -263,7 +519,23 @@ export class ZodTypeExtractor {
       TypeFormatFlags.InTypeAlias |
       TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
 
-    return type.getText(typeAlias, formatFlags);
+    const rawType = type.getText(typeAlias, formatFlags);
+
+    // Post-process to simplify Zod internal function types
+    return this.simplifyZodFunctionTypes(rawType);
+  }
+
+  /**
+   * Simplifies Zod internal function types to Function.
+   * Replaces patterns like z.core.$InferInnerFunctionType<...> with Function.
+   */
+  private simplifyZodFunctionTypes(typeStr: string): string {
+    // Pattern for Zod internal function types
+    // z.core.$InferInnerFunctionType<z.core.$ZodFunctionArgs, z.ZodAny>
+    // z.core.$InferOuterFunctionType<z.core.$ZodFunctionArgs, z.core.$ZodFunctionOut>
+    const zodFunctionPattern = /z\.core\.\$Infer(?:Inner|Outer)FunctionType<[^>]+>/g;
+
+    return typeStr.replace(zodFunctionPattern, "Function");
   }
 
   /**

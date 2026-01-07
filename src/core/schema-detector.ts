@@ -12,10 +12,10 @@ import type { DetectedSchema } from "./types.js";
  */
 export class SchemaDetector {
   /**
-   * Detects all exported Zod schemas in a source file.
+   * Detects all Zod schemas in a source file.
    *
    * @param sourceFile - The ts-morph SourceFile to analyze
-   * @returns Array of detected schema information
+   * @returns Array of detected schema information (including non-exported schemas)
    */
   detectExportedSchemas(sourceFile: SourceFile): DetectedSchema[] {
     const schemas: DetectedSchema[] = [];
@@ -53,20 +53,35 @@ export class SchemaDetector {
         const originalDecl = sourceFile.getVariableDeclaration(originalName);
 
         if (originalDecl && this.isZodSchema(originalDecl)) {
-          // Avoid duplicates if already added
-          if (!schemas.some((s) => s.name === exportedName)) {
-            schemas.push({
-              name: exportedName,
-              isExported: true,
-              line: namedExport.getStartLineNumber(),
-            });
+          // If the exported name is different from original (alias), add new entry
+          if (exportedName !== originalName) {
+            if (!schemas.some((s) => s.name === exportedName)) {
+              schemas.push({
+                name: exportedName,
+                isExported: true,
+                line: namedExport.getStartLineNumber(),
+              });
+            }
+          } else {
+            // Same name re-export: update existing schema to mark as exported
+            const existing = schemas.find((s) => s.name === originalName);
+            if (existing) {
+              existing.isExported = true;
+            } else {
+              schemas.push({
+                name: exportedName,
+                isExported: true,
+                line: namedExport.getStartLineNumber(),
+              });
+            }
           }
         }
       }
     }
 
-    // Filter to only exported schemas
-    return schemas.filter((s) => s.isExported);
+    // Return all schemas (both exported and non-exported)
+    // The isExported flag is used by the type printer to control export keyword
+    return schemas;
   }
 
   /**

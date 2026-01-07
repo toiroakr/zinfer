@@ -4,11 +4,12 @@
  * This type template is injected in-memory to expand complex type structures
  * into their fully evaluated form.
  *
- * Built-in types like Date, Array, Map, Set, Promise, etc. are preserved without expansion.
+ * Built-in types like Date, Array, Map, Set, Promise, Function, etc. are preserved without expansion.
+ * Symbol-keyed properties (like Zod's [BRAND]) are filtered out from object types.
  */
 export const NORMALIZE_TYPE_DEFINITION = `
 type __Normalize<T> =
-  T extends Date | RegExp | Error | Map<any, any> | Set<any> | WeakMap<any, any> | WeakSet<any> | Promise<any>
+  T extends Date | RegExp | Error | Map<any, any> | Set<any> | WeakMap<any, any> | WeakSet<any> | Promise<any> | Function
     ? T
     : T extends (...args: infer A) => infer R
       ? (...args: __Normalize<A>) => __Normalize<R>
@@ -16,11 +17,19 @@ type __Normalize<T> =
         ? readonly __Normalize<U>[]
         : T extends (infer U)[]
           ? __Normalize<U>[]
-          : T extends object
-            ? T extends infer O
-              ? { [K in keyof O]: __Normalize<O[K]> }
-              : never
-            : T;
+          : T extends string
+            ? T extends object ? string : T
+            : T extends number
+              ? T extends object ? number : T
+              : T extends boolean
+                ? T extends object ? boolean : T
+                : T extends bigint
+                  ? T extends object ? bigint : T
+                  : T extends object
+                    ? T extends infer O
+                      ? { [K in keyof O as K extends symbol ? never : K]: __Normalize<O[K]> }
+                      : never
+                    : T;
 `;
 
 /**

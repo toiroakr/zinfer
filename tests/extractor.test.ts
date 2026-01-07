@@ -289,6 +289,196 @@ describe("ZodTypeExtractor", () => {
       expect(result.input).toBe(result.output);
     });
   });
+
+  describe("getter-based recursive schemas", () => {
+    it("should resolve self-referencing array fields via getter", () => {
+      const extractor = new ZodTypeExtractor();
+      const result = extractor.extract({
+        filePath: resolve(fixturesDir, "getter-schema.ts"),
+        schemaName: "TreeNodeSchema",
+      });
+
+      // Should resolve 'any' to proper self-reference
+      expect(result.input).toContain("TreeNodeSchemaInput[]");
+      expect(result.input).not.toMatch(/children\?:.*any/);
+      expect(result.output).toContain("TreeNodeSchemaOutput[]");
+    });
+
+    it("should resolve self-referencing record fields via getter", () => {
+      const extractor = new ZodTypeExtractor();
+      const result = extractor.extract({
+        filePath: resolve(fixturesDir, "getter-schema.ts"),
+        schemaName: "NestedRecordSchema",
+      });
+
+      // Should resolve record value type to self-reference
+      expect(result.input).toContain("NestedRecordSchemaInput");
+      expect(result.input).not.toMatch(/items:.*\[x: string\]: any/);
+      expect(result.output).toContain("NestedRecordSchemaOutput");
+    });
+
+    it("should simplify z.custom<Function> to Function type", () => {
+      const extractor = new ZodTypeExtractor();
+      const result = extractor.extract({
+        filePath: resolve(fixturesDir, "getter-schema.ts"),
+        schemaName: "CallbackSchema",
+      });
+
+      // Should contain Function type, not expanded interface
+      expect(result.input).toContain("callback: Function");
+      expect(result.input).toContain("optionalCallback?: Function");
+      // Should NOT contain expanded Function interface properties
+      expect(result.input).not.toContain("apply:");
+      expect(result.input).not.toContain("call:");
+      expect(result.input).not.toContain("bind:");
+    });
+  });
+
+  describe("cross-schema references", () => {
+    it("should replace direct schema references with type names", () => {
+      const extractor = new ZodTypeExtractor();
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "cross-ref-schema.ts")
+      );
+
+      const userResult = results.find((r) => r.schemaName === "UserSchema");
+      expect(userResult).toBeDefined();
+
+      // address field should reference AddressSchemaInput
+      expect(userResult!.input).toContain("address: AddressSchemaInput");
+      expect(userResult!.input).not.toContain("address: { street:");
+    });
+
+    it("should replace array schema references with type names", () => {
+      const extractor = new ZodTypeExtractor();
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "cross-ref-schema.ts")
+      );
+
+      const userResult = results.find((r) => r.schemaName === "UserSchema");
+      expect(userResult).toBeDefined();
+
+      // previousAddresses should be AddressSchemaInput[] (with readonly prefix from zod)
+      expect(userResult!.input).toContain("previousAddresses?: readonly AddressSchemaInput[]");
+    });
+
+    it("should replace nested schema references", () => {
+      const extractor = new ZodTypeExtractor();
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "cross-ref-schema.ts")
+      );
+
+      const companyResult = results.find((r) => r.schemaName === "CompanySchema");
+      expect(companyResult).toBeDefined();
+
+      // headquarters should reference AddressSchemaInput
+      expect(companyResult!.input).toContain("headquarters: AddressSchemaInput");
+      // employees should reference UserSchemaInput[] (with readonly from zod)
+      expect(companyResult!.input).toContain("employees: readonly UserSchemaInput[]");
+    });
+
+    it("should use Output suffix for output types", () => {
+      const extractor = new ZodTypeExtractor();
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "cross-ref-schema.ts")
+      );
+
+      const companyResult = results.find((r) => r.schemaName === "CompanySchema");
+      expect(companyResult).toBeDefined();
+
+      // Output types should use Output suffix (with readonly from zod)
+      expect(companyResult!.output).toContain("headquarters: AddressSchemaOutput");
+      expect(companyResult!.output).toContain("employees: readonly UserSchemaOutput[]");
+    });
+
+    it("should track isExported for exported schemas", () => {
+      const extractor = new ZodTypeExtractor();
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "cross-ref-schema.ts")
+      );
+
+      // All schemas in this file are exported
+      for (const result of results) {
+        expect(result.isExported).toBe(true);
+      }
+    });
+
+    it("should track isExported=false for non-exported schemas", () => {
+      const extractor = new ZodTypeExtractor();
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "mixed-export-schema.ts")
+      );
+
+      // InternalMetaSchema is not exported
+      const internalResult = results.find((r) => r.schemaName === "InternalMetaSchema");
+      expect(internalResult).toBeDefined();
+      expect(internalResult!.isExported).toBe(false);
+
+      // PublicDataSchema is exported
+      const publicResult = results.find((r) => r.schemaName === "PublicDataSchema");
+      expect(publicResult).toBeDefined();
+      expect(publicResult!.isExported).toBe(true);
+    });
+
+    it("should replace discriminatedUnion members with type name references", () => {
+      const extractor = new ZodTypeExtractor();
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "union-ref-schema.ts")
+      );
+
+      const petResult = results.find((r) => r.schemaName === "PetSchema");
+      expect(petResult).toBeDefined();
+
+      // Should be a union of type names, not inline expansions
+      expect(petResult!.input).toBe("DogSchemaInput | CatSchemaInput | BirdSchemaInput");
+      expect(petResult!.output).toBe("DogSchemaOutput | CatSchemaOutput | BirdSchemaOutput");
+    });
+
+    it("should replace union members with type name references", () => {
+      const extractor = new ZodTypeExtractor();
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "union-ref-schema.ts")
+      );
+
+      const animalResult = results.find((r) => r.schemaName === "AnimalSchema");
+      expect(animalResult).toBeDefined();
+
+      // Should be a union of type names
+      expect(animalResult!.input).toBe("DogSchemaInput | CatSchemaInput");
+      expect(animalResult!.output).toBe("DogSchemaOutput | CatSchemaOutput");
+    });
+  });
+
+  describe("branded types", () => {
+    it("should detect root-level brands", () => {
+      const extractor = new ZodTypeExtractor();
+      const result = extractor.extract({
+        filePath: resolve(fixturesDir, "brand-schema.ts"),
+        schemaName: "UserIdSchema",
+      });
+
+      // Should have brand info
+      expect(result.brands).toBeDefined();
+      expect(result.brands!.length).toBe(1);
+      expect(result.brands![0].brandName).toBe("UserId");
+      expect(result.brands![0].fieldPath).toBe("");
+    });
+
+    it("should detect field-level brands", () => {
+      const extractor = new ZodTypeExtractor();
+      const result = extractor.extract({
+        filePath: resolve(fixturesDir, "brand-schema.ts"),
+        schemaName: "UserSchema",
+      });
+
+      // Should have brand info for id field
+      expect(result.brands).toBeDefined();
+      expect(result.brands!.length).toBe(1);
+      expect(result.brands![0].brandName).toBe("UserId");
+      expect(result.brands![0].fieldPath).toBe("id");
+    });
+  });
+
 });
 
 describe("formatResult", () => {

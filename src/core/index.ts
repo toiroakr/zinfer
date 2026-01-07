@@ -49,6 +49,8 @@ export {
   type ConfigLoadResult,
 } from "./config-loader.js";
 
+export { BrandDetector, type SchemaBrandMap } from "./brand-detector.js";
+
 export type {
   ExtractResult,
   FileExtractResult,
@@ -59,4 +61,5 @@ export type {
   GeneratedFile,
   DeclarationOptions,
   FieldDescription,
+  BrandInfo,
 } from "./types.js";

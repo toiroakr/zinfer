@@ -102,8 +102,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   const config = mergeCliWithConfig(options, fileConfig);
 
   // Use files from CLI args, or from config, or fail
-  const inputFiles =
-    files.length > 0 ? files : config.include || [];
+  const inputFiles = files.length > 0 ? files : config.include || [];
 
   if (inputFiles.length === 0) {
     throw new NoFilesMatchedError(["(no files specified)"]);
@@ -325,10 +324,12 @@ function mergeCliWithConfig(
   if (cliOptions.schemas !== undefined) {
     merged.schemas = cliOptions.schemas.split(",").map((s) => s.trim());
   }
-  if (cliOptions.inputOnly !== undefined) merged.inputOnly = cliOptions.inputOnly;
+  if (cliOptions.inputOnly !== undefined)
+    merged.inputOnly = cliOptions.inputOnly;
   if (cliOptions.outputOnly !== undefined)
     merged.outputOnly = cliOptions.outputOnly;
-  if (cliOptions.unifySame !== undefined) merged.unifySame = cliOptions.unifySame;
+  if (cliOptions.unifySame !== undefined)
+    merged.unifySame = cliOptions.unifySame;
   if (cliOptions.suffix !== undefined) merged.suffix = cliOptions.suffix;
   if (cliOptions.inputSuffix !== undefined)
     merged.inputSuffix = cliOptions.inputSuffix;
