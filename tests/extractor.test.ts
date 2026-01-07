@@ -6,479 +6,151 @@ import { formatResult } from "../src/core/type-printer.js";
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
 
 describe("ZodTypeExtractor", () => {
-  describe("basic schema extraction", () => {
-    it("should extract input type from basic schema", () => {
-      const extractor = new ZodTypeExtractor();
+  const extractor = new ZodTypeExtractor();
+
+  describe("basic-schema.ts", () => {
+    it("should extract UserSchema", () => {
       const result = extractor.extract({
         filePath: resolve(fixturesDir, "basic-schema.ts"),
         schemaName: "UserSchema",
       });
-
-      expect(result.input).toContain("id:");
-      expect(result.input).toContain("string");
-      expect(result.input).toContain("name:");
-      expect(result.input).toContain("age");
-    });
-
-    it("should have identical input and output for basic schema without transforms", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "basic-schema.ts"),
-        schemaName: "UserSchema",
-      });
-
-      expect(result.input).toBe(result.output);
+      expect(result).toMatchSnapshot();
     });
   });
 
-  describe("transform schema extraction", () => {
-    it("should show different input/output types when transforms are used", () => {
-      const extractor = new ZodTypeExtractor();
+  describe("transform-schema.ts", () => {
+    it("should extract DateSchema with transforms", () => {
       const result = extractor.extract({
         filePath: resolve(fixturesDir, "transform-schema.ts"),
         schemaName: "DateSchema",
       });
-
-      // Input should have string types
-      expect(result.input).toContain("createdAt:");
-      expect(result.input).toContain("count:");
-
-      // Output should have transformed types (Date and number)
-      expect(result.output).toContain("Date");
-      expect(result.output).toContain("number");
+      expect(result).toMatchSnapshot();
     });
   });
 
-  describe("nested schema extraction", () => {
-    it("should expand nested object types", () => {
-      const extractor = new ZodTypeExtractor();
+  describe("nested-schema.ts", () => {
+    it("should extract PersonSchema with nested objects", () => {
       const result = extractor.extract({
         filePath: resolve(fixturesDir, "nested-schema.ts"),
         schemaName: "PersonSchema",
       });
-
-      // Should contain nested address properties
-      expect(result.input).toContain("street:");
-      expect(result.input).toContain("city:");
-      expect(result.input).toContain("zipCode:");
-      expect(result.input).toContain("alternateAddresses:");
+      expect(result).toMatchSnapshot();
     });
   });
 
-  describe("union schema extraction", () => {
-    it("should extract literal union types", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "union-schema.ts"),
-        schemaName: "StatusSchema",
-      });
-
-      expect(result.input).toContain("active");
-      expect(result.input).toContain("inactive");
-      expect(result.input).toContain("pending");
-    });
-
-    it("should extract discriminated union types", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "union-schema.ts"),
-        schemaName: "ResultSchema",
-      });
-
-      expect(result.input).toContain("type:");
-      expect(result.input).toContain("success");
-      expect(result.input).toContain("error");
+  describe("union-schema.ts", () => {
+    it("should extract all schemas", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "union-schema.ts")
+      );
+      expect(results).toMatchSnapshot();
     });
   });
 
-  describe("intersection schema extraction", () => {
-    it("should extract intersection types", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "intersection-schema.ts"),
-        schemaName: "EntitySchema",
-      });
-
-      // Should contain properties from both schemas
-      expect(result.input).toContain("id:");
-      expect(result.input).toContain("createdAt:");
-      expect(result.input).toContain("updatedAt:");
-    });
-
-    it("should extract merged schemas", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "intersection-schema.ts"),
-        schemaName: "MergedSchema",
-      });
-
-      expect(result.input).toContain("id:");
-      expect(result.input).toContain("createdAt:");
+  describe("intersection-schema.ts", () => {
+    it("should extract all schemas", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "intersection-schema.ts")
+      );
+      expect(results).toMatchSnapshot();
     });
   });
 
-  describe("enum schema extraction", () => {
-    it("should extract zod enum types", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "enum-schema.ts"),
-        schemaName: "DirectionSchema",
-      });
-
-      expect(result.input).toContain("north");
-      expect(result.input).toContain("south");
-      expect(result.input).toContain("east");
-      expect(result.input).toContain("west");
-    });
-
-    it("should extract native enum types", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "enum-schema.ts"),
-        schemaName: "ColorSchema",
-      });
-
-      // Native enum is preserved as the enum type name
-      expect(result.input).toBe("Color");
+  describe("enum-schema.ts", () => {
+    it("should extract all schemas", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "enum-schema.ts")
+      );
+      expect(results).toMatchSnapshot();
     });
   });
 
-  describe("utility types schema extraction", () => {
-    it("should extract partial types with optional properties", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "utility-types-schema.ts"),
-        schemaName: "PartialUserSchema",
-      });
-
-      // All properties should be optional
-      expect(result.input).toContain("id?:");
-      expect(result.input).toContain("name?:");
-    });
-
-    it("should extract picked types", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "utility-types-schema.ts"),
-        schemaName: "UserIdNameSchema",
-      });
-
-      expect(result.input).toContain("id:");
-      expect(result.input).toContain("name:");
-      // Should NOT contain omitted fields
-      expect(result.input).not.toContain("email:");
-      expect(result.input).not.toContain("age:");
-    });
-
-    it("should extract omitted types", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "utility-types-schema.ts"),
-        schemaName: "UserWithoutEmailSchema",
-      });
-
-      expect(result.input).toContain("id:");
-      expect(result.input).toContain("name:");
-      expect(result.input).toContain("age:");
-      // Should NOT contain email
-      expect(result.input).not.toContain("email:");
+  describe("utility-types-schema.ts", () => {
+    it("should extract all schemas", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "utility-types-schema.ts")
+      );
+      expect(results).toMatchSnapshot();
     });
   });
 
-  describe("multi-schema file extraction", () => {
-    it("should extract individual schemas from multi-schema file", () => {
-      const extractor = new ZodTypeExtractor();
-
-      const userResult = extractor.extract({
-        filePath: resolve(fixturesDir, "multi-schema.ts"),
-        schemaName: "UserSchema",
-      });
-      expect(userResult.input).toContain("id:");
-      expect(userResult.input).toContain("email:");
-
-      const postResult = extractor.extract({
-        filePath: resolve(fixturesDir, "multi-schema.ts"),
-        schemaName: "PostSchema",
-      });
-      expect(postResult.input).toContain("title:");
-      expect(postResult.input).toContain("authorId:");
-    });
-
-    it("should extract all schemas using extractAll", () => {
-      const extractor = new ZodTypeExtractor();
+  describe("multi-schema.ts", () => {
+    it("should extract all schemas", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "multi-schema.ts")
       );
-
-      // Should extract multiple schemas
-      expect(results.length).toBeGreaterThanOrEqual(4);
-
-      const names = results.map((r) => r.schemaName);
-      expect(names).toContain("UserSchema");
-      expect(names).toContain("PostSchema");
-      expect(names).toContain("CommentSchema");
+      expect(results).toMatchSnapshot();
     });
 
     it("should extract specific schemas using extractMultiple", () => {
-      const extractor = new ZodTypeExtractor();
       const results = extractor.extractMultiple(
         resolve(fixturesDir, "multi-schema.ts"),
         ["UserSchema", "PostSchema"]
       );
-
-      expect(results).toHaveLength(2);
-      expect(results[0].schemaName).toBe("UserSchema");
-      expect(results[1].schemaName).toBe("PostSchema");
+      expect(results).toMatchSnapshot();
     });
 
     it("should get schema names from file", () => {
-      const extractor = new ZodTypeExtractor();
       const names = extractor.getSchemaNames(
         resolve(fixturesDir, "multi-schema.ts")
       );
-
-      expect(names).toContain("UserSchema");
-      expect(names).toContain("PostSchema");
+      expect(names).toMatchSnapshot();
     });
   });
 
-  describe("circular reference (z.lazy) extraction", () => {
-    it("should extract schemas with explicit type annotations (getter pattern)", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "lazy-schema.ts"),
-        schemaName: "CategorySchema",
-      });
-
-      // Should return the explicit type name
-      expect(result.input).toBe("CategoryInterface");
-      expect(result.input).not.toContain("any");
-    });
-
-    it("should extract self-referencing tree schema (getter pattern)", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "lazy-schema.ts"),
-        schemaName: "TreeNodeSchema",
-      });
-
-      // Should return the explicit type name
-      expect(result.input).toBe("TreeNodeInterface");
-      expect(result.input).not.toContain("any");
-    });
-
-    it("should extract recursive union schema with z.lazy (legacy pattern)", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "lazy-schema.ts"),
-        schemaName: "JsonValueSchema",
-      });
-
-      // Should contain the recursive type reference
-      expect(result.input).toContain("JsonValue");
-      expect(result.input).not.toContain("any");
-    });
-
-    it("should have identical input and output for explicit type schemas", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "lazy-schema.ts"),
-        schemaName: "CategorySchema",
-      });
-
-      expect(result.input).toBe(result.output);
+  describe("lazy-schema.ts", () => {
+    it("should extract all schemas with circular references", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "lazy-schema.ts")
+      );
+      expect(results).toMatchSnapshot();
     });
   });
 
-  describe("getter-based recursive schemas", () => {
-    it("should resolve self-referencing array fields via getter", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "getter-schema.ts"),
-        schemaName: "TreeNodeSchema",
-      });
-
-      // Should resolve 'any' to proper self-reference
-      expect(result.input).toContain("TreeNodeSchemaInput[]");
-      expect(result.input).not.toMatch(/children\?:.*any/);
-      expect(result.output).toContain("TreeNodeSchemaOutput[]");
-    });
-
-    it("should resolve self-referencing record fields via getter", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "getter-schema.ts"),
-        schemaName: "NestedRecordSchema",
-      });
-
-      // Should resolve record value type to self-reference
-      expect(result.input).toContain("NestedRecordSchemaInput");
-      expect(result.input).not.toMatch(/items:.*\[x: string\]: any/);
-      expect(result.output).toContain("NestedRecordSchemaOutput");
-    });
-
-    it("should simplify z.custom<Function> to Function type", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "getter-schema.ts"),
-        schemaName: "CallbackSchema",
-      });
-
-      // Should contain Function type, not expanded interface
-      expect(result.input).toContain("callback: Function");
-      expect(result.input).toContain("optionalCallback?: Function");
-      // Should NOT contain expanded Function interface properties
-      expect(result.input).not.toContain("apply:");
-      expect(result.input).not.toContain("call:");
-      expect(result.input).not.toContain("bind:");
+  describe("getter-schema.ts", () => {
+    it("should extract all getter-based recursive schemas", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "getter-schema.ts")
+      );
+      expect(results).toMatchSnapshot();
     });
   });
 
-  describe("cross-schema references", () => {
-    it("should replace direct schema references with type names", () => {
-      const extractor = new ZodTypeExtractor();
+  describe("cross-ref-schema.ts", () => {
+    it("should extract all schemas with cross-references", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "cross-ref-schema.ts")
       );
-
-      const userResult = results.find((r) => r.schemaName === "UserSchema");
-      expect(userResult).toBeDefined();
-
-      // address field should reference AddressSchemaInput
-      expect(userResult!.input).toContain("address: AddressSchemaInput");
-      expect(userResult!.input).not.toContain("address: { street:");
+      expect(results).toMatchSnapshot();
     });
+  });
 
-    it("should replace array schema references with type names", () => {
-      const extractor = new ZodTypeExtractor();
-      const results = extractor.extractAll(
-        resolve(fixturesDir, "cross-ref-schema.ts")
-      );
-
-      const userResult = results.find((r) => r.schemaName === "UserSchema");
-      expect(userResult).toBeDefined();
-
-      // previousAddresses should be AddressSchemaInput[] (with readonly prefix from zod)
-      expect(userResult!.input).toContain("previousAddresses?: readonly AddressSchemaInput[]");
-    });
-
-    it("should replace nested schema references", () => {
-      const extractor = new ZodTypeExtractor();
-      const results = extractor.extractAll(
-        resolve(fixturesDir, "cross-ref-schema.ts")
-      );
-
-      const companyResult = results.find((r) => r.schemaName === "CompanySchema");
-      expect(companyResult).toBeDefined();
-
-      // headquarters should reference AddressSchemaInput
-      expect(companyResult!.input).toContain("headquarters: AddressSchemaInput");
-      // employees should reference UserSchemaInput[] (with readonly from zod)
-      expect(companyResult!.input).toContain("employees: readonly UserSchemaInput[]");
-    });
-
-    it("should use Output suffix for output types", () => {
-      const extractor = new ZodTypeExtractor();
-      const results = extractor.extractAll(
-        resolve(fixturesDir, "cross-ref-schema.ts")
-      );
-
-      const companyResult = results.find((r) => r.schemaName === "CompanySchema");
-      expect(companyResult).toBeDefined();
-
-      // Output types should use Output suffix (with readonly from zod)
-      expect(companyResult!.output).toContain("headquarters: AddressSchemaOutput");
-      expect(companyResult!.output).toContain("employees: readonly UserSchemaOutput[]");
-    });
-
-    it("should track isExported for exported schemas", () => {
-      const extractor = new ZodTypeExtractor();
-      const results = extractor.extractAll(
-        resolve(fixturesDir, "cross-ref-schema.ts")
-      );
-
-      // All schemas in this file are exported
-      for (const result of results) {
-        expect(result.isExported).toBe(true);
-      }
-    });
-
-    it("should track isExported=false for non-exported schemas", () => {
-      const extractor = new ZodTypeExtractor();
+  describe("mixed-export-schema.ts", () => {
+    it("should extract all schemas tracking export status", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "mixed-export-schema.ts")
       );
-
-      // InternalMetaSchema is not exported
-      const internalResult = results.find((r) => r.schemaName === "InternalMetaSchema");
-      expect(internalResult).toBeDefined();
-      expect(internalResult!.isExported).toBe(false);
-
-      // PublicDataSchema is exported
-      const publicResult = results.find((r) => r.schemaName === "PublicDataSchema");
-      expect(publicResult).toBeDefined();
-      expect(publicResult!.isExported).toBe(true);
-    });
-
-    it("should replace discriminatedUnion members with type name references", () => {
-      const extractor = new ZodTypeExtractor();
-      const results = extractor.extractAll(
-        resolve(fixturesDir, "union-ref-schema.ts")
-      );
-
-      const petResult = results.find((r) => r.schemaName === "PetSchema");
-      expect(petResult).toBeDefined();
-
-      // Should be a union of type names, not inline expansions
-      expect(petResult!.input).toBe("DogSchemaInput | CatSchemaInput | BirdSchemaInput");
-      expect(petResult!.output).toBe("DogSchemaOutput | CatSchemaOutput | BirdSchemaOutput");
-    });
-
-    it("should replace union members with type name references", () => {
-      const extractor = new ZodTypeExtractor();
-      const results = extractor.extractAll(
-        resolve(fixturesDir, "union-ref-schema.ts")
-      );
-
-      const animalResult = results.find((r) => r.schemaName === "AnimalSchema");
-      expect(animalResult).toBeDefined();
-
-      // Should be a union of type names
-      expect(animalResult!.input).toBe("DogSchemaInput | CatSchemaInput");
-      expect(animalResult!.output).toBe("DogSchemaOutput | CatSchemaOutput");
+      expect(results).toMatchSnapshot();
     });
   });
 
-  describe("branded types", () => {
-    it("should detect root-level brands", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "brand-schema.ts"),
-        schemaName: "UserIdSchema",
-      });
-
-      // Should have brand info
-      expect(result.brands).toBeDefined();
-      expect(result.brands!.length).toBe(1);
-      expect(result.brands![0].brandName).toBe("UserId");
-      expect(result.brands![0].fieldPath).toBe("");
-    });
-
-    it("should detect field-level brands", () => {
-      const extractor = new ZodTypeExtractor();
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "brand-schema.ts"),
-        schemaName: "UserSchema",
-      });
-
-      // Should have brand info for id field
-      expect(result.brands).toBeDefined();
-      expect(result.brands!.length).toBe(1);
-      expect(result.brands![0].brandName).toBe("UserId");
-      expect(result.brands![0].fieldPath).toBe("id");
+  describe("union-ref-schema.ts", () => {
+    it("should extract all schemas with union references", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "union-ref-schema.ts")
+      );
+      expect(results).toMatchSnapshot();
     });
   });
 
+  describe("brand-schema.ts", () => {
+    it("should extract all schemas with brand information", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "brand-schema.ts")
+      );
+      expect(results).toMatchSnapshot();
+    });
+  });
 });
 
 describe("formatResult", () => {
@@ -490,8 +162,17 @@ describe("formatResult", () => {
     });
 
     const formatted = formatResult(result);
+    expect(formatted).toMatchSnapshot();
+  });
 
-    expect(formatted).toContain("// input");
-    expect(formatted).toContain("// output");
+  it("should format result with transforms", () => {
+    const extractor = new ZodTypeExtractor();
+    const result = extractor.extract({
+      filePath: resolve(fixturesDir, "transform-schema.ts"),
+      schemaName: "DateSchema",
+    });
+
+    const formatted = formatResult(result);
+    expect(formatted).toMatchSnapshot();
   });
 });

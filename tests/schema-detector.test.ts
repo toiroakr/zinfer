@@ -14,62 +14,48 @@ describe("SchemaDetector", () => {
   }
 
   describe("detectExportedSchemas", () => {
-    it("should detect single exported schema", () => {
+    it("should detect schemas from basic-schema.ts", () => {
       const sourceFile = getSourceFile("basic-schema.ts");
       const schemas = detector.detectExportedSchemas(sourceFile);
-
-      expect(schemas).toHaveLength(1);
-      expect(schemas[0].name).toBe("UserSchema");
-      expect(schemas[0].isExported).toBe(true);
+      expect(schemas).toMatchSnapshot();
     });
 
-    it("should detect multiple exported schemas", () => {
+    it("should detect schemas from multi-schema.ts", () => {
       const sourceFile = getSourceFile("multi-schema.ts");
       const schemas = detector.detectExportedSchemas(sourceFile);
-
-      const names = schemas.map((s) => s.name);
-
-      // Should include exported schemas
-      expect(names).toContain("UserSchema");
-      expect(names).toContain("PostSchema");
-      expect(names).toContain("CommentSchema");
-      expect(names).toContain("DateStringSchema");
-
-      // Should NOT include non-exported internal schema
-      // (InternalHelperSchema is not exported directly)
-      // But AliasedSchema (re-export of InternalHelperSchema) should be detected
-      expect(names).toContain("AliasedSchema");
+      expect(schemas).toMatchSnapshot();
     });
 
-    it("should detect schemas with zod method chains", () => {
+    it("should detect schemas from utility-types-schema.ts", () => {
       const sourceFile = getSourceFile("utility-types-schema.ts");
       const schemas = detector.detectExportedSchemas(sourceFile);
-
-      const names = schemas.map((s) => s.name);
-
-      expect(names).toContain("PartialUserSchema");
-      expect(names).toContain("UserIdNameSchema");
-      expect(names).toContain("UserWithoutEmailSchema");
+      expect(schemas).toMatchSnapshot();
     });
 
-    it("should detect union and intersection schemas", () => {
+    it("should detect schemas from union-schema.ts", () => {
       const sourceFile = getSourceFile("union-schema.ts");
       const schemas = detector.detectExportedSchemas(sourceFile);
+      expect(schemas).toMatchSnapshot();
+    });
 
-      const names = schemas.map((s) => s.name);
-
-      expect(names).toContain("StatusSchema");
-      expect(names).toContain("ResultSchema");
-      expect(names).toContain("StringOrNumberSchema");
+    it("should detect schemas from mixed-export-schema.ts", () => {
+      const sourceFile = getSourceFile("mixed-export-schema.ts");
+      const schemas = detector.detectExportedSchemas(sourceFile);
+      expect(schemas).toMatchSnapshot();
     });
   });
 
   describe("getSchemaNames", () => {
-    it("should return schema names only", () => {
+    it("should return schema names from basic-schema.ts", () => {
       const sourceFile = getSourceFile("basic-schema.ts");
       const names = detector.getSchemaNames(sourceFile);
+      expect(names).toMatchSnapshot();
+    });
 
-      expect(names).toEqual(["UserSchema"]);
+    it("should return schema names from multi-schema.ts", () => {
+      const sourceFile = getSourceFile("multi-schema.ts");
+      const names = detector.getSchemaNames(sourceFile);
+      expect(names).toMatchSnapshot();
     });
   });
 });

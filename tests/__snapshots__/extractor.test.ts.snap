@@ -1,0 +1,478 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ZodTypeExtractor > basic-schema.ts > should extract UserSchema 1`] = `
+{
+  "brands": undefined,
+  "input": "{ id: string; name: string; age?: number | undefined; }",
+  "isExported": true,
+  "output": "{ id: string; name: string; age?: number | undefined; }",
+  "schemaName": "UserSchema",
+}
+`;
+
+exports[`ZodTypeExtractor > brand-schema.ts > should extract all schemas with brand information 1`] = `
+[
+  {
+    "brands": [
+      {
+        "brandName": "UserId",
+        "fieldPath": "",
+      },
+    ],
+    "input": "string",
+    "isExported": true,
+    "output": "string",
+    "schemaName": "UserIdSchema",
+  },
+  {
+    "brands": [
+      {
+        "brandName": "UserId",
+        "fieldPath": "id",
+      },
+    ],
+    "input": "{ id: string; name: string; email: string; }",
+    "isExported": true,
+    "output": "{ id: string; name: string; email: string; }",
+    "schemaName": "UserSchema",
+  },
+]
+`;
+
+exports[`ZodTypeExtractor > cross-ref-schema.ts > should extract all schemas with cross-references 1`] = `
+[
+  {
+    "brands": undefined,
+    "input": "{ street: string; city: string; country: string; }",
+    "isExported": true,
+    "output": "{ street: string; city: string; country: string; }",
+    "schemaName": "AddressSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ name: string; address: AddressSchemaInput; previousAddresses?: readonly AddressSchemaInput[]; }",
+    "isExported": true,
+    "output": "{ name: string; address: AddressSchemaOutput; previousAddresses?: readonly AddressSchemaOutput[]; }",
+    "schemaName": "UserSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ name: string; headquarters: AddressSchemaInput; employees: readonly UserSchemaInput[]; }",
+    "isExported": true,
+    "output": "{ name: string; headquarters: AddressSchemaOutput; employees: readonly UserSchemaOutput[]; }",
+    "schemaName": "CompanySchema",
+  },
+]
+`;
+
+exports[`ZodTypeExtractor > enum-schema.ts > should extract all schemas 1`] = `
+[
+  {
+    "brands": undefined,
+    "input": ""north" | "south" | "east" | "west"",
+    "isExported": true,
+    "output": ""north" | "south" | "east" | "west"",
+    "schemaName": "DirectionSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "Color",
+    "isExported": true,
+    "output": "Color",
+    "schemaName": "ColorSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "Priority",
+    "isExported": true,
+    "output": "Priority",
+    "schemaName": "PrioritySchema",
+  },
+]
+`;
+
+exports[`ZodTypeExtractor > getter-schema.ts > should extract all getter-based recursive schemas 1`] = `
+[
+  {
+    "brands": undefined,
+    "input": "{ value: string; children?: TreeNodeSchemaInput[]; }",
+    "isExported": true,
+    "output": "{ value: string; children?: TreeNodeSchemaOutput[]; }",
+    "schemaName": "TreeNodeSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ name: string; items?: NestedRecordSchemaInput; }",
+    "isExported": true,
+    "output": "{ name: string; items?: NestedRecordSchemaOutput; }",
+    "schemaName": "NestedRecordSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "Function",
+    "isExported": false,
+    "output": "Function",
+    "schemaName": "functionSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ name: string; callback: functionSchemaInput; optionalCallback?: Function | undefined; }",
+    "isExported": true,
+    "output": "{ name: string; callback: functionSchemaOutput; optionalCallback?: Function | undefined; }",
+    "schemaName": "CallbackSchema",
+  },
+]
+`;
+
+exports[`ZodTypeExtractor > intersection-schema.ts > should extract all schemas 1`] = `
+[
+  {
+    "brands": undefined,
+    "input": "{ id: string; }",
+    "isExported": false,
+    "output": "{ id: string; }",
+    "schemaName": "BaseSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ createdAt: Date; updatedAt: Date; }",
+    "isExported": false,
+    "output": "{ createdAt: Date; updatedAt: Date; }",
+    "schemaName": "TimestampSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ version: number; }",
+    "isExported": false,
+    "output": "{ version: number; }",
+    "schemaName": "MetadataSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ id: string; createdAt: Date; updatedAt: Date; }",
+    "isExported": true,
+    "output": "{ id: string; createdAt: Date; updatedAt: Date; }",
+    "schemaName": "EntitySchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ id: string; createdAt: Date; updatedAt: Date; }",
+    "isExported": true,
+    "output": "{ id: string; createdAt: Date; updatedAt: Date; }",
+    "schemaName": "MergedSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ id: string; version: number; }",
+    "isExported": true,
+    "output": "{ id: string; version: number; }",
+    "schemaName": "AndSchema",
+  },
+]
+`;
+
+exports[`ZodTypeExtractor > lazy-schema.ts > should extract all schemas with circular references 1`] = `
+[
+  {
+    "brands": undefined,
+    "input": "{ name: string; subcategories: readonly { name: string; subcategories: readonly any[]; }[]; }",
+    "isExported": false,
+    "output": "{ name: string; subcategories: readonly { name: string; subcategories: readonly any[]; }[]; }",
+    "schemaName": "CategoryBaseSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "CategoryInterface",
+    "isExported": true,
+    "output": "CategoryInterface",
+    "schemaName": "CategorySchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ value: string; children: readonly { value: string; children: readonly any[]; parent?: any | undefined; }[]; parent?: { value: string; children: readonly any[]; parent?: any | undefined; } | undefined; }",
+    "isExported": false,
+    "output": "{ value: string; children: readonly { value: string; children: readonly any[]; parent?: any | undefined; }[]; parent?: { value: string; children: readonly any[]; parent?: any | undefined; } | undefined; }",
+    "schemaName": "TreeNodeBaseSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "TreeNodeInterface",
+    "isExported": true,
+    "output": "TreeNodeInterface",
+    "schemaName": "TreeNodeSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "string | number | boolean | JsonValue[] | { [key: string]: JsonValue; } | null",
+    "isExported": true,
+    "output": "string | number | boolean | JsonValue[] | { [key: string]: JsonValue; } | null",
+    "schemaName": "JsonValueSchema",
+  },
+]
+`;
+
+exports[`ZodTypeExtractor > mixed-export-schema.ts > should extract all schemas tracking export status 1`] = `
+[
+  {
+    "brands": undefined,
+    "input": "{ version: number; createdAt: Date; }",
+    "isExported": false,
+    "output": "{ version: number; createdAt: Date; }",
+    "schemaName": "InternalMetaSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ id: string; name: string; meta: InternalMetaSchemaInput; }",
+    "isExported": true,
+    "output": "{ id: string; name: string; meta: InternalMetaSchemaOutput; }",
+    "schemaName": "PublicDataSchema",
+  },
+]
+`;
+
+exports[`ZodTypeExtractor > multi-schema.ts > should extract all schemas 1`] = `
+[
+  {
+    "brands": undefined,
+    "input": "{ id: string; name: string; email: string; }",
+    "isExported": true,
+    "output": "{ id: string; name: string; email: string; }",
+    "schemaName": "UserSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ id: string; title: string; content: string; authorId: string; publishedAt?: Date | undefined; }",
+    "isExported": true,
+    "output": "{ id: string; title: string; content: string; authorId: string; publishedAt?: Date | undefined; }",
+    "schemaName": "PostSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ id: string; content: string; postId: string; authorId: string; createdAt: Date; }",
+    "isExported": true,
+    "output": "{ id: string; content: string; postId: string; authorId: string; createdAt: Date; }",
+    "schemaName": "CommentSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ internal: boolean; }",
+    "isExported": false,
+    "output": "{ internal: boolean; }",
+    "schemaName": "InternalHelperSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ date: string; }",
+    "isExported": true,
+    "output": "{ date: Date; }",
+    "schemaName": "DateStringSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "any",
+    "isExported": true,
+    "output": "any",
+    "schemaName": "AliasedSchema",
+  },
+]
+`;
+
+exports[`ZodTypeExtractor > multi-schema.ts > should extract specific schemas using extractMultiple 1`] = `
+[
+  {
+    "brands": undefined,
+    "input": "{ id: string; name: string; email: string; }",
+    "isExported": true,
+    "output": "{ id: string; name: string; email: string; }",
+    "schemaName": "UserSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ id: string; title: string; content: string; authorId: string; publishedAt?: Date | undefined; }",
+    "isExported": true,
+    "output": "{ id: string; title: string; content: string; authorId: string; publishedAt?: Date | undefined; }",
+    "schemaName": "PostSchema",
+  },
+]
+`;
+
+exports[`ZodTypeExtractor > multi-schema.ts > should get schema names from file 1`] = `
+[
+  "UserSchema",
+  "PostSchema",
+  "CommentSchema",
+  "InternalHelperSchema",
+  "DateStringSchema",
+  "AliasedSchema",
+]
+`;
+
+exports[`ZodTypeExtractor > nested-schema.ts > should extract PersonSchema with nested objects 1`] = `
+{
+  "brands": undefined,
+  "input": "{ name: string; address: { street: string; city: string; zipCode: string; }; alternateAddresses: readonly { street: string; city: string; zipCode: string; }[]; }",
+  "isExported": true,
+  "output": "{ name: string; address: { street: string; city: string; zipCode: string; }; alternateAddresses: readonly { street: string; city: string; zipCode: string; }[]; }",
+  "schemaName": "PersonSchema",
+}
+`;
+
+exports[`ZodTypeExtractor > transform-schema.ts > should extract DateSchema with transforms 1`] = `
+{
+  "brands": undefined,
+  "input": "{ createdAt: string; count: string; }",
+  "isExported": true,
+  "output": "{ createdAt: Date; count: number; }",
+  "schemaName": "DateSchema",
+}
+`;
+
+exports[`ZodTypeExtractor > union-ref-schema.ts > should extract all schemas with union references 1`] = `
+[
+  {
+    "brands": undefined,
+    "input": "{ kind: "dog"; name: string; breed: string; }",
+    "isExported": true,
+    "output": "{ kind: "dog"; name: string; breed: string; }",
+    "schemaName": "DogSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ kind: "cat"; name: string; indoor: boolean; }",
+    "isExported": true,
+    "output": "{ kind: "cat"; name: string; indoor: boolean; }",
+    "schemaName": "CatSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ kind: "bird"; name: string; canFly: boolean; }",
+    "isExported": true,
+    "output": "{ kind: "bird"; name: string; canFly: boolean; }",
+    "schemaName": "BirdSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "DogSchemaInput | CatSchemaInput | BirdSchemaInput",
+    "isExported": true,
+    "output": "DogSchemaOutput | CatSchemaOutput | BirdSchemaOutput",
+    "schemaName": "PetSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "DogSchemaInput | CatSchemaInput",
+    "isExported": true,
+    "output": "DogSchemaOutput | CatSchemaOutput",
+    "schemaName": "AnimalSchema",
+  },
+]
+`;
+
+exports[`ZodTypeExtractor > union-schema.ts > should extract all schemas 1`] = `
+[
+  {
+    "brands": undefined,
+    "input": ""active" | "inactive" | "pending"",
+    "isExported": true,
+    "output": ""active" | "inactive" | "pending"",
+    "schemaName": "StatusSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ type: "success"; data: string; } | { type: "error"; message: string; }",
+    "isExported": true,
+    "output": "{ type: "success"; data: string; } | { type: "error"; message: string; }",
+    "schemaName": "ResultSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "string | number",
+    "isExported": true,
+    "output": "string | number",
+    "schemaName": "StringOrNumberSchema",
+  },
+]
+`;
+
+exports[`ZodTypeExtractor > utility-types-schema.ts > should extract all schemas 1`] = `
+[
+  {
+    "brands": undefined,
+    "input": "{ id: string; name: string; email: string; age: number; }",
+    "isExported": false,
+    "output": "{ id: string; name: string; email: string; age: number; }",
+    "schemaName": "UserSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ id?: string | undefined; name?: string | undefined; email?: string | undefined; age?: number | undefined; }",
+    "isExported": true,
+    "output": "{ id?: string | undefined; name?: string | undefined; email?: string | undefined; age?: number | undefined; }",
+    "schemaName": "PartialUserSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ id: string; name: string; }",
+    "isExported": true,
+    "output": "{ id: string; name: string; }",
+    "schemaName": "UserIdNameSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ id: string; name: string; age: number; }",
+    "isExported": true,
+    "output": "{ id: string; name: string; age: number; }",
+    "schemaName": "UserWithoutEmailSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ id: string; name: string; email: string; age: number; }",
+    "isExported": true,
+    "output": "{ id: string; name: string; email: string; age: number; }",
+    "schemaName": "RequiredUserSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ user: UserSchemaInput; settings: { theme: string; notifications: boolean; }; }",
+    "isExported": false,
+    "output": "{ user: UserSchemaOutput; settings: { theme: string; notifications: boolean; }; }",
+    "schemaName": "NestedSchema",
+  },
+  {
+    "brands": undefined,
+    "input": "{ user?: { id?: string | undefined; name?: string | undefined; email?: string | undefined; age?: number | undefined; } | undefined; settings?: { theme?: string | undefined; notifications?: boolean | undefined; } | undefined; }",
+    "isExported": true,
+    "output": "{ user?: { id?: string | undefined; name?: string | undefined; email?: string | undefined; age?: number | undefined; } | undefined; settings?: { theme?: string | undefined; notifications?: boolean | undefined; } | undefined; }",
+    "schemaName": "DeepPartialNestedSchema",
+  },
+]
+`;
+
+exports[`formatResult > should format result with input and output sections 1`] = `
+"// input
+{
+  id: string;
+  name: string;
+  age?: number | undefined; 
+}
+
+// output
+{
+  id: string;
+  name: string;
+  age?: number | undefined; 
+}"
+`;
+
+exports[`formatResult > should format result with transforms 1`] = `
+"// input
+{
+  createdAt: string;
+  count: string; 
+}
+
+// output
+{
+  createdAt: Date;
+  count: number; 
+}"
+`;
