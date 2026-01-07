@@ -371,9 +371,38 @@ export function formatMultipleAsDeclarations(
   mapName: (schemaName: string) => MappedTypeName,
   options: DeclarationOptions = {}
 ): string {
+  // Build a map of schema names to their mapped type names
+  const typeNameMap = new Map<string, MappedTypeName>();
+  for (const result of results) {
+    typeNameMap.set(result.schemaName, mapName(result.schemaName));
+  }
+
+  // Replace schema references with correct type names
+  const fixedResults = results.map(result => {
+    let input = result.input;
+    let output = result.output;
+
+    // Replace all schema references in the type strings
+    for (const [schemaName, mappedName] of typeNameMap) {
+      // Replace SchemaNameInput -> MappedNameInput
+      const inputPattern = new RegExp(`\\b${schemaName}Input\\b`, 'g');
+      input = input.replace(inputPattern, mappedName.inputName);
+
+      // Replace SchemaNameOutput -> MappedNameOutput
+      const outputPattern = new RegExp(`\\b${schemaName}Output\\b`, 'g');
+      output = output.replace(outputPattern, mappedName.outputName);
+    }
+
+    return { ...result, input, output };
+  });
+
   const declarations: string[] = [];
 
-  for (const result of results) {
+  // Only generate declarations for exported schemas
+  for (const result of fixedResults) {
+    if (!result.isExported) {
+      continue;
+    }
     const typeName = mapName(result.schemaName);
     const declaration = formatAsDeclaration(result, typeName, options);
     declarations.push(declaration);
