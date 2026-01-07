@@ -4,29 +4,16 @@ import { z } from "zod";
 // Recommended pattern: getter-based recursion
 // ============================================
 
-// Self-referencing schema using getter (recommended in Zod v3.23+)
-interface CategoryInterface {
-  name: string;
-  subcategories: CategoryInterface[];
-}
-
-const CategoryBaseSchema = z.object({
+// Self-referencing schema using getter
+export const CategorySchema = z.object({
   name: z.string(),
   get subcategories() {
     return CategorySchema.array();
   },
 });
 
-export const CategorySchema: z.ZodType<CategoryInterface> = CategoryBaseSchema;
-
 // Mutually recursive schemas using getter
-interface TreeNodeInterface {
-  value: string;
-  children: TreeNodeInterface[];
-  parent?: TreeNodeInterface;
-}
-
-const TreeNodeBaseSchema = z.object({
+export const TreeNodeSchema = z.object({
   value: z.string(),
   get children() {
     return TreeNodeSchema.array();
@@ -36,13 +23,7 @@ const TreeNodeBaseSchema = z.object({
   },
 });
 
-export const TreeNodeSchema: z.ZodType<TreeNodeInterface> = TreeNodeBaseSchema;
-
-// ============================================
-// Legacy pattern: z.lazy() (still supported)
-// ============================================
-
-// Simple lazy with explicit type
+// Lazy schema for recursive union types
 export type JsonValue =
   | string
   | number

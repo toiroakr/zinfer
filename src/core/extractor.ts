@@ -347,6 +347,16 @@ export class ZodTypeExtractor {
         );
       }
 
+      // For explicit types, replace self-references with typed names
+      if (schema.explicitType) {
+        // schema.explicitType already contains just the type name (e.g., "JsonValue")
+        const typeName = schema.explicitType;
+        // Replace type name with self-referencing Input/Output types
+        const typeNamePattern = new RegExp(`\\b${typeName}\\b`, 'g');
+        input = input.replace(typeNamePattern, `${schemaName}Input`);
+        output = output.replace(typeNamePattern, `${schemaName}Output`);
+      }
+
       results.push({
         schemaName,
         input,

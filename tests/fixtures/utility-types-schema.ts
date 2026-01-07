@@ -28,7 +28,7 @@ export const UserWithoutEmailSchema = UserSchema.omit({ email: true });
 export const RequiredUserSchema = UserSchema.partial().required();
 
 /**
- * DeepPartial - nested partial
+ * DeepPartial - nested partial (manual implementation for Zod 4)
  */
 const NestedSchema = z.object({
   user: UserSchema,
@@ -38,4 +38,10 @@ const NestedSchema = z.object({
   }),
 });
 
-export const DeepPartialNestedSchema = NestedSchema.deepPartial();
+export const DeepPartialNestedSchema = z.object({
+  user: UserSchema.partial(),
+  settings: z.object({
+    theme: z.string(),
+    notifications: z.boolean(),
+  }).partial(),
+}).partial();
