@@ -1,178 +1,235 @@
 import { describe, it, expect } from "vitest";
 import { resolve } from "path";
 import { ZodTypeExtractor } from "../src/core/extractor.js";
-import { formatResult } from "../src/core/type-printer.js";
+import {
+  formatAsDeclaration,
+  generateDeclarationFile
+} from "../src/core/type-printer.js";
+import { createNameMapper } from "../src/core/name-mapper.js";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
+const mapName = createNameMapper({ removeSuffix: "Schema" });
 
-describe("ZodTypeExtractor", () => {
+describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   const extractor = new ZodTypeExtractor();
 
   describe("basic-schema.ts", () => {
-    it("should extract UserSchema", () => {
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "basic-schema.ts"),
-        schemaName: "UserSchema",
-      });
-      expect(result).toMatchSnapshot();
+    it("should generate TypeScript declarations", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "basic-schema.ts")
+      );
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("transform-schema.ts", () => {
-    it("should extract DateSchema with transforms", () => {
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "transform-schema.ts"),
-        schemaName: "DateSchema",
-      });
-      expect(result).toMatchSnapshot();
+    it("should generate TypeScript declarations with transforms", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "transform-schema.ts")
+      );
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("nested-schema.ts", () => {
-    it("should extract PersonSchema with nested objects", () => {
-      const result = extractor.extract({
-        filePath: resolve(fixturesDir, "nested-schema.ts"),
-        schemaName: "PersonSchema",
-      });
-      expect(result).toMatchSnapshot();
+    it("should generate TypeScript declarations with nested objects", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "nested-schema.ts")
+      );
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("union-schema.ts", () => {
-    it("should extract all schemas", () => {
+    it("should generate TypeScript declarations with unions", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "union-schema.ts")
       );
-      expect(results).toMatchSnapshot();
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("intersection-schema.ts", () => {
-    it("should extract all schemas", () => {
+    it("should generate TypeScript declarations with intersections", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "intersection-schema.ts")
       );
-      expect(results).toMatchSnapshot();
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("enum-schema.ts", () => {
-    it("should extract all schemas", () => {
+    it("should generate TypeScript declarations with enums", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "enum-schema.ts")
       );
-      expect(results).toMatchSnapshot();
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("utility-types-schema.ts", () => {
-    it("should extract all schemas", () => {
+    it("should generate TypeScript declarations with utility types", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "utility-types-schema.ts")
       );
-      expect(results).toMatchSnapshot();
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("multi-schema.ts", () => {
-    it("should extract all schemas", () => {
+    it("should generate TypeScript declarations for multiple schemas", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "multi-schema.ts")
       );
-      expect(results).toMatchSnapshot();
-    });
-
-    it("should extract specific schemas using extractMultiple", () => {
-      const results = extractor.extractMultiple(
-        resolve(fixturesDir, "multi-schema.ts"),
-        ["UserSchema", "PostSchema"]
+      const output = generateDeclarationFile(
+        results,
+        mapName
       );
-      expect(results).toMatchSnapshot();
-    });
-
-    it("should get schema names from file", () => {
-      const names = extractor.getSchemaNames(
-        resolve(fixturesDir, "multi-schema.ts")
-      );
-      expect(names).toMatchSnapshot();
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("lazy-schema.ts", () => {
-    it("should extract all schemas with circular references", () => {
+    it("should generate TypeScript declarations with circular references", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "lazy-schema.ts")
       );
-      expect(results).toMatchSnapshot();
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("getter-schema.ts", () => {
-    it("should extract all getter-based recursive schemas", () => {
+    it("should generate TypeScript declarations with getter-based recursive schemas", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "getter-schema.ts")
       );
-      expect(results).toMatchSnapshot();
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("cross-ref-schema.ts", () => {
-    it("should extract all schemas with cross-references", () => {
+    it("should generate TypeScript declarations with cross-references", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "cross-ref-schema.ts")
       );
-      expect(results).toMatchSnapshot();
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("mixed-export-schema.ts", () => {
-    it("should extract all schemas tracking export status", () => {
+    it("should generate TypeScript declarations respecting export status", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "mixed-export-schema.ts")
       );
-      expect(results).toMatchSnapshot();
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("union-ref-schema.ts", () => {
-    it("should extract all schemas with union references", () => {
+    it("should generate TypeScript declarations with union references", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "union-ref-schema.ts")
       );
-      expect(results).toMatchSnapshot();
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
 
   describe("brand-schema.ts", () => {
-    it("should extract all schemas with brand information", () => {
+    it("should generate TypeScript declarations with brand information", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "brand-schema.ts")
       );
-      expect(results).toMatchSnapshot();
+      const output = generateDeclarationFile(
+        results,
+        mapName
+      );
+      expect(output).toMatchSnapshot();
     });
   });
-});
 
-describe("formatResult", () => {
-  it("should format result with input and output sections", () => {
-    const extractor = new ZodTypeExtractor();
-    const result = extractor.extract({
-      filePath: resolve(fixturesDir, "basic-schema.ts"),
-      schemaName: "UserSchema",
+  describe("declaration options", () => {
+    it("should generate with inputOnly option", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "transform-schema.ts")
+      );
+      const output = generateDeclarationFile(
+        results,
+        mapName,
+        { inputOnly: true }
+      );
+      expect(output).toMatchSnapshot();
     });
 
-    const formatted = formatResult(result);
-    expect(formatted).toMatchSnapshot();
-  });
-
-  it("should format result with transforms", () => {
-    const extractor = new ZodTypeExtractor();
-    const result = extractor.extract({
-      filePath: resolve(fixturesDir, "transform-schema.ts"),
-      schemaName: "DateSchema",
+    it("should generate with outputOnly option", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "transform-schema.ts")
+      );
+      const output = generateDeclarationFile(
+        results,
+        mapName,
+        { outputOnly: true }
+      );
+      expect(output).toMatchSnapshot();
     });
 
-    const formatted = formatResult(result);
-    expect(formatted).toMatchSnapshot();
+    it("should generate with unifyIfSame option", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "basic-schema.ts")
+      );
+      const output = generateDeclarationFile(
+        results,
+        mapName,
+        { unifyIfSame: true }
+      );
+      expect(output).toMatchSnapshot();
+    });
   });
 });
