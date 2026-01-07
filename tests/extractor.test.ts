@@ -17,7 +17,7 @@ const mapName = createNameMapper({ removeSuffix: "Schema" });
 afterAll(() => {
   try {
     const snapshotFiles = readdirSync(snapshotsDir)
-      .filter(f => f.endsWith('.d.ts'))
+      .filter(f => f.endsWith('.ts'))
       .map(f => resolve(snapshotsDir, f));
 
     if (snapshotFiles.length === 0) {
@@ -76,7 +76,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/basic-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/basic-schema.ts");
     });
   });
 
@@ -89,7 +89,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/transform-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/transform-schema.ts");
     });
   });
 
@@ -102,7 +102,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/nested-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/nested-schema.ts");
     });
   });
 
@@ -115,7 +115,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/union-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/union-schema.ts");
     });
   });
 
@@ -128,7 +128,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/intersection-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/intersection-schema.ts");
     });
   });
 
@@ -141,7 +141,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/enum-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/enum-schema.ts");
     });
   });
 
@@ -154,7 +154,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/utility-types-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/utility-types-schema.ts");
     });
   });
 
@@ -167,7 +167,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/multi-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/multi-schema.ts");
     });
   });
 
@@ -180,7 +180,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/lazy-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/lazy-schema.ts");
     });
   });
 
@@ -193,7 +193,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/getter-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/getter-schema.ts");
     });
   });
 
@@ -206,7 +206,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/cross-ref-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/cross-ref-schema.ts");
     });
   });
 
@@ -219,7 +219,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/mixed-export-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/mixed-export-schema.ts");
     });
   });
 
@@ -232,7 +232,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/union-ref-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/union-ref-schema.ts");
     });
   });
 
@@ -245,7 +245,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         results,
         mapName
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/brand-schema.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/brand-schema.ts");
     });
   });
 
@@ -259,7 +259,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         mapName,
         { inputOnly: true }
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/options-inputOnly.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/options-inputOnly.ts");
     });
 
     it("should generate with outputOnly option", async () => {
@@ -271,7 +271,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         mapName,
         { outputOnly: true }
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/options-outputOnly.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/options-outputOnly.ts");
     });
 
     it("should generate with unifyIfSame option", async () => {
@@ -283,7 +283,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         mapName,
         { unifyIfSame: true }
       );
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/options-unifyIfSame.d.ts");
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/options-unifyIfSame.ts");
     });
   });
 });
