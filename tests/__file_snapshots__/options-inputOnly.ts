@@ -2,5 +2,5 @@
 
 export type DateInput = {
   createdAt: string;
-  count: string; 
+  count: string;
 };

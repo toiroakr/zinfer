@@ -3,5 +3,5 @@
 export type User = {
   id: string;
   name: string;
-  age?: number | undefined; 
+  age?: number | undefined;
 };

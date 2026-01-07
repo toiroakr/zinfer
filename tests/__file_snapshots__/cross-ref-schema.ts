@@ -3,35 +3,35 @@
 export type AddressInput = {
   street: string;
   city: string;
-  country: string; 
+  country: string;
 };
 
 export type AddressOutput = {
   street: string;
   city: string;
-  country: string; 
+  country: string;
 };
 
 export type UserInput = {
   name: string;
   address: AddressInput;
-  previousAddresses?: readonly AddressInput[]; 
+  previousAddresses?: readonly AddressInput[];
 };
 
 export type UserOutput = {
   name: string;
   address: AddressOutput;
-  previousAddresses?: readonly AddressOutput[]; 
+  previousAddresses?: readonly AddressOutput[];
 };
 
 export type CompanyInput = {
   name: string;
   headquarters: AddressInput;
-  employees: readonly UserInput[]; 
+  employees: readonly UserInput[];
 };
 
 export type CompanyOutput = {
   name: string;
   headquarters: AddressOutput;
-  employees: readonly UserOutput[]; 
+  employees: readonly UserOutput[];
 };

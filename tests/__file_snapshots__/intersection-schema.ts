@@ -3,33 +3,33 @@
 export type EntityInput = {
   id: string;
   createdAt: Date;
-  updatedAt: Date; 
+  updatedAt: Date;
 };
 
 export type EntityOutput = {
   id: string;
   createdAt: Date;
-  updatedAt: Date; 
+  updatedAt: Date;
 };
 
 export type MergedInput = {
   id: string;
   createdAt: Date;
-  updatedAt: Date; 
+  updatedAt: Date;
 };
 
 export type MergedOutput = {
   id: string;
   createdAt: Date;
-  updatedAt: Date; 
+  updatedAt: Date;
 };
 
 export type AndInput = {
   id: string;
-  version: number; 
+  version: number;
 };
 
 export type AndOutput = {
   id: string;
-  version: number; 
+  version: number;
 };

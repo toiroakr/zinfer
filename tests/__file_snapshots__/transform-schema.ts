@@ -2,10 +2,10 @@
 
 export type DateInput = {
   createdAt: string;
-  count: string; 
+  count: string;
 };
 
 export type DateOutput = {
   createdAt: Date;
-  count: number; 
+  count: number;
 };

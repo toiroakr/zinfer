@@ -3,13 +3,13 @@
 export type UserInput = {
   id: string;
   name: string;
-  email: string; 
+  email: string;
 };
 
 export type UserOutput = {
   id: string;
   name: string;
-  email: string; 
+  email: string;
 };
 
 export type PostInput = {
@@ -17,7 +17,7 @@ export type PostInput = {
   title: string;
   content: string;
   authorId: string;
-  publishedAt?: Date | undefined; 
+  publishedAt?: Date | undefined;
 };
 
 export type PostOutput = {
@@ -25,7 +25,7 @@ export type PostOutput = {
   title: string;
   content: string;
   authorId: string;
-  publishedAt?: Date | undefined; 
+  publishedAt?: Date | undefined;
 };
 
 export type CommentInput = {
@@ -33,7 +33,7 @@ export type CommentInput = {
   content: string;
   postId: string;
   authorId: string;
-  createdAt: Date; 
+  createdAt: Date;
 };
 
 export type CommentOutput = {
@@ -41,15 +41,15 @@ export type CommentOutput = {
   content: string;
   postId: string;
   authorId: string;
-  createdAt: Date; 
+  createdAt: Date;
 };
 
 export type DateStringInput = {
-  date: string; 
+  date: string;
 };
 
 export type DateStringOutput = {
-  date: Date; 
+  date: Date;
 };
 
 export type AliasedInput = any;

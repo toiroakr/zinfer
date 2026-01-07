@@ -2,36 +2,36 @@
 
 export type TreeNodeInput = {
   value: string;
-  children?: readonly TreeNodeInput[] | undefined; 
+  children?: readonly TreeNodeInput[] | undefined;
 };
 
 export type TreeNodeOutput = {
   value: string;
-  children?: readonly TreeNodeOutput[] | undefined; 
+  children?: readonly TreeNodeOutput[] | undefined;
 };
 
 export type NestedRecordInput = {
   name: string;
   items: {
-    [x: string]: NestedRecordInput; 
-  }; 
+    [x: string]: NestedRecordInput;
+  };
 };
 
 export type NestedRecordOutput = {
   name: string;
   items: {
-    [x: string]: NestedRecordOutput; 
-  }; 
+    [x: string]: NestedRecordOutput;
+  };
 };
 
 export type CallbackInput = {
   name: string;
-  callback: functionInput;
-  optionalCallback?: Function | undefined; 
+  callback: Function;
+  optionalCallback?: Function | undefined;
 };
 
 export type CallbackOutput = {
   name: string;
-  callback: functionOutput;
-  optionalCallback?: Function | undefined; 
+  callback: Function;
+  optionalCallback?: Function | undefined;
 };

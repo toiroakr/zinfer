@@ -3,11 +3,17 @@
 export type PublicDataInput = {
   id: string;
   name: string;
-  meta: InternalMetaInput; 
+  meta: {
+    version: number;
+    createdAt: Date;
+  };
 };
 
 export type PublicDataOutput = {
   id: string;
   name: string;
-  meta: InternalMetaOutput; 
+  meta: {
+    version: number;
+    createdAt: Date;
+  };
 };

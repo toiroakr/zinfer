@@ -2,24 +2,24 @@
 
 export type CategoryInput = {
   name: string;
-  subcategories: readonly CategoryInput[]; 
+  subcategories: readonly CategoryInput[];
 };
 
 export type CategoryOutput = {
   name: string;
-  subcategories: readonly CategoryOutput[]; 
+  subcategories: readonly CategoryOutput[];
 };
 
 export type TreeNodeInput = {
   value: string;
   children: readonly TreeNodeInput[];
-  parent?: TreeNodeInput | undefined; 
+  parent?: TreeNodeInput | undefined;
 };
 
 export type TreeNodeOutput = {
   value: string;
   children: readonly TreeNodeOutput[];
-  parent?: TreeNodeOutput | undefined; 
+  parent?: TreeNodeOutput | undefined;
 };
 
 export type JsonValueInput = string | number | boolean | JsonValueInput[] | { [key: string]: JsonValueInput; } | null;

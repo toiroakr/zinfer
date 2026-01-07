@@ -36,8 +36,9 @@ afterAll(() => {
         console.log(`✓ ${file.split('/').pop()}`);
       } catch (error: any) {
         // Filter out zod locale errors
-        const stderr = error.stderr || '';
-        const relevantErrors = stderr
+        // tsc outputs errors to stdout, not stderr
+        const output = (error.stdout || error.stderr || '');
+        const relevantErrors = output
           .split('\n')
           .filter((line: string) =>
             line.includes('error TS') &&
@@ -62,7 +63,7 @@ afterAll(() => {
       throw error;
     }
   }
-});
+}, 60000); // 60 second timeout for type checking all snapshot files
 
 describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   const extractor = new ZodTypeExtractor();

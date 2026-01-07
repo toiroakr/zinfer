@@ -4,50 +4,50 @@ export type PartialUserInput = {
   id?: string | undefined;
   name?: string | undefined;
   email?: string | undefined;
-  age?: number | undefined; 
+  age?: number | undefined;
 };
 
 export type PartialUserOutput = {
   id?: string | undefined;
   name?: string | undefined;
   email?: string | undefined;
-  age?: number | undefined; 
+  age?: number | undefined;
 };
 
 export type UserIdNameInput = {
   id: string;
-  name: string; 
+  name: string;
 };
 
 export type UserIdNameOutput = {
   id: string;
-  name: string; 
+  name: string;
 };
 
 export type UserWithoutEmailInput = {
   id: string;
   name: string;
-  age: number; 
+  age: number;
 };
 
 export type UserWithoutEmailOutput = {
   id: string;
   name: string;
-  age: number; 
+  age: number;
 };
 
 export type RequiredUserInput = {
   id: string;
   name: string;
   email: string;
-  age: number; 
+  age: number;
 };
 
 export type RequiredUserOutput = {
   id: string;
   name: string;
   email: string;
-  age: number; 
+  age: number;
 };
 
 export type DeepPartialNestedInput = {
@@ -55,12 +55,12 @@ export type DeepPartialNestedInput = {
     id?: string | undefined;
     name?: string | undefined;
     email?: string | undefined;
-    age?: number | undefined; 
+    age?: number | undefined;
   } | undefined;
   settings?: {
     theme?: string | undefined;
-    notifications?: boolean | undefined; 
-  } | undefined; 
+    notifications?: boolean | undefined;
+  } | undefined;
 };
 
 export type DeepPartialNestedOutput = {
@@ -68,10 +68,10 @@ export type DeepPartialNestedOutput = {
     id?: string | undefined;
     name?: string | undefined;
     email?: string | undefined;
-    age?: number | undefined; 
+    age?: number | undefined;
   } | undefined;
   settings?: {
     theme?: string | undefined;
-    notifications?: boolean | undefined; 
-  } | undefined; 
+    notifications?: boolean | undefined;
+  } | undefined;
 };

@@ -9,11 +9,11 @@ export type UserIdOutput = string & BRAND<"UserId">;
 export type UserInput = {
   id: string;
   name: string;
-  email: string; 
+  email: string;
 };
 
 export type UserOutput = {
   id: string & BRAND<"UserId">;
   name: string;
-  email: string; 
+  email: string;
 };

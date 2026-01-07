@@ -2,5 +2,5 @@
 
 export type DateOutput = {
   createdAt: Date;
-  count: number; 
+  count: number;
 };

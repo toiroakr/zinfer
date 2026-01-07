@@ -4,10 +4,10 @@ export type DirectionInput = "north" | "south" | "east" | "west";
 
 export type DirectionOutput = "north" | "south" | "east" | "west";
 
-export type ColorInput = Color;
+export type ColorInput = "red" | "green" | "blue";
 
-export type ColorOutput = Color;
+export type ColorOutput = "red" | "green" | "blue";
 
-export type PriorityInput = Priority;
+export type PriorityInput = 0 | 1 | 2;
 
-export type PriorityOutput = Priority;
+export type PriorityOutput = 0 | 1 | 2;

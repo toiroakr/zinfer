@@ -329,9 +329,14 @@ export class ZodTypeExtractor {
       const refs = referenceMap.get(schemaName) || [];
 
       // Replace references to other schemas with type names
+      // Only replace references to exported schemas
       for (const ref of refs) {
         const refRaw = rawTypes.get(ref.refSchema);
         if (!refRaw) continue;
+
+        // Skip replacement if the referenced schema is not exported
+        // Non-exported schemas should remain inlined
+        if (!refRaw.isExported) continue;
 
         input = this.replaceSchemaReference(
           input,
@@ -524,12 +529,37 @@ export class ZodTypeExtractor {
     const type = typeAlias.getType();
 
     // Use TypeFormatFlags to get the fully expanded type without truncation
+    // Don't use UseAliasDefinedOutsideCurrentScope to expand enum types
     const formatFlags =
       TypeFormatFlags.NoTruncation |
-      TypeFormatFlags.InTypeAlias |
-      TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
+      TypeFormatFlags.InTypeAlias;
 
-    const rawType = type.getText(typeAlias, formatFlags);
+    let rawType = type.getText(typeAlias, formatFlags);
+
+    // Remove trailing spaces from each line (ts-morph 27+ may add them)
+    rawType = rawType.split('\n').map(line => line.trimEnd()).join('\n');
+
+    // Expand enum types: if the type is a single identifier, check if it's an enum
+    if (/^[A-Z][a-zA-Z0-9]*$/.test(rawType)) {
+      const enumDecl = sourceFile.getEnum(rawType);
+      if (enumDecl) {
+        // Extract enum values
+        const members = enumDecl.getMembers();
+        const values = members.map(member => {
+          const value = member.getValue();
+          if (typeof value === 'string') {
+            return `"${value}"`;
+          } else if (typeof value === 'number') {
+            return value.toString();
+          }
+          return null;
+        }).filter(Boolean);
+
+        if (values.length > 0) {
+          rawType = values.join(" | ");
+        }
+      }
+    }
 
     // Post-process to simplify Zod internal function types
     return this.simplifyZodFunctionTypes(rawType);

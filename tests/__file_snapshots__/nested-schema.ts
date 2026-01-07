@@ -2,12 +2,28 @@
 
 export type PersonInput = {
   name: string;
-  address: AddressInput;
-  alternateAddresses: readonly AddressInput[]; 
+  address: {
+    street: string;
+    city: string;
+    zipCode: string;
+  };
+  alternateAddresses: readonly {
+    street: string;
+    city: string;
+    zipCode: string;
+  }[];
 };
 
 export type PersonOutput = {
   name: string;
-  address: AddressOutput;
-  alternateAddresses: readonly AddressOutput[]; 
+  address: {
+    street: string;
+    city: string;
+    zipCode: string;
+  };
+  alternateAddresses: readonly {
+    street: string;
+    city: string;
+    zipCode: string;
+  }[];
 };

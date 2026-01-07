@@ -64,7 +64,10 @@ function prettifyType(
     return typeStr;
   }
 
-  return prettifyObjectType(typeStr, indent, descriptions, prefix);
+  const prettified = prettifyObjectType(typeStr, indent, descriptions, prefix);
+
+  // Remove trailing spaces from each line
+  return prettified.split('\n').map(line => line.trimEnd()).join('\n');
 }
 
 /**

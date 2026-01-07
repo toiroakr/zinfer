@@ -3,37 +3,37 @@
 export type DogInput = {
   kind: "dog";
   name: string;
-  breed: string; 
+  breed: string;
 };
 
 export type DogOutput = {
   kind: "dog";
   name: string;
-  breed: string; 
+  breed: string;
 };
 
 export type CatInput = {
   kind: "cat";
   name: string;
-  indoor: boolean; 
+  indoor: boolean;
 };
 
 export type CatOutput = {
   kind: "cat";
   name: string;
-  indoor: boolean; 
+  indoor: boolean;
 };
 
 export type BirdInput = {
   kind: "bird";
   name: string;
-  canFly: boolean; 
+  canFly: boolean;
 };
 
 export type BirdOutput = {
   kind: "bird";
   name: string;
-  canFly: boolean; 
+  canFly: boolean;
 };
 
 export type PetInput = DogInput | CatInput | BirdInput;

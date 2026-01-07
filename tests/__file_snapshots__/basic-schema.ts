@@ -3,11 +3,11 @@
 export type UserInput = {
   id: string;
   name: string;
-  age?: number | undefined; 
+  age?: number | undefined;
 };
 
 export type UserOutput = {
   id: string;
   name: string;
-  age?: number | undefined; 
+  age?: number | undefined;
 };

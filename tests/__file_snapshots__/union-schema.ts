@@ -6,18 +6,18 @@ export type StatusOutput = "active" | "inactive" | "pending";
 
 export type ResultInput = {
   type: "success";
-  data: string; 
+  data: string;
 } | {
   type: "error";
-  message: string; 
+  message: string;
 };
 
 export type ResultOutput = {
   type: "success";
-  data: string; 
+  data: string;
 } | {
   type: "error";
-  message: string; 
+  message: string;
 };
 
 export type StringOrNumberInput = string | number;
