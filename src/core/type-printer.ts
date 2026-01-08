@@ -369,7 +369,7 @@ export function formatAsDeclaration(
   typeName: MappedTypeName,
   options: DeclarationOptions = {},
 ): string {
-  const { inputOnly, outputOnly, unifySame } = options;
+  const { inputOnly, outputOnly, mergeSame } = options;
   const lines: string[] = [];
   const indent = "  ";
 
@@ -385,8 +385,8 @@ export function formatAsDeclaration(
   // Only export if the original schema was exported
   const exportKeyword = result.isExported ? "export " : "";
 
-  // If unifySame is enabled and types are identical (compare without brands for input)
-  if (unifySame && result.input === result.output && !result.brands?.length) {
+  // If mergeSame is enabled and types are identical (compare without brands for input)
+  if (mergeSame && result.input === result.output && !result.brands?.length) {
     lines.push(`${schemaComment}${exportKeyword}type ${typeName.unifiedName} = ${inputFormatted};`);
     return lines.join("\n");
   }

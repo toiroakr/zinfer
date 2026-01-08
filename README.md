@@ -34,7 +34,7 @@ zinfer "src/**/*.schema.ts"
 zinfer src/schemas.ts --outDir ./types
 
 # input/output が同一なら1つの型に統一
-zinfer src/schemas.ts --unify-same --suffix Schema
+zinfer src/schemas.ts --merge-same --suffix Schema
 ```
 
 ### ライブラリ API
@@ -72,7 +72,7 @@ Options:
   --schemas <names>          Comma-separated schema names to extract
   --input-only               Output only input types
   --output-only              Output only output types
-  --unify-same               Single type if input===output
+  --merge-same               Single type if input===output
   --suffix <suffix>          Remove suffix from schema names (e.g., 'Schema')
   --input-suffix <suffix>    Suffix for input type names (default: 'Input')
   --output-suffix <suffix>   Suffix for output type names (default: 'Output')
@@ -116,7 +116,7 @@ export default defineConfig({
   // 型出力オプション
   inputOnly: false, // input 型のみ出力
   outputOnly: false, // output 型のみ出力
-  unifySame: true, // input === output なら1つの型に
+  mergeSame: true, // input === output なら1つの型に
 
   // 型名オプション
   suffix: "Schema", // スキーマ名から削除するサフィックス
@@ -141,7 +141,7 @@ export default defineConfig({
   "zinfer": {
     "include": ["src/**/*.schema.ts"],
     "outDir": "./types",
-    "unifySame": true,
+    "mergeSame": true,
     "suffix": "Schema"
   }
 }
@@ -187,7 +187,7 @@ export type UserSchemaOutput = {
 };
 ```
 
-出力 (`--unify-same --suffix Schema`):
+出力 (`--merge-same --suffix Schema`):
 
 ```typescript
 export type User = {
@@ -391,7 +391,7 @@ const declarations = generateTypeDeclarations(results, {
     outputSuffix: "Output",
   },
   declaration: {
-    unifySame: true,
+    mergeSame: true,
   },
 });
 
