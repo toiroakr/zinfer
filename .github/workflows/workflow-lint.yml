@@ -17,7 +17,7 @@ concurrency:
 jobs:
   workflow-lint:
     name: Workflow Lint
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
