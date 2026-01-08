@@ -77,27 +77,35 @@ export type NestedOutput = {
 };
 
 export type DeepPartialNestedInput = {
-  user?: {
-    id?: string | undefined;
-    name?: string | undefined;
-    email?: string | undefined;
-    age?: number | undefined;
-  } | undefined;
-  settings?: {
-    theme?: string | undefined;
-    notifications?: boolean | undefined;
-  } | undefined;
+  user?:
+    | {
+        id?: string | undefined;
+        name?: string | undefined;
+        email?: string | undefined;
+        age?: number | undefined;
+      }
+    | undefined;
+  settings?:
+    | {
+        theme?: string | undefined;
+        notifications?: boolean | undefined;
+      }
+    | undefined;
 };
 
 export type DeepPartialNestedOutput = {
-  user?: {
-    id?: string | undefined;
-    name?: string | undefined;
-    email?: string | undefined;
-    age?: number | undefined;
-  } | undefined;
-  settings?: {
-    theme?: string | undefined;
-    notifications?: boolean | undefined;
-  } | undefined;
+  user?:
+    | {
+        id?: string | undefined;
+        name?: string | undefined;
+        email?: string | undefined;
+        age?: number | undefined;
+      }
+    | undefined;
+  settings?:
+    | {
+        theme?: string | undefined;
+        notifications?: boolean | undefined;
+      }
+    | undefined;
 };
