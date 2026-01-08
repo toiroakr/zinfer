@@ -13,6 +13,10 @@ import {
   formatError,
   NoFilesMatchedError,
   NoSchemasFoundError,
+  InvalidOptionError,
+  setVerbose,
+  logVerbose,
+  logProgress,
   type ExtractResult,
   type NameMappingOptions,
   type OutputOptions,
@@ -37,6 +41,7 @@ interface CLIOptions {
   dryRun?: boolean;
   withDescriptions?: boolean;
   config?: string;
+  verbose?: boolean;
 }
 
 const program = new Command();
@@ -61,6 +66,7 @@ program
   .option("-d, --declaration", "Generate .d.ts files")
   .option("--dry-run", "Preview without writing files")
   .option("--with-descriptions", "Include Zod .describe() as TSDoc comments")
+  .option("-v, --verbose", "Enable verbose output for debugging")
   .action(async (files: string[], options: CLIOptions) => {
     try {
       await runCLI(files, options);
@@ -80,10 +86,23 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
 
   // Load config file
   const configLoader = new ConfigLoader();
-  const { config: fileConfig } = await configLoader.load(cwd);
+  const { config: fileConfig, configPath } = await configLoader.load(cwd);
 
   // Merge CLI options with config file (CLI takes precedence)
   const config = mergeCliWithConfig(options, fileConfig);
+
+  // Enable verbose mode if specified
+  if (config.verbose) {
+    setVerbose(true);
+    logVerbose("Verbose mode enabled");
+    if (configPath) {
+      logVerbose(`Loaded config from: ${configPath}`);
+    }
+  }
+
+  // Validate options before processing
+  validateOptions(config);
+  logVerbose("Options validated successfully");
 
   // Use files from CLI args, or from config, or fail
   const inputFiles = files.length > 0 ? files : config.include || [];
@@ -99,6 +118,8 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   if (resolvedFiles.length === 0) {
     throw new NoFilesMatchedError(inputFiles);
   }
+
+  logVerbose(`Found ${resolvedFiles.length} file(s) to process`);
 
   // Find tsconfig
   const tsconfigPath = config.project ? resolve(cwd, config.project) : findTsConfig(cwd);
@@ -130,7 +151,9 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   if (config.outFile) {
     const allResults: ExtractResult[] = [];
 
-    for (const filePath of resolvedFiles) {
+    for (let i = 0; i < resolvedFiles.length; i++) {
+      const filePath = resolvedFiles[i];
+      logProgress(i + 1, resolvedFiles.length, `Processing ${filePath}`);
       let results = getFilteredResults(extractor, filePath, schemaFilter);
 
       // Add descriptions if enabled
@@ -169,7 +192,9 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   // Per-file output mode or console output
   let totalResults = 0;
 
-  for (const filePath of resolvedFiles) {
+  for (let i = 0; i < resolvedFiles.length; i++) {
+    const filePath = resolvedFiles[i];
+    logProgress(i + 1, resolvedFiles.length, `Processing ${filePath}`);
     let results = getFilteredResults(extractor, filePath, schemaFilter);
 
     if (results.length === 0) {
@@ -291,6 +316,7 @@ function mergeCliWithConfig(cliOptions: CLIOptions, fileConfig: ZinferConfig): Z
   if (cliOptions.declaration !== undefined) merged.declaration = cliOptions.declaration;
   if (cliOptions.withDescriptions !== undefined)
     merged.withDescriptions = cliOptions.withDescriptions;
+  if (cliOptions.verbose !== undefined) merged.verbose = cliOptions.verbose;
 
   return merged;
 }
@@ -355,5 +381,89 @@ function findTsConfig(startDir: string): string | undefined {
 function ensureDir(dirPath: string): void {
   if (!existsSync(dirPath)) {
     mkdirSync(dirPath, { recursive: true });
+  }
+}
+
+/**
+ * Validates CLI options and throws InvalidOptionError if invalid.
+ */
+function validateOptions(config: ZinferConfig): void {
+  // Check mutually exclusive options
+  if (config.inputOnly && config.outputOnly) {
+    throw new InvalidOptionError(
+      "inputOnly/outputOnly",
+      "Cannot use both --input-only and --output-only at the same time",
+      "Choose either --input-only or --output-only, not both",
+    );
+  }
+
+  // Check suffix format (should not be empty if specified)
+  if (config.suffix !== undefined && config.suffix.trim() === "") {
+    throw new InvalidOptionError(
+      "suffix",
+      "Suffix cannot be an empty string",
+      "Provide a valid suffix like 'Schema' or remove the option",
+    );
+  }
+
+  if (config.inputSuffix !== undefined && config.inputSuffix.trim() === "") {
+    throw new InvalidOptionError(
+      "inputSuffix",
+      "Input suffix cannot be an empty string",
+      "Provide a valid suffix like 'Input' or remove the option",
+    );
+  }
+
+  if (config.outputSuffix !== undefined && config.outputSuffix.trim() === "") {
+    throw new InvalidOptionError(
+      "outputSuffix",
+      "Output suffix cannot be an empty string",
+      "Provide a valid suffix like 'Output' or remove the option",
+    );
+  }
+
+  // Check output options conflict
+  const outputOptionsCount = [config.outDir, config.outFile, config.outPattern].filter(
+    Boolean,
+  ).length;
+  if (outputOptionsCount > 1 && config.outFile) {
+    throw new InvalidOptionError(
+      "outFile",
+      "Cannot use --outFile together with --outDir or --outPattern",
+      "Use either --outFile for a single output file, or --outDir/--outPattern for multiple files",
+    );
+  }
+
+  // Check map format if specified
+  if (config.map) {
+    for (const [key, value] of Object.entries(config.map)) {
+      if (!key.trim()) {
+        throw new InvalidOptionError(
+          "map",
+          "Mapping key cannot be empty",
+          "Use format 'SchemaName:TypeName' for custom mappings",
+        );
+      }
+      if (!value.trim()) {
+        throw new InvalidOptionError(
+          "map",
+          `Mapping value for "${key}" cannot be empty`,
+          "Use format 'SchemaName:TypeName' for custom mappings",
+        );
+      }
+    }
+  }
+
+  // Check schema filter format if specified
+  if (config.schemas) {
+    for (const schema of config.schemas) {
+      if (!schema.trim()) {
+        throw new InvalidOptionError(
+          "schemas",
+          "Schema name cannot be empty",
+          "Provide valid schema names separated by commas",
+        );
+      }
+    }
   }
 }

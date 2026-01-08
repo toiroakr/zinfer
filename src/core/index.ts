@@ -27,6 +27,8 @@ export {
   NoFilesMatchedError,
   TypeScriptError,
   ExtractionError,
+  TypeResolutionError,
+  InvalidOptionError,
   formatError,
 } from "./errors.js";
 
@@ -40,6 +42,15 @@ export {
 } from "./config-loader.js";
 
 export { BrandDetector, type SchemaBrandMap } from "./brand-detector.js";
+
+export {
+  setVerbose,
+  isVerbose,
+  logVerbose,
+  logWarning,
+  logDebugError,
+  logProgress,
+} from "./logger.js";
 
 export type {
   ExtractResult,

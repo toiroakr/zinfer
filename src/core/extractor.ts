@@ -5,6 +5,8 @@ import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver } from "./import-resolver.js";
 import { BrandDetector } from "./brand-detector.js";
+import { SchemaNotFoundError, TypeResolutionError } from "./errors.js";
+import { logDebugError } from "./logger.js";
 import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
 
 // Re-export ExtractResult for backward compatibility
@@ -61,7 +63,8 @@ export class ZodTypeExtractor {
     const results = this.extractMultiple(filePath, [schemaName]);
 
     if (results.length === 0) {
-      throw new Error(`Schema "${schemaName}" not found in ${filePath}`);
+      const availableSchemas = this.getSchemaNames(filePath);
+      throw new SchemaNotFoundError(schemaName, filePath, availableSchemas);
     }
 
     return results[0];
@@ -192,8 +195,8 @@ export class ZodTypeExtractor {
           output: outputType,
           isExported: false, // Imported schemas won't be re-exported
         });
-      } catch {
-        // Failed to extract imported schema type
+      } catch (error) {
+        logDebugError(`Failed to extract imported schema "${localName}"`, error);
       } finally {
         this.cleanupTemporaryTypes(importedSourceFile);
       }
@@ -479,7 +482,7 @@ export class ZodTypeExtractor {
   private resolveType(sourceFile: SourceFile, typeName: string): string {
     const typeAlias = sourceFile.getTypeAlias(typeName);
     if (!typeAlias) {
-      throw new Error(`Failed to find type alias: ${typeName}`);
+      throw new TypeResolutionError(typeName, sourceFile.getFilePath());
     }
 
     const type = typeAlias.getType();

@@ -2,6 +2,7 @@ import { existsSync } from "fs";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
 import { pathToFileURL } from "url";
+import { logDebugError } from "./logger.js";
 
 /**
  * Configuration options that can be specified in config file.
@@ -39,6 +40,8 @@ export interface ZinferConfig {
   declaration?: boolean;
   /** Include Zod .describe() as TSDoc comments */
   withDescriptions?: boolean;
+  /** Enable verbose output for debugging */
+  verbose?: boolean;
 }
 
 /**
@@ -121,7 +124,8 @@ export class ConfigLoader {
       }
 
       return null;
-    } catch {
+    } catch (error) {
+      logDebugError(`Failed to load config from package.json at "${packageJsonPath}"`, error);
       return null;
     }
   }

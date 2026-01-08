@@ -127,6 +127,33 @@ export class ExtractionError extends ZinferError {
 }
 
 /**
+ * Error when a type alias cannot be resolved.
+ */
+export class TypeResolutionError extends ZinferError {
+  constructor(typeName: string, context?: string) {
+    const message = context
+      ? `Failed to resolve type "${typeName}" in ${context}`
+      : `Failed to resolve type "${typeName}"`;
+    super(
+      message,
+      "TYPE_RESOLUTION_ERROR",
+      "This may indicate an internal error or unsupported type pattern",
+    );
+    this.name = "TypeResolutionError";
+  }
+}
+
+/**
+ * Error when CLI options are invalid.
+ */
+export class InvalidOptionError extends ZinferError {
+  constructor(optionName: string, reason: string, hint?: string) {
+    super(`Invalid option "${optionName}": ${reason}`, "INVALID_OPTION", hint);
+    this.name = "InvalidOptionError";
+  }
+}
+
+/**
  * Formats any error for CLI output.
  */
 export function formatError(error: unknown): string {

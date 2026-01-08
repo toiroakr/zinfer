@@ -1,5 +1,6 @@
 import { SourceFile, ImportDeclaration, Project } from "ts-morph";
 import { SchemaDetector } from "./schema-detector.js";
+import { logDebugError } from "./logger.js";
 
 /**
  * Information about an imported schema.
@@ -177,7 +178,8 @@ export class ImportResolver {
       if (!resolved) {
         try {
           resolved = project.addSourceFileAtPathIfExists(possiblePath);
-        } catch {
+        } catch (error) {
+          logDebugError(`Failed to add source file at path "${possiblePath}"`, error);
           continue;
         }
       }
@@ -210,8 +212,8 @@ export class ImportResolver {
       // Try to resolve manually for index.ts patterns
       const sourceDir = sourceFile.getDirectoryPath();
       return this.resolveFromPossiblePaths(sourceDir, moduleSpecifier, project);
-    } catch {
-      // Module resolution failed
+    } catch (error) {
+      logDebugError(`Module resolution failed for "${moduleSpecifier}"`, error);
     }
 
     return undefined;
@@ -257,8 +259,8 @@ export class ImportResolver {
         try {
           const types = extractType(sourceFile, schemaInfo.originalName);
           result.set(schemaInfo.localName, types);
-        } catch {
-          // Failed to extract, skip
+        } catch (error) {
+          logDebugError(`Failed to extract types for schema "${schemaInfo.originalName}"`, error);
         }
       }
     }
