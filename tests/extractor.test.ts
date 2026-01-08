@@ -191,10 +191,10 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       await expect(output).toMatchFileSnapshot("__file_snapshots__/options-outputOnly.ts");
     });
 
-    it("should generate with unifyIfSame option", async () => {
+    it("should generate with unifySame option", async () => {
       const results = extractor.extractAll(resolve(fixturesDir, "basic-schema.ts"));
-      const output = generateDeclarationFile(results, mapName, { unifyIfSame: true });
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/options-unifyIfSame.ts");
+      const output = generateDeclarationFile(results, mapName, { unifySame: true });
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/options-unifySame.ts");
     });
   });
 });

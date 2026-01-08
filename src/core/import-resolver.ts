@@ -154,6 +154,17 @@ export class ImportResolver {
     project: Project,
   ): SourceFile | undefined {
     const sourceDir = fromFile.getDirectoryPath();
+    return this.resolveFromPossiblePaths(sourceDir, moduleSpecifier, project);
+  }
+
+  /**
+   * Generates possible file paths for a module specifier and resolves to a source file.
+   */
+  private resolveFromPossiblePaths(
+    sourceDir: string,
+    moduleSpecifier: string,
+    project: Project,
+  ): SourceFile | undefined {
     const possiblePaths = [
       `${sourceDir}/${moduleSpecifier}.ts`,
       `${sourceDir}/${moduleSpecifier}/index.ts`,
@@ -198,26 +209,7 @@ export class ImportResolver {
 
       // Try to resolve manually for index.ts patterns
       const sourceDir = sourceFile.getDirectoryPath();
-      const possiblePaths = [
-        `${sourceDir}/${moduleSpecifier}.ts`,
-        `${sourceDir}/${moduleSpecifier}/index.ts`,
-        `${sourceDir}/${moduleSpecifier}.js`,
-        `${sourceDir}/${moduleSpecifier}/index.js`,
-      ];
-
-      for (const possiblePath of possiblePaths) {
-        let resolved = project.getSourceFile(possiblePath);
-        if (!resolved) {
-          try {
-            resolved = project.addSourceFileAtPathIfExists(possiblePath);
-          } catch {
-            continue;
-          }
-        }
-        if (resolved) {
-          return resolved;
-        }
-      }
+      return this.resolveFromPossiblePaths(sourceDir, moduleSpecifier, project);
     } catch {
       // Module resolution failed
     }

@@ -95,6 +95,156 @@ function getFieldDescription(
 }
 
 /**
+ * Parser state for object type formatting.
+ */
+interface ParserState {
+  result: string;
+  depth: number;
+  inString: boolean;
+  stringChar: string;
+  currentFieldName: string;
+  capturingFieldName: boolean;
+  pathStack: string[];
+}
+
+/**
+ * Creates initial parser state.
+ */
+function createParserState(): ParserState {
+  return {
+    result: "",
+    depth: 0,
+    inString: false,
+    stringChar: "",
+    currentFieldName: "",
+    capturingFieldName: false,
+    pathStack: [],
+  };
+}
+
+/**
+ * Updates string literal tracking state.
+ * Returns true if currently inside a string literal.
+ */
+function updateStringState(
+  state: ParserState,
+  char: string,
+  prevChar: string | undefined,
+): boolean {
+  if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+    if (!state.inString) {
+      state.inString = true;
+      state.stringChar = char;
+    } else if (char === state.stringChar) {
+      state.inString = false;
+      state.stringChar = "";
+    }
+  }
+  return state.inString;
+}
+
+/**
+ * Handles opening brace character.
+ */
+function handleOpenBrace(state: ParserState, indent: string): void {
+  state.depth++;
+  state.result += "{\n" + indent.repeat(state.depth);
+  state.capturingFieldName = true;
+  state.currentFieldName = "";
+  if (state.depth > 1 && state.currentFieldName) {
+    state.pathStack.push(state.currentFieldName);
+  }
+}
+
+/**
+ * Handles closing brace character.
+ */
+function handleCloseBrace(state: ParserState, indent: string): void {
+  state.depth--;
+  if (state.pathStack.length > 0 && state.depth >= 1) {
+    state.pathStack.pop();
+  }
+  state.result += "\n" + indent.repeat(state.depth) + "}";
+}
+
+/**
+ * Handles colon character and inserts TSDoc comment if applicable.
+ */
+function handleColon(
+  state: ParserState,
+  indent: string,
+  descriptions: FieldDescription[] | undefined,
+  prefix: string,
+): void {
+  if (state.capturingFieldName && state.currentFieldName) {
+    const cleanFieldName = state.currentFieldName.replace(/\?$/, "").trim();
+    const currentPath = [...state.pathStack, prefix].filter(Boolean).join(".");
+    const desc = getFieldDescription(cleanFieldName, currentPath, descriptions);
+
+    if (desc) {
+      const lastNewlinePos = state.result.lastIndexOf("\n");
+      const beforeField = state.result.substring(0, lastNewlinePos + 1);
+      const fieldPart = state.result.substring(lastNewlinePos + 1);
+      state.result = beforeField + createTsDocComment(desc, indent.repeat(state.depth)) + fieldPart;
+    }
+  }
+  state.result += ":";
+  state.capturingFieldName = false;
+  state.currentFieldName = "";
+}
+
+/**
+ * Handles semicolon character.
+ */
+function handleSemicolon(state: ParserState, indent: string, typeStr: string, index: number): void {
+  const remaining = typeStr.slice(index + 1).trim();
+  if (remaining.startsWith("}")) {
+    state.result += ";";
+  } else {
+    state.result += ";\n" + indent.repeat(state.depth);
+    state.capturingFieldName = true;
+    state.currentFieldName = "";
+  }
+}
+
+/**
+ * Handles space character, skipping extra spaces after newlines.
+ */
+function handleSpace(state: ParserState, indent: string): boolean {
+  if (
+    state.result.endsWith("\n" + indent.repeat(state.depth)) ||
+    state.result.endsWith("{\n" + indent.repeat(state.depth))
+  ) {
+    return true; // Skip this space
+  }
+  state.result += " ";
+  if (state.capturingFieldName) {
+    state.currentFieldName += " ";
+  }
+  return false;
+}
+
+/**
+ * Handles default character.
+ */
+function handleDefaultChar(state: ParserState, char: string): void {
+  state.result += char;
+  if (state.capturingFieldName) {
+    state.currentFieldName += char;
+  }
+}
+
+/**
+ * Handles character inside a string literal.
+ */
+function handleStringChar(state: ParserState, char: string): void {
+  state.result += char;
+  if (state.capturingFieldName) {
+    state.currentFieldName += char;
+  }
+}
+
+/**
  * Formats an object type string with proper indentation and line breaks.
  */
 function prettifyObjectType(
@@ -103,106 +253,41 @@ function prettifyObjectType(
   descriptions?: FieldDescription[],
   prefix: string = "",
 ): string {
-  let result = "";
-  let depth = 0;
-  let inString = false;
-  let stringChar = "";
-  let currentFieldName = "";
-  let capturingFieldName = false;
-  const pathStack: string[] = [];
+  const state = createParserState();
 
   for (let i = 0; i < typeStr.length; i++) {
     const char = typeStr[i];
     const prevChar = typeStr[i - 1];
 
-    // Track string literals
-    if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
-      if (!inString) {
-        inString = true;
-        stringChar = char;
-      } else if (char === stringChar) {
-        inString = false;
-        stringChar = "";
-      }
-    }
+    const inString = updateStringState(state, char, prevChar);
 
     if (inString) {
-      result += char;
-      if (capturingFieldName) {
-        currentFieldName += char;
-      }
+      handleStringChar(state, char);
       continue;
     }
 
     switch (char) {
       case "{":
-        depth++;
-        result += "{\n" + indent.repeat(depth);
-        capturingFieldName = true;
-        currentFieldName = "";
-        if (depth > 1 && currentFieldName) {
-          pathStack.push(currentFieldName);
-        }
+        handleOpenBrace(state, indent);
         break;
       case "}":
-        depth--;
-        if (pathStack.length > 0 && depth >= 1) {
-          pathStack.pop();
-        }
-        result += "\n" + indent.repeat(depth) + "}";
+        handleCloseBrace(state, indent);
         break;
       case ":":
-        if (capturingFieldName && currentFieldName) {
-          // We have the field name, check for description
-          const cleanFieldName = currentFieldName.replace(/\?$/, "").trim();
-          const currentPath = [...pathStack, prefix].filter(Boolean).join(".");
-          const desc = getFieldDescription(cleanFieldName, currentPath, descriptions);
-
-          if (desc) {
-            // Insert TSDoc comment before the field name
-            const lastNewlinePos = result.lastIndexOf("\n");
-            const beforeField = result.substring(0, lastNewlinePos + 1);
-            const fieldPart = result.substring(lastNewlinePos + 1);
-            result = beforeField + createTsDocComment(desc, indent.repeat(depth)) + fieldPart;
-          }
-        }
-        result += char;
-        capturingFieldName = false;
-        currentFieldName = "";
+        handleColon(state, indent, descriptions, prefix);
         break;
       case ";":
-        // Check if this is the last property before closing brace
-        const remaining = typeStr.slice(i + 1).trim();
-        if (remaining.startsWith("}")) {
-          result += ";";
-        } else {
-          result += ";\n" + indent.repeat(depth);
-          capturingFieldName = true;
-          currentFieldName = "";
-        }
+        handleSemicolon(state, indent, typeStr, i);
         break;
       case " ":
-        // Skip extra spaces after newlines
-        if (
-          result.endsWith("\n" + indent.repeat(depth)) ||
-          result.endsWith("{\n" + indent.repeat(depth))
-        ) {
-          continue;
-        }
-        result += char;
-        if (capturingFieldName) {
-          currentFieldName += char;
-        }
+        handleSpace(state, indent);
         break;
       default:
-        result += char;
-        if (capturingFieldName) {
-          currentFieldName += char;
-        }
+        handleDefaultChar(state, char);
     }
   }
 
-  return result;
+  return state.result;
 }
 
 /**
@@ -284,7 +369,7 @@ export function formatAsDeclaration(
   typeName: MappedTypeName,
   options: DeclarationOptions = {},
 ): string {
-  const { inputOnly, outputOnly, unifyIfSame } = options;
+  const { inputOnly, outputOnly, unifySame } = options;
   const lines: string[] = [];
   const indent = "  ";
 
@@ -300,8 +385,8 @@ export function formatAsDeclaration(
   // Only export if the original schema was exported
   const exportKeyword = result.isExported ? "export " : "";
 
-  // If unifyIfSame is enabled and types are identical (compare without brands for input)
-  if (unifyIfSame && result.input === result.output && !result.brands?.length) {
+  // If unifySame is enabled and types are identical (compare without brands for input)
+  if (unifySame && result.input === result.output && !result.brands?.length) {
     lines.push(`${schemaComment}${exportKeyword}type ${typeName.unifiedName} = ${inputFormatted};`);
     return lines.join("\n");
   }

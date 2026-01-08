@@ -123,7 +123,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   const declOptions: DeclarationOptions = {
     inputOnly: config.inputOnly,
     outputOnly: config.outputOnly,
-    unifyIfSame: config.unifySame,
+    unifySame: config.unifySame,
   };
 
   // Single output file mode

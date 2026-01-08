@@ -129,5 +129,5 @@ export interface DeclarationOptions {
   /** Output only output types */
   outputOnly?: boolean;
   /** Unify input/output if they are identical */
-  unifyIfSame?: boolean;
+  unifySame?: boolean;
 }
