@@ -22,18 +22,6 @@ export type TreeNodeOutput = {
   parent?: TreeNodeOutput | undefined;
 };
 
-export type JsonValueInput =
-  | string
-  | number
-  | boolean
-  | JsonValueInput[]
-  | { [key: string]: JsonValueInput }
-  | null;
+export type JsonValueInput = string | number | boolean | JsonValueInput[] | { [key: string]: JsonValueInput; } | null;
 
-export type JsonValueOutput =
-  | string
-  | number
-  | boolean
-  | JsonValueOutput[]
-  | { [key: string]: JsonValueOutput }
-  | null;
+export type JsonValueOutput = string | number | boolean | JsonValueOutput[] | { [key: string]: JsonValueOutput; } | null;

@@ -4,25 +4,21 @@ export type StatusInput = "active" | "inactive" | "pending";
 
 export type StatusOutput = "active" | "inactive" | "pending";
 
-export type ResultInput =
-  | {
-      type: "success";
-      data: string;
-    }
-  | {
-      type: "error";
-      message: string;
-    };
+export type ResultInput = {
+  type: "success";
+  data: string;
+} | {
+  type: "error";
+  message: string;
+};
 
-export type ResultOutput =
-  | {
-      type: "success";
-      data: string;
-    }
-  | {
-      type: "error";
-      message: string;
-    };
+export type ResultOutput = {
+  type: "success";
+  data: string;
+} | {
+  type: "error";
+  message: string;
+};
 
 export type StringOrNumberInput = string | number;
 
