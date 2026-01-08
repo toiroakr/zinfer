@@ -36,7 +36,7 @@ export class DescriptionExtractor {
    */
   async extractDescriptions(
     filePath: string,
-    schemaNames: string[]
+    schemaNames: string[],
   ): Promise<Map<string, SchemaDescription>> {
     const result = new Map<string, SchemaDescription>();
 
@@ -61,7 +61,7 @@ export class DescriptionExtractor {
       // If import fails, return empty descriptions (non-blocking)
       console.warn(
         `Warning: Could not import ${filePath} for description extraction:`,
-        (error as Error).message
+        (error as Error).message,
       );
     }
 
@@ -71,10 +71,7 @@ export class DescriptionExtractor {
   /**
    * Extracts descriptions from a Zod schema.
    */
-  private extractFromSchema(
-    schema: unknown,
-    schemaName: string
-  ): SchemaDescription {
+  private extractFromSchema(schema: unknown, schemaName: string): SchemaDescription {
     const fields: FieldDescription[] = [];
 
     // Get schema-level description
@@ -96,7 +93,7 @@ export class DescriptionExtractor {
   private extractFieldDescriptions(
     schema: unknown,
     prefix: string,
-    fields: FieldDescription[]
+    fields: FieldDescription[],
   ): void {
     if (!schema || typeof schema !== "object") {
       return;

@@ -1,10 +1,4 @@
-import {
-  SourceFile,
-  Node,
-  SyntaxKind,
-  CallExpression,
-  PropertyAccessExpression,
-} from "ts-morph";
+import { SourceFile, Node, CallExpression } from "ts-morph";
 
 /**
  * Information about a branded type in a schema.
@@ -32,10 +26,7 @@ export class BrandDetector {
    * @param schemaNames - Set of schema names to analyze
    * @returns Map of schema name to brand information
    */
-  detectBrands(
-    sourceFile: SourceFile,
-    schemaNames: Set<string>
-  ): SchemaBrandMap {
+  detectBrands(sourceFile: SourceFile, schemaNames: Set<string>): SchemaBrandMap {
     const result: SchemaBrandMap = new Map();
 
     const statements = sourceFile.getVariableStatements();
@@ -109,10 +100,7 @@ export class BrandDetector {
   /**
    * Extracts brand information from a .brand<...>() call.
    */
-  private extractBrandFromCall(
-    node: CallExpression,
-    fieldPath: string
-  ): BrandInfo | null {
+  private extractBrandFromCall(node: CallExpression, fieldPath: string): BrandInfo | null {
     const expr = node.getExpression();
     if (!Node.isPropertyAccessExpression(expr)) {
       return null;

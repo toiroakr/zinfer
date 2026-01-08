@@ -2,16 +2,31 @@
   "name": "zinfer",
   "version": "0.1.0",
   "description": "Extract input/output types from Zod schemas",
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "keywords": [
+    "schema",
+    "type-extraction",
+    "typescript",
+    "zod"
+  ],
+  "license": "MIT",
   "bin": {
     "zinfer": "./bin/zinfer"
   },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check ."
   },
   "dependencies": {
     "commander": "^14.0.2",
@@ -20,6 +35,8 @@
   },
   "devDependencies": {
     "@types/node": "^25.0.3",
+    "oxfmt": "^0.23.0",
+    "oxlint": "^1.38.0",
     "typescript": "^5.7.2",
     "vitest": "^4.0.16",
     "zod": "^4.3.5"
@@ -27,16 +44,5 @@
   "peerDependencies": {
     "typescript": ">=5.0.0",
     "zod": ">=3.0.0"
-  },
-  "files": [
-    "dist",
-    "bin"
-  ],
-  "keywords": [
-    "zod",
-    "typescript",
-    "type-extraction",
-    "schema"
-  ],
-  "license": "MIT"
+  }
 }

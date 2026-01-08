@@ -1,10 +1,4 @@
-import {
-  SourceFile,
-  SyntaxKind,
-  Node,
-  CallExpression,
-  PropertyAccessExpression,
-} from "ts-morph";
+import { SourceFile, Node, CallExpression } from "ts-morph";
 
 /**
  * Information about a schema reference within another schema.
@@ -51,10 +45,7 @@ export class SchemaReferenceAnalyzer {
   /**
    * Analyzes a source file to find all schema references.
    */
-  analyzeReferences(
-    sourceFile: SourceFile,
-    schemaNames: Set<string>
-  ): SchemaReferenceMap {
+  analyzeReferences(sourceFile: SourceFile, schemaNames: Set<string>): SchemaReferenceMap {
     const result: SchemaReferenceMap = new Map();
 
     const statements = sourceFile.getVariableStatements();
@@ -79,10 +70,7 @@ export class SchemaReferenceAnalyzer {
   /**
    * Analyzes a source file to find union schema references.
    */
-  analyzeUnionReferences(
-    sourceFile: SourceFile,
-    schemaNames: Set<string>
-  ): UnionReferenceMap {
+  analyzeUnionReferences(sourceFile: SourceFile, schemaNames: Set<string>): UnionReferenceMap {
     const result: UnionReferenceMap = new Map();
 
     const statements = sourceFile.getVariableStatements();
@@ -110,7 +98,7 @@ export class SchemaReferenceAnalyzer {
   private findUnionReference(
     node: Node,
     schemaNames: Set<string>,
-    currentSchema: string
+    currentSchema: string,
   ): UnionReferenceInfo | undefined {
     // Check if this is a z.discriminatedUnion() or z.union() call
     if (!Node.isCallExpression(node)) {
@@ -146,7 +134,7 @@ export class SchemaReferenceAnalyzer {
   private parseDiscriminatedUnion(
     node: CallExpression,
     schemaNames: Set<string>,
-    currentSchema: string
+    currentSchema: string,
   ): UnionReferenceInfo | undefined {
     const args = node.getArguments();
     if (args.length < 2) {
@@ -181,7 +169,7 @@ export class SchemaReferenceAnalyzer {
   private parseUnion(
     node: CallExpression,
     schemaNames: Set<string>,
-    currentSchema: string
+    currentSchema: string,
   ): UnionReferenceInfo | undefined {
     const args = node.getArguments();
     if (args.length < 1) {
@@ -208,7 +196,7 @@ export class SchemaReferenceAnalyzer {
   private extractSchemaArrayMembers(
     node: Node,
     schemaNames: Set<string>,
-    currentSchema: string
+    currentSchema: string,
   ): string[] {
     if (!Node.isArrayLiteralExpression(node)) {
       return [];
@@ -233,7 +221,7 @@ export class SchemaReferenceAnalyzer {
   private findSchemaReferences(
     node: Node,
     schemaNames: Set<string>,
-    currentSchema: string
+    currentSchema: string,
   ): SchemaReferenceInfo[] {
     const refs: SchemaReferenceInfo[] = [];
 
@@ -258,7 +246,7 @@ export class SchemaReferenceAnalyzer {
             initializer,
             fieldName,
             schemaNames,
-            currentSchema
+            currentSchema,
           );
           if (refInfo) {
             refs.push(refInfo);
@@ -303,7 +291,7 @@ export class SchemaReferenceAnalyzer {
     node: Node,
     fieldPath: string,
     schemaNames: Set<string>,
-    currentSchema: string
+    currentSchema: string,
   ): SchemaReferenceInfo | null {
     let isArray = false;
     let isRecord = false;

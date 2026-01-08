@@ -50,6 +50,32 @@ export type RequiredUserOutput = {
   age: number;
 };
 
+export type NestedInput = {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    age: number;
+  };
+  settings: {
+    theme: string;
+    notifications: boolean;
+  };
+};
+
+export type NestedOutput = {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    age: number;
+  };
+  settings: {
+    theme: string;
+    notifications: boolean;
+  };
+};
+
 export type DeepPartialNestedInput = {
   user?: {
     id?: string | undefined;

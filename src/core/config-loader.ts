@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { readFile } from "fs/promises";
-import { resolve, dirname } from "path";
+import { resolve } from "path";
 import { pathToFileURL } from "url";
 
 /**
@@ -103,10 +103,7 @@ export class ConfigLoader {
       const module = await import(fileUrl);
       return module.default || module;
     } catch (error) {
-      console.warn(
-        `Warning: Failed to load config from ${configPath}:`,
-        (error as Error).message
-      );
+      console.warn(`Warning: Failed to load config from ${configPath}:`, (error as Error).message);
       return {};
     }
   }
@@ -114,9 +111,7 @@ export class ConfigLoader {
   /**
    * Loads configuration from package.json's "zinfer" field.
    */
-  private async loadFromPackageJson(
-    packageJsonPath: string
-  ): Promise<ZinferConfig | null> {
+  private async loadFromPackageJson(packageJsonPath: string): Promise<ZinferConfig | null> {
     try {
       const content = await readFile(packageJsonPath, "utf-8");
       const packageJson = JSON.parse(content);
@@ -145,13 +140,11 @@ export function createConfigLoader(): ConfigLoader {
  */
 export function mergeConfig(
   configFile: ZinferConfig,
-  cliOptions: Partial<ZinferConfig>
+  cliOptions: Partial<ZinferConfig>,
 ): ZinferConfig {
   return {
     ...configFile,
-    ...Object.fromEntries(
-      Object.entries(cliOptions).filter(([_, v]) => v !== undefined)
-    ),
+    ...Object.fromEntries(Object.entries(cliOptions).filter(([_, v]) => v !== undefined)),
   };
 }
 

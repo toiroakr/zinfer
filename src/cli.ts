@@ -10,7 +10,6 @@ import {
   FileResolver,
   DescriptionExtractor,
   ConfigLoader,
-  mergeConfig,
   formatError,
   NoFilesMatchedError,
   NoSchemasFoundError,
@@ -42,10 +41,7 @@ interface CLIOptions {
 
 const program = new Command();
 
-program
-  .name("zinfer")
-  .description("Extract input/output types from Zod schemas")
-  .version("0.1.0");
+program.name("zinfer").description("Extract input/output types from Zod schemas").version("0.1.0");
 
 program
   .argument("[files...]", "File paths or glob patterns")
@@ -55,25 +51,13 @@ program
   .option("--input-only", "Output only input types")
   .option("--output-only", "Output only output types")
   .option("--unify-same", "Single type if input===output")
-  .option(
-    "--suffix <suffix>",
-    "Remove suffix from schema names (e.g., 'Schema')"
-  )
-  .option(
-    "--input-suffix <suffix>",
-    "Suffix for input type names (default: 'Input')"
-  )
-  .option(
-    "--output-suffix <suffix>",
-    "Suffix for output type names (default: 'Output')"
-  )
+  .option("--suffix <suffix>", "Remove suffix from schema names (e.g., 'Schema')")
+  .option("--input-suffix <suffix>", "Suffix for input type names (default: 'Input')")
+  .option("--output-suffix <suffix>", "Suffix for output type names (default: 'Output')")
   .option("--map <mappings>", "Custom name mappings (e.g., 'UserSchema:User')")
   .option("--outDir <dir>", "Output directory for generated files")
   .option("--outFile <file>", "Single output file for all types")
-  .option(
-    "--outPattern <pattern>",
-    "Output file naming pattern (e.g., '[name].types.ts')"
-  )
+  .option("--outPattern <pattern>", "Output file naming pattern (e.g., '[name].types.ts')")
   .option("-d, --declaration", "Generate .d.ts files")
   .option("--dry-run", "Preview without writing files")
   .option("--with-descriptions", "Include Zod .describe() as TSDoc comments")
@@ -96,7 +80,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
 
   // Load config file
   const configLoader = new ConfigLoader();
-  const { config: fileConfig, configPath } = await configLoader.load(cwd);
+  const { config: fileConfig } = await configLoader.load(cwd);
 
   // Merge CLI options with config file (CLI takes precedence)
   const config = mergeCliWithConfig(options, fileConfig);
@@ -117,16 +101,12 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   }
 
   // Find tsconfig
-  const tsconfigPath = config.project
-    ? resolve(cwd, config.project)
-    : findTsConfig(cwd);
+  const tsconfigPath = config.project ? resolve(cwd, config.project) : findTsConfig(cwd);
 
   // Create extractor and name mapper
   const extractor = new ZodTypeExtractor(tsconfigPath);
   const nameMapper = createNameMapper(config);
-  const descriptionExtractor = config.withDescriptions
-    ? new DescriptionExtractor()
-    : null;
+  const descriptionExtractor = config.withDescriptions ? new DescriptionExtractor() : null;
 
   // Parse schema names if specified
   const schemaFilter = config.schemas;
@@ -155,11 +135,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
 
       // Add descriptions if enabled
       if (descriptionExtractor) {
-        results = await addDescriptionsToResults(
-          descriptionExtractor,
-          filePath,
-          results
-        );
+        results = await addDescriptionsToResults(descriptionExtractor, filePath, results);
       }
 
       allResults.push(...results);
@@ -172,7 +148,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
     const content = generateDeclarationFile(
       allResults,
       nameMapper.createMapFunction(),
-      declOptions
+      declOptions,
     );
 
     const outputPath = resolve(cwd, config.outFile);
@@ -204,26 +180,14 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
 
     // Add descriptions if enabled
     if (descriptionExtractor) {
-      results = await addDescriptionsToResults(
-        descriptionExtractor,
-        filePath,
-        results
-      );
+      results = await addDescriptionsToResults(descriptionExtractor, filePath, results);
     }
 
     // File output mode
     if (config.outDir || config.outPattern) {
-      const content = generateDeclarationFile(
-        results,
-        nameMapper.createMapFunction(),
-        declOptions
-      );
+      const content = generateDeclarationFile(results, nameMapper.createMapFunction(), declOptions);
 
-      const outputPath = fileResolver.resolveOutputPath(
-        filePath,
-        outputOptions,
-        cwd
-      );
+      const outputPath = fileResolver.resolveOutputPath(filePath, outputOptions, cwd);
 
       if (options.dryRun) {
         console.log(`Would write to: ${outputPath}`);
@@ -241,11 +205,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
         console.log(`// File: ${filePath}`);
       }
 
-      const content = generateDeclarationFile(
-        results,
-        nameMapper.createMapFunction(),
-        declOptions
-      );
+      const content = generateDeclarationFile(results, nameMapper.createMapFunction(), declOptions);
       console.log(content);
     }
   }
@@ -262,13 +222,10 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
 async function addDescriptionsToResults(
   descriptionExtractor: DescriptionExtractor,
   filePath: string,
-  results: ExtractResult[]
+  results: ExtractResult[],
 ): Promise<ExtractResult[]> {
   const schemaNames = results.map((r) => r.schemaName);
-  const descriptions = await descriptionExtractor.extractDescriptions(
-    filePath,
-    schemaNames
-  );
+  const descriptions = await descriptionExtractor.extractDescriptions(filePath, schemaNames);
 
   return results.map((result) => {
     const desc = descriptions.get(result.schemaName);
@@ -291,16 +248,14 @@ async function addDescriptionsToResults(
 function getFilteredResults(
   extractor: ZodTypeExtractor,
   filePath: string,
-  schemaFilter?: string[]
+  schemaFilter?: string[],
 ): ExtractResult[] {
   if (!schemaFilter) {
     return extractor.extractAll(filePath);
   }
 
   const existingSchemas = extractor.getSchemaNames(filePath);
-  const schemasToExtract = schemaFilter.filter((name) =>
-    existingSchemas.includes(name)
-  );
+  const schemasToExtract = schemaFilter.filter((name) => existingSchemas.includes(name));
 
   if (schemasToExtract.length === 0) {
     return [];
@@ -313,10 +268,7 @@ function getFilteredResults(
  * Merges CLI options with config file options.
  * CLI options take precedence.
  */
-function mergeCliWithConfig(
-  cliOptions: CLIOptions,
-  fileConfig: ZinferConfig
-): ZinferConfig {
+function mergeCliWithConfig(cliOptions: CLIOptions, fileConfig: ZinferConfig): ZinferConfig {
   const merged: ZinferConfig = { ...fileConfig };
 
   // Merge CLI options (only non-undefined values)
@@ -324,26 +276,19 @@ function mergeCliWithConfig(
   if (cliOptions.schemas !== undefined) {
     merged.schemas = cliOptions.schemas.split(",").map((s) => s.trim());
   }
-  if (cliOptions.inputOnly !== undefined)
-    merged.inputOnly = cliOptions.inputOnly;
-  if (cliOptions.outputOnly !== undefined)
-    merged.outputOnly = cliOptions.outputOnly;
-  if (cliOptions.unifySame !== undefined)
-    merged.unifySame = cliOptions.unifySame;
+  if (cliOptions.inputOnly !== undefined) merged.inputOnly = cliOptions.inputOnly;
+  if (cliOptions.outputOnly !== undefined) merged.outputOnly = cliOptions.outputOnly;
+  if (cliOptions.unifySame !== undefined) merged.unifySame = cliOptions.unifySame;
   if (cliOptions.suffix !== undefined) merged.suffix = cliOptions.suffix;
-  if (cliOptions.inputSuffix !== undefined)
-    merged.inputSuffix = cliOptions.inputSuffix;
-  if (cliOptions.outputSuffix !== undefined)
-    merged.outputSuffix = cliOptions.outputSuffix;
+  if (cliOptions.inputSuffix !== undefined) merged.inputSuffix = cliOptions.inputSuffix;
+  if (cliOptions.outputSuffix !== undefined) merged.outputSuffix = cliOptions.outputSuffix;
   if (cliOptions.map !== undefined) {
     merged.map = parseCustomMap(cliOptions.map);
   }
   if (cliOptions.outDir !== undefined) merged.outDir = cliOptions.outDir;
   if (cliOptions.outFile !== undefined) merged.outFile = cliOptions.outFile;
-  if (cliOptions.outPattern !== undefined)
-    merged.outPattern = cliOptions.outPattern;
-  if (cliOptions.declaration !== undefined)
-    merged.declaration = cliOptions.declaration;
+  if (cliOptions.outPattern !== undefined) merged.outPattern = cliOptions.outPattern;
+  if (cliOptions.declaration !== undefined) merged.declaration = cliOptions.declaration;
   if (cliOptions.withDescriptions !== undefined)
     merged.withDescriptions = cliOptions.withDescriptions;
 

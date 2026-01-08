@@ -15,7 +15,7 @@ export class FileResolver {
    */
   async resolveInputFiles(
     pattern: string | string[],
-    cwd: string = process.cwd()
+    cwd: string = process.cwd(),
   ): Promise<string[]> {
     const patterns = Array.isArray(pattern) ? pattern : [pattern];
     const allFiles: string[] = [];
@@ -44,7 +44,7 @@ export class FileResolver {
   resolveOutputPath(
     inputPath: string,
     options: OutputOptions,
-    cwd: string = process.cwd()
+    cwd: string = process.cwd(),
   ): string {
     // If outFile is specified, use it directly
     if (options.outFile) {
@@ -92,13 +92,8 @@ export class FileResolver {
    * @param vars - Variables to substitute
    * @returns Generated filename
    */
-  applyPattern(
-    pattern: string,
-    vars: { name: string; ext: string }
-  ): string {
-    return pattern
-      .replace(/\[name\]/g, vars.name)
-      .replace(/\[ext\]/g, vars.ext);
+  applyPattern(pattern: string, vars: { name: string; ext: string }): string {
+    return pattern.replace(/\[name\]/g, vars.name).replace(/\[ext\]/g, vars.ext);
   }
 
   /**

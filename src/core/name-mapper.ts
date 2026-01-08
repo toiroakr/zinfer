@@ -48,10 +48,7 @@ export class NameMapper {
 
     // Remove suffix if specified
     let baseName = schemaName;
-    if (
-      this.options.removeSuffix &&
-      schemaName.endsWith(this.options.removeSuffix)
-    ) {
+    if (this.options.removeSuffix && schemaName.endsWith(this.options.removeSuffix)) {
       baseName = schemaName.slice(0, -this.options.removeSuffix.length);
     }
 
@@ -90,7 +87,7 @@ export class NameMapper {
  * @returns A function that maps schema names to type names
  */
 export function createNameMapper(
-  options: NameMappingOptions = {}
+  options: NameMappingOptions = {},
 ): (schemaName: string) => MappedTypeName {
   const mapper = new NameMapper(options);
   return (schemaName: string) => mapper.map(schemaName);

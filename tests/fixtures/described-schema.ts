@@ -9,9 +9,7 @@ export const UserSchema = z
     name: z.string().min(1).describe("User's display name"),
     email: z.string().email().describe("User's email address"),
     age: z.number().int().positive().optional().describe("User's age in years"),
-    role: z
-      .enum(["admin", "user", "guest"])
-      .describe("User's role in the system"),
+    role: z.enum(["admin", "user", "guest"]).describe("User's role in the system"),
   })
   .describe("User account information");
 

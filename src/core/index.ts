@@ -1,13 +1,6 @@
-export {
-  NORMALIZE_TYPE_DEFINITION,
-  createTempTypeAlias,
-  TEMP_TYPE_NAMES,
-} from "./normalizer.js";
+export { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias, TEMP_TYPE_NAMES } from "./normalizer.js";
 
-export {
-  ZodTypeExtractor,
-  type ExtractOptions,
-} from "./extractor.js";
+export { ZodTypeExtractor, type ExtractOptions } from "./extractor.js";
 
 export {
   formatResult,
@@ -25,10 +18,7 @@ export { NameMapper, createNameMapper } from "./name-mapper.js";
 
 export { FileResolver, createFileResolver } from "./file-resolver.js";
 
-export {
-  DescriptionExtractor,
-  createDescriptionExtractor,
-} from "./description-extractor.js";
+export { DescriptionExtractor, createDescriptionExtractor } from "./description-extractor.js";
 
 export {
   ZinferError,
