@@ -12,7 +12,7 @@ const fixturesDir = resolve(import.meta.dirname, "fixtures");
 const snapshotsDir = resolve(import.meta.dirname, "__file_snapshots__");
 const mapName = createNameMapper({ removeSuffix: "Schema" });
 
-// After all tests, run tsc on all generated snapshots
+// After all tests, run tsgo on all generated snapshots (single invocation)
 afterAll(() => {
   try {
     const snapshotFiles = readdirSync(snapshotsDir)
@@ -24,38 +24,35 @@ afterAll(() => {
       return;
     }
 
-    console.log(`\nType-checking ${snapshotFiles.length} snapshot files...`);
+    console.log(`\nType-checking ${snapshotFiles.length} snapshot files with tsgo...`);
 
-    for (const file of snapshotFiles) {
-      try {
-        execSync(`npx tsc --noEmit "${file}"`, {
-          stdio: "pipe",
-          encoding: "utf-8",
-        });
-        console.log(`✓ ${file.split("/").pop()}`);
-      } catch (error: any) {
-        // Filter out zod locale errors
-        // tsc outputs errors to stdout, not stderr
-        const output = error.stdout || error.stderr || "";
-        const relevantErrors = output
-          .split("\n")
-          .filter(
-            (line: string) =>
-              line.includes("error TS") &&
-              !line.includes("esModuleInterop") &&
-              !line.includes("locales"),
-          )
-          .join("\n");
+    try {
+      // Run tsgo once with all files (--ignoreConfig to skip tsconfig.json when files are specified)
+      execSync(`npx tsgo --noEmit --ignoreConfig ${snapshotFiles.map((f) => `"${f}"`).join(" ")}`, {
+        stdio: "pipe",
+        encoding: "utf-8",
+      });
+      console.log(`✓ All ${snapshotFiles.length} snapshot files passed type-check\n`);
+    } catch (error: any) {
+      const output = error.stdout || error.stderr || "";
+      const relevantErrors = output
+        .split("\n")
+        .filter(
+          (line: string) =>
+            line.includes("error TS") &&
+            !line.includes("esModuleInterop") &&
+            !line.includes("locales"),
+        )
+        .join("\n");
 
-        if (relevantErrors) {
-          console.error(`✗ ${file.split("/").pop()}`);
-          console.error(relevantErrors);
-          throw new Error(`Type check failed for ${file}`);
-        }
+      if (relevantErrors) {
+        console.error(`✗ Type check failed:`);
+        console.error(relevantErrors);
+        throw new Error(`Type check failed for snapshot files`);
       }
+      // If no relevant errors, consider it passed
+      console.log(`✓ All ${snapshotFiles.length} snapshot files passed type-check\n`);
     }
-
-    console.log(`\n✓ All ${snapshotFiles.length} snapshot files passed type-check\n`);
   } catch (error: any) {
     if (error.code === "ENOENT") {
       console.log("Snapshots directory not found, skipping type-check");
@@ -63,7 +60,7 @@ afterAll(() => {
       throw error;
     }
   }
-}, 120000); // 120 second timeout for type checking all snapshot files
+}, 30000); // 30 second timeout (tsgo is much faster)
 
 describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   const extractor = new ZodTypeExtractor();
