@@ -3,6 +3,8 @@ import { resolve } from "path";
 import { ZodTypeExtractor } from "../src/core/extractor.js";
 import { generateDeclarationFile } from "../src/core/type-printer.js";
 import { createNameMapper } from "../src/core/name-mapper.js";
+import { DescriptionExtractor } from "../src/core/description-extractor.js";
+import type { ExtractResult } from "../src/core/types.js";
 import { execSync } from "child_process";
 import { readdirSync } from "fs";
 
@@ -175,6 +177,41 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       const results = extractor.extractAll(resolve(fixturesDir, "brand-schema.ts"));
       const output = generateDeclarationFile(results, mapName);
       await expect(output).toMatchFileSnapshot("__file_snapshots__/brand-schema.ts");
+    });
+  });
+
+  describe("described-schema.ts", () => {
+    it("should generate TypeScript declarations without TSDoc comments by default", async () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "described-schema.ts"));
+      const output = generateDeclarationFile(results, mapName);
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/described-schema.ts");
+    });
+
+    it("should generate TypeScript declarations with TSDoc comments when withDescriptions is enabled", async () => {
+      const filePath = resolve(fixturesDir, "described-schema.ts");
+      const results = extractor.extractAll(filePath);
+      const descriptionExtractor = new DescriptionExtractor();
+
+      // Add descriptions to results (same as CLI does with withDescriptions option)
+      const schemaNames = results.map((r) => r.schemaName);
+      const descriptions = await descriptionExtractor.extractDescriptions(filePath, schemaNames);
+
+      const resultsWithDescriptions: ExtractResult[] = results.map((result) => {
+        const desc = descriptions.get(result.schemaName);
+        if (!desc) {
+          return result;
+        }
+        return {
+          ...result,
+          description: desc.description,
+          fieldDescriptions: desc.fields,
+        };
+      });
+
+      const output = generateDeclarationFile(resultsWithDescriptions, mapName);
+      await expect(output).toMatchFileSnapshot(
+        "__file_snapshots__/described-schema-with-descriptions.ts",
+      );
     });
   });
 
