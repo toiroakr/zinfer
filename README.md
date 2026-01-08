@@ -10,6 +10,7 @@ Zod スキーマから TypeScript の input/output 型を抽出するツール�
 - CLI とライブラリ API の両方をサポート
 - 循環参照 (`z.lazy`, getter パターン) に対応
 - `.describe()` を TSDoc コメントとして出力
+- `.brand()` によるブランド型をサポート
 - 設定ファイル対応 (`zinfer.config.ts`, `package.json`)
 
 ## インストール
@@ -39,12 +40,16 @@ zinfer src/schemas.ts --unify-same --suffix Schema
 ### ライブラリ API
 
 ```typescript
-import { extractZodTypes, extractAllSchemas } from "zinfer";
+import { extractZodTypes, extractAllSchemas, extractAndFormat } from "zinfer";
 
 // 単一スキーマの抽出
 const { input, output } = extractZodTypes("./schemas.ts", "UserSchema");
 console.log(input); // { id: string; name: string; }
 console.log(output); // { id: string; name: string; }
+
+// フォーマット済みの出力を取得
+const formatted = extractAndFormat("./schemas.ts", "UserSchema");
+console.log(formatted);
 
 // ファイル内の全スキーマを抽出
 const results = extractAllSchemas("./schemas.ts");
@@ -108,11 +113,15 @@ export default defineConfig({
   outPattern: "[name].types.ts",
   declaration: true,
 
+  // 型出力オプション
+  inputOnly: false, // input 型のみ出力
+  outputOnly: false, // output 型のみ出力
+  unifySame: true, // input === output なら1つの型に
+
   // 型名オプション
   suffix: "Schema", // スキーマ名から削除するサフィックス
   inputSuffix: "Input", // input 型のサフィックス
   outputSuffix: "Output", // output 型のサフィックス
-  unifySame: true, // input === output なら1つの型に
 
   // カスタムマッピング
   map: {
@@ -243,6 +252,41 @@ export type UserSchemaInput = {
 };
 ```
 
+### ブランド型
+
+入力スキーマ:
+
+```typescript
+export const UserIdSchema = z.string().brand<"UserId">();
+
+export const UserSchema = z.object({
+  id: z.string().brand<"UserId">(),
+  name: z.string(),
+});
+```
+
+出力:
+
+```typescript
+import type { BRAND } from "zod";
+
+export type UserIdSchemaInput = string;
+
+export type UserIdSchemaOutput = string & BRAND<"UserId">;
+
+export type UserSchemaInput = {
+  id: string;
+  name: string;
+};
+
+export type UserSchemaOutput = {
+  id: string & BRAND<"UserId">;
+  name: string;
+};
+```
+
+ブランド型は output 型にのみ適用されます。input 型にはブランドは含まれません。
+
 ## 循環参照のサポート
 
 ### Getter パターン (推奨)
@@ -315,6 +359,23 @@ const results = extractAllSchemas("./schemas.ts");
 // results: ExtractResult[]
 ```
 
+### extractAndFormat
+
+型を抽出してフォーマット済みの文字列として取得します。
+
+```typescript
+import { extractAndFormat } from "zinfer";
+
+const formatted = extractAndFormat("./schemas.ts", "UserSchema");
+console.log(formatted);
+// 出力:
+// // input
+// { id: string; name: string; }
+//
+// // output
+// { id: string; name: string; }
+```
+
 ### generateTypeDeclarations
 
 抽出結果から TypeScript 型宣言を生成します。
@@ -358,6 +419,10 @@ const allResults = extractor.extractAll("./schemas.ts");
 // 複数スキーマを指定
 const selectedResults = extractor.extractMultiple("./schemas.ts", ["UserSchema", "PostSchema"]);
 
+// ファイル単位で抽出（ファイルパス付き）
+const fileResult = extractor.extractFile("./schemas.ts");
+// fileResult: { filePath: string; schemas: ExtractResult[] }
+
 // スキーマ名の一覧
 const schemaNames = extractor.getSchemaNames("./schemas.ts");
 ```
@@ -376,6 +441,7 @@ const schemaNames = extractor.getSchemaNames("./schemas.ts");
 - ユーティリティ: `.partial()`, `.pick()`, `.omit()`, `.extend()`
 - 循環参照: `z.lazy()`, getter パターン
 - 説明: `.describe()`
+- ブランド型: `.brand()`
 
 ## ライセンス
 
