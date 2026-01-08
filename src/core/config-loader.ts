@@ -20,7 +20,7 @@ export interface ZinferConfig {
   /** Output only output types */
   outputOnly?: boolean;
   /** Single type if input===output */
-  unifySame?: boolean;
+  mergeSame?: boolean;
   /** Remove suffix from schema names */
   suffix?: string;
   /** Suffix for input type names */
@@ -160,7 +160,7 @@ export function mergeConfig(
  * export default defineConfig({
  *   include: ['src/** /*.schema.ts'],
  *   outDir: './types',
- *   unifySame: true,
+ *   mergeSame: true,
  *   suffix: 'Schema',
  * });
  * ```

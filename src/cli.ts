@@ -25,7 +25,7 @@ interface CLIOptions {
   schemas?: string;
   inputOnly?: boolean;
   outputOnly?: boolean;
-  unifySame?: boolean;
+  mergeSame?: boolean;
   suffix?: string;
   inputSuffix?: string;
   outputSuffix?: string;
@@ -50,7 +50,7 @@ program
   .option("--schemas <names>", "Comma-separated schema names to extract")
   .option("--input-only", "Output only input types")
   .option("--output-only", "Output only output types")
-  .option("--unify-same", "Single type if input===output")
+  .option("--merge-same", "Single type if input===output")
   .option("--suffix <suffix>", "Remove suffix from schema names (e.g., 'Schema')")
   .option("--input-suffix <suffix>", "Suffix for input type names (default: 'Input')")
   .option("--output-suffix <suffix>", "Suffix for output type names (default: 'Output')")
@@ -123,7 +123,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   const declOptions: DeclarationOptions = {
     inputOnly: config.inputOnly,
     outputOnly: config.outputOnly,
-    unifyIfSame: config.unifySame,
+    mergeSame: config.mergeSame,
   };
 
   // Single output file mode
@@ -278,7 +278,7 @@ function mergeCliWithConfig(cliOptions: CLIOptions, fileConfig: ZinferConfig): Z
   }
   if (cliOptions.inputOnly !== undefined) merged.inputOnly = cliOptions.inputOnly;
   if (cliOptions.outputOnly !== undefined) merged.outputOnly = cliOptions.outputOnly;
-  if (cliOptions.unifySame !== undefined) merged.unifySame = cliOptions.unifySame;
+  if (cliOptions.mergeSame !== undefined) merged.mergeSame = cliOptions.mergeSame;
   if (cliOptions.suffix !== undefined) merged.suffix = cliOptions.suffix;
   if (cliOptions.inputSuffix !== undefined) merged.inputSuffix = cliOptions.inputSuffix;
   if (cliOptions.outputSuffix !== undefined) merged.outputSuffix = cliOptions.outputSuffix;

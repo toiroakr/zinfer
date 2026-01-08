@@ -128,6 +128,6 @@ export interface DeclarationOptions {
   inputOnly?: boolean;
   /** Output only output types */
   outputOnly?: boolean;
-  /** Unify input/output if they are identical */
-  unifyIfSame?: boolean;
+  /** Merge input/output if they are identical */
+  mergeSame?: boolean;
 }
