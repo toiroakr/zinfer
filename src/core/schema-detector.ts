@@ -1,10 +1,4 @@
-import {
-  SourceFile,
-  VariableDeclaration,
-  SyntaxKind,
-  Node,
-  TypeNode,
-} from "ts-morph";
+import { SourceFile, VariableDeclaration } from "ts-morph";
 import type { DetectedSchema } from "./types.js";
 
 /**
@@ -44,9 +38,7 @@ export class SchemaDetector {
       const namedExports = exportDecl.getNamedExports();
       for (const namedExport of namedExports) {
         const aliasNode = namedExport.getAliasNode();
-        const exportedName = aliasNode
-          ? aliasNode.getText()
-          : namedExport.getName();
+        const exportedName = aliasNode ? aliasNode.getText() : namedExport.getName();
 
         // Check if the original variable is a Zod schema
         const originalName = namedExport.getName();
@@ -168,9 +160,7 @@ export class SchemaDetector {
    * @param declaration - The variable declaration to check
    * @returns The explicit type string if found, undefined otherwise
    */
-  private extractExplicitType(
-    declaration: VariableDeclaration
-  ): string | undefined {
+  private extractExplicitType(declaration: VariableDeclaration): string | undefined {
     const typeNode = declaration.getTypeNode();
     if (!typeNode) {
       return undefined;
@@ -179,8 +169,7 @@ export class SchemaDetector {
     const typeText = typeNode.getText();
 
     // Match patterns like z.ZodType<T>, z.ZodSchema<T>, ZodType<T>, ZodSchema<T>
-    const zodTypePattern =
-      /^(?:z\.)?(?:ZodType|ZodSchema|ZodEffects)<\s*(.+?)(?:\s*,\s*.+)?\s*>$/;
+    const zodTypePattern = /^(?:z\.)?(?:ZodType|ZodSchema|ZodEffects)<\s*(.+?)(?:\s*,\s*.+)?\s*>$/;
     const match = typeText.match(zodTypePattern);
 
     if (match) {

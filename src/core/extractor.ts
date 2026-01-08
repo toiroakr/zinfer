@@ -1,24 +1,11 @@
 import { Project, SourceFile, TypeFormatFlags, ts } from "ts-morph";
-import {
-  NORMALIZE_TYPE_DEFINITION,
-  createTempTypeAlias,
-  TEMP_TYPE_NAMES,
-} from "./normalizer.js";
+import { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias, TEMP_TYPE_NAMES } from "./normalizer.js";
 import { SchemaDetector } from "./schema-detector.js";
 import { GetterResolver } from "./getter-resolver.js";
-import {
-  SchemaReferenceAnalyzer,
-  SchemaReferenceInfo,
-  UnionReferenceInfo,
-} from "./schema-reference-analyzer.js";
+import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver } from "./import-resolver.js";
 import { BrandDetector } from "./brand-detector.js";
-import type {
-  ExtractResult,
-  FileExtractResult,
-  DetectedSchema,
-  BrandInfo,
-} from "./types.js";
+import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
 
 // Re-export ExtractResult for backward compatibility
 export type { ExtractResult } from "./types.js";
@@ -156,15 +143,12 @@ export class ZodTypeExtractor {
    */
   private extractMultipleFromSourceFile(
     sourceFile: SourceFile,
-    schemas: DetectedSchema[]
+    schemas: DetectedSchema[],
   ): ExtractResult[] {
     const results: ExtractResult[] = [];
 
     // Find and resolve imported schemas
-    const importedSchemas = this.importResolver.findImportedSchemas(
-      sourceFile,
-      this.project
-    );
+    const importedSchemas = this.importResolver.findImportedSchemas(sourceFile, this.project);
 
     // Analyze getter fields for all schemas
     const getterFieldMap = this.getterResolver.analyzeGetterFields(sourceFile);
@@ -176,25 +160,19 @@ export class ZodTypeExtractor {
     }
 
     // Analyze cross-schema references
-    const referenceMap = this.referenceAnalyzer.analyzeReferences(
-      sourceFile,
-      schemaNames
-    );
+    const referenceMap = this.referenceAnalyzer.analyzeReferences(sourceFile, schemaNames);
 
     // Analyze union schema references
     const unionReferenceMap = this.referenceAnalyzer.analyzeUnionReferences(
       sourceFile,
-      schemaNames
+      schemaNames,
     );
 
     // Detect branded types
     const brandMap = this.brandDetector.detectBrands(sourceFile, schemaNames);
 
     // First pass: extract raw types for all schemas
-    const rawTypes = new Map<
-      string,
-      { input: string; output: string; isExported: boolean }
-    >();
+    const rawTypes = new Map<string, { input: string; output: string; isExported: boolean }>();
 
     // Extract types from imported schemas first
     for (const [localName, importInfo] of importedSchemas) {
@@ -256,7 +234,7 @@ export class ZodTypeExtractor {
             inputType,
             schemaName,
             getterFields,
-            inputTypeName
+            inputTypeName,
           );
 
           if (outputType === "any") {
@@ -264,14 +242,14 @@ export class ZodTypeExtractor {
               originalInputType,
               schemaName,
               getterFields,
-              outputTypeName
+              outputTypeName,
             );
           } else {
             outputType = this.getterResolver.resolveAnyTypes(
               outputType,
               schemaName,
               getterFields,
-              outputTypeName
+              outputTypeName,
             );
           }
         }
@@ -283,7 +261,7 @@ export class ZodTypeExtractor {
     }
 
     // Add imported schemas to results first (so they're defined before use)
-    for (const [localName, importInfo] of importedSchemas) {
+    for (const [localName] of importedSchemas) {
       const raw = rawTypes.get(localName);
       if (!raw) continue;
 
@@ -308,12 +286,8 @@ export class ZodTypeExtractor {
       const unionRef = unionReferenceMap.get(schemaName);
       if (unionRef && unionRef.memberSchemas.length > 0) {
         // Build union type from member type names
-        const inputMembers = unionRef.memberSchemas
-          .map((member) => `${member}Input`)
-          .join(" | ");
-        const outputMembers = unionRef.memberSchemas
-          .map((member) => `${member}Output`)
-          .join(" | ");
+        const inputMembers = unionRef.memberSchemas.map((member) => `${member}Input`).join(" | ");
+        const outputMembers = unionRef.memberSchemas.map((member) => `${member}Output`).join(" | ");
 
         results.push({
           schemaName,
@@ -338,18 +312,8 @@ export class ZodTypeExtractor {
         // Non-exported schemas should remain inlined
         if (!refRaw.isExported) continue;
 
-        input = this.replaceSchemaReference(
-          input,
-          ref,
-          refRaw.input,
-          `${ref.refSchema}Input`
-        );
-        output = this.replaceSchemaReference(
-          output,
-          ref,
-          refRaw.output,
-          `${ref.refSchema}Output`
-        );
+        input = this.replaceSchemaReference(input, ref, refRaw.input, `${ref.refSchema}Input`);
+        output = this.replaceSchemaReference(output, ref, refRaw.output, `${ref.refSchema}Output`);
       }
 
       // For explicit types, replace self-references with typed names
@@ -357,7 +321,7 @@ export class ZodTypeExtractor {
         // schema.explicitType already contains just the type name (e.g., "JsonValue")
         const typeName = schema.explicitType;
         // Replace type name with self-referencing Input/Output types
-        const typeNamePattern = new RegExp(`\\b${typeName}\\b`, 'g');
+        const typeNamePattern = new RegExp(`\\b${typeName}\\b`, "g");
         input = input.replace(typeNamePattern, `${schemaName}Input`);
         output = output.replace(typeNamePattern, `${schemaName}Output`);
       }
@@ -381,7 +345,7 @@ export class ZodTypeExtractor {
     typeStr: string,
     ref: SchemaReferenceInfo,
     refTypeStr: string,
-    refTypeName: string
+    refTypeName: string,
   ): string {
     const { fieldPath, isArray, isRecord } = ref;
 
@@ -448,9 +412,7 @@ export class ZodTypeExtractor {
           replacement = `readonly ${replacement}`;
         }
 
-        return (
-          typeStr.substring(0, valueStart) + replacement + typeStr.substring(endIdx)
-        );
+        return typeStr.substring(0, valueStart) + replacement + typeStr.substring(endIdx);
       }
     }
 
@@ -460,10 +422,7 @@ export class ZodTypeExtractor {
   /**
    * Injects temporary type for explicit type (without normalization for circular refs).
    */
-  private injectExplicitType(
-    sourceFile: SourceFile,
-    explicitType: string
-  ): void {
+  private injectExplicitType(sourceFile: SourceFile, explicitType: string): void {
     // Don't normalize - use the type directly to preserve circular references
     sourceFile.addStatements([`type __TempExplicit = ${explicitType};`]);
   }
@@ -505,10 +464,7 @@ export class ZodTypeExtractor {
    * Injects the Normalize type and temporary type aliases into the source file.
    * These are added in-memory only and never saved to disk.
    */
-  private injectTemporaryTypes(
-    sourceFile: SourceFile,
-    schemaName: string
-  ): void {
+  private injectTemporaryTypes(sourceFile: SourceFile, schemaName: string): void {
     // Add the Normalize type definition and temporary type aliases at the end of the file
     sourceFile.addStatements([
       NORMALIZE_TYPE_DEFINITION,
@@ -530,14 +486,15 @@ export class ZodTypeExtractor {
 
     // Use TypeFormatFlags to get the fully expanded type without truncation
     // Don't use UseAliasDefinedOutsideCurrentScope to expand enum types
-    const formatFlags =
-      TypeFormatFlags.NoTruncation |
-      TypeFormatFlags.InTypeAlias;
+    const formatFlags = TypeFormatFlags.NoTruncation | TypeFormatFlags.InTypeAlias;
 
     let rawType = type.getText(typeAlias, formatFlags);
 
     // Remove trailing spaces from each line (ts-morph 27+ may add them)
-    rawType = rawType.split('\n').map(line => line.trimEnd()).join('\n');
+    rawType = rawType
+      .split("\n")
+      .map((line) => line.trimEnd())
+      .join("\n");
 
     // Expand enum types: if the type is a single identifier, check if it's an enum
     if (/^[A-Z][a-zA-Z0-9]*$/.test(rawType)) {
@@ -545,15 +502,17 @@ export class ZodTypeExtractor {
       if (enumDecl) {
         // Extract enum values
         const members = enumDecl.getMembers();
-        const values = members.map(member => {
-          const value = member.getValue();
-          if (typeof value === 'string') {
-            return `"${value}"`;
-          } else if (typeof value === 'number') {
-            return value.toString();
-          }
-          return null;
-        }).filter(Boolean);
+        const values = members
+          .map((member) => {
+            const value = member.getValue();
+            if (typeof value === "string") {
+              return `"${value}"`;
+            } else if (typeof value === "number") {
+              return value.toString();
+            }
+            return null;
+          })
+          .filter(Boolean);
 
         if (values.length > 0) {
           rawType = values.join(" | ");

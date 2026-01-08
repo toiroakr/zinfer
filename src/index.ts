@@ -60,7 +60,7 @@ import { formatResult } from "./core/index.js";
 export function extractZodTypes(
   filePath: string,
   schemaName: string,
-  tsconfigPath?: string
+  tsconfigPath?: string,
 ): { input: string; output: string } {
   const extractor = new ZodTypeExtractor(tsconfigPath);
   const result = extractor.extract({ filePath, schemaName });
@@ -94,7 +94,7 @@ export function extractZodTypes(
 export function extractAndFormat(
   filePath: string,
   schemaName: string,
-  tsconfigPath?: string
+  tsconfigPath?: string,
 ): string {
   const extractor = new ZodTypeExtractor(tsconfigPath);
   const result: ExtractResult = extractor.extract({ filePath, schemaName });
@@ -108,10 +108,7 @@ export function extractAndFormat(
  * @param tsconfigPath - Optional path to tsconfig.json
  * @returns Array of extraction results
  */
-export function extractAllSchemas(
-  filePath: string,
-  tsconfigPath?: string
-): ExtractResult[] {
+export function extractAllSchemas(filePath: string, tsconfigPath?: string): ExtractResult[] {
   const extractor = new ZodTypeExtractor(tsconfigPath);
   return extractor.extractAll(filePath);
 }
@@ -128,12 +125,8 @@ export function generateTypeDeclarations(
   options: {
     nameMapping?: NameMappingOptions;
     declaration?: DeclarationOptions;
-  } = {}
+  } = {},
 ): string {
   const mapper = new NameMapper(options.nameMapping || {});
-  return generateDeclarationFile(
-    results,
-    mapper.createMapFunction(),
-    options.declaration || {}
-  );
+  return generateDeclarationFile(results, mapper.createMapFunction(), options.declaration || {});
 }

@@ -5,7 +5,7 @@ export class ZinferError extends Error {
   constructor(
     message: string,
     public readonly code: string,
-    public readonly hint?: string
+    public readonly hint?: string,
   ) {
     super(message);
     this.name = "ZinferError";
@@ -27,20 +27,12 @@ export class ZinferError extends Error {
  * Error when a schema is not found in a file.
  */
 export class SchemaNotFoundError extends ZinferError {
-  constructor(
-    schemaName: string,
-    filePath: string,
-    availableSchemas?: string[]
-  ) {
+  constructor(schemaName: string, filePath: string, availableSchemas?: string[]) {
     const hint = availableSchemas?.length
       ? `Available schemas: ${availableSchemas.join(", ")}`
       : "Make sure the schema is exported and uses Zod (z.object, z.string, etc.)";
 
-    super(
-      `Schema "${schemaName}" not found in ${filePath}`,
-      "SCHEMA_NOT_FOUND",
-      hint
-    );
+    super(`Schema "${schemaName}" not found in ${filePath}`, "SCHEMA_NOT_FOUND", hint);
     this.name = "SchemaNotFoundError";
   }
 }
@@ -50,20 +42,19 @@ export class SchemaNotFoundError extends ZinferError {
  */
 export class NoSchemasFoundError extends ZinferError {
   constructor(filePaths: string[], requestedSchemas?: string[]) {
-    const files =
-      filePaths.length === 1 ? filePaths[0] : `${filePaths.length} files`;
+    const files = filePaths.length === 1 ? filePaths[0] : `${filePaths.length} files`;
 
     if (requestedSchemas?.length) {
       super(
         `Requested schemas not found: ${requestedSchemas.join(", ")}`,
         "NO_SCHEMAS_FOUND",
-        `These schemas were not found in ${files}. Check schema names are correct.`
+        `These schemas were not found in ${files}. Check schema names are correct.`,
       );
     } else {
       super(
         `No Zod schemas found in ${files}`,
         "NO_SCHEMAS_FOUND",
-        "Ensure schemas are exported and use Zod syntax (z.object, z.string, etc.)"
+        "Ensure schemas are exported and use Zod syntax (z.object, z.string, etc.)",
       );
     }
     this.name = "NoSchemasFoundError";
@@ -78,7 +69,7 @@ export class NoFilesMatchedError extends ZinferError {
     super(
       `No files matched the pattern(s): ${patterns.join(", ")}`,
       "NO_FILES_MATCHED",
-      "Check that the file paths or glob patterns are correct"
+      "Check that the file paths or glob patterns are correct",
     );
     this.name = "NoFilesMatchedError";
   }
@@ -91,13 +82,9 @@ export class TypeScriptError extends ZinferError {
   constructor(
     message: string,
     public readonly filePath?: string,
-    public readonly diagnostics?: string[]
+    public readonly diagnostics?: string[],
   ) {
-    super(
-      message,
-      "TYPESCRIPT_ERROR",
-      "Fix the TypeScript errors in your source file"
-    );
+    super(message, "TYPESCRIPT_ERROR", "Fix the TypeScript errors in your source file");
     this.name = "TypeScriptError";
   }
 
@@ -128,16 +115,12 @@ export class TypeScriptError extends ZinferError {
  * Error when type extraction fails.
  */
 export class ExtractionError extends ZinferError {
-  constructor(
-    schemaName: string,
-    filePath: string,
-    originalError?: Error
-  ) {
+  constructor(schemaName: string, filePath: string, originalError?: Error) {
     const originalMessage = originalError?.message || "Unknown error";
     super(
       `Failed to extract types from "${schemaName}" in ${filePath}: ${originalMessage}`,
       "EXTRACTION_ERROR",
-      "This may be due to syntax errors or unsupported schema patterns"
+      "This may be due to syntax errors or unsupported schema patterns",
     );
     this.name = "ExtractionError";
   }

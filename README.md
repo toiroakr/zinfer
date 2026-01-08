@@ -39,15 +39,15 @@ zinfer src/schemas.ts --unify-same --suffix Schema
 ### ライブラリ API
 
 ```typescript
-import { extractZodTypes, extractAllSchemas } from 'zinfer';
+import { extractZodTypes, extractAllSchemas } from "zinfer";
 
 // 単一スキーマの抽出
-const { input, output } = extractZodTypes('./schemas.ts', 'UserSchema');
-console.log(input);  // { id: string; name: string; }
+const { input, output } = extractZodTypes("./schemas.ts", "UserSchema");
+console.log(input); // { id: string; name: string; }
 console.log(output); // { id: string; name: string; }
 
 // ファイル内の全スキーマを抽出
-const results = extractAllSchemas('./schemas.ts');
+const results = extractAllSchemas("./schemas.ts");
 for (const result of results) {
   console.log(`${result.schemaName}: ${result.input}`);
 }
@@ -87,37 +87,37 @@ Options:
 ### zinfer.config.ts
 
 ```typescript
-import { defineConfig } from 'zinfer';
+import { defineConfig } from "zinfer";
 
 export default defineConfig({
   // 処理対象ファイル
-  include: ['src/**/*.schema.ts'],
+  include: ["src/**/*.schema.ts"],
 
   // 除外パターン
-  exclude: ['**/*.test.ts'],
+  exclude: ["**/*.test.ts"],
 
   // tsconfig.json のパス
-  project: './tsconfig.json',
+  project: "./tsconfig.json",
 
   // 抽出するスキーマ名（指定しない場合は全て）
-  schemas: ['UserSchema', 'PostSchema'],
+  schemas: ["UserSchema", "PostSchema"],
 
   // 出力オプション
-  outDir: './types',
-  outFile: './types/index.ts',
-  outPattern: '[name].types.ts',
+  outDir: "./types",
+  outFile: "./types/index.ts",
+  outPattern: "[name].types.ts",
   declaration: true,
 
   // 型名オプション
-  suffix: 'Schema',           // スキーマ名から削除するサフィックス
-  inputSuffix: 'Input',       // input 型のサフィックス
-  outputSuffix: 'Output',     // output 型のサフィックス
-  unifySame: true,            // input === output なら1つの型に
+  suffix: "Schema", // スキーマ名から削除するサフィックス
+  inputSuffix: "Input", // input 型のサフィックス
+  outputSuffix: "Output", // output 型のサフィックス
+  unifySame: true, // input === output なら1つの型に
 
   // カスタムマッピング
   map: {
-    'UserSchema': 'User',
-    'PostSchema': 'Article',
+    UserSchema: "User",
+    PostSchema: "Article",
   },
 
   // .describe() を TSDoc として出力
@@ -139,6 +139,7 @@ export default defineConfig({
 ```
 
 設定ファイルの検索順序:
+
 1. `zinfer.config.ts`
 2. `zinfer.config.mts`
 3. `zinfer.config.js`
@@ -152,6 +153,7 @@ CLI オプションは設定ファイルより優先されます。
 ### 基本的な出力
 
 入力スキーマ:
+
 ```typescript
 export const UserSchema = z.object({
   id: z.string().uuid(),
@@ -161,6 +163,7 @@ export const UserSchema = z.object({
 ```
 
 出力 (デフォルト):
+
 ```typescript
 export type UserSchemaInput = {
   id: string;
@@ -176,6 +179,7 @@ export type UserSchemaOutput = {
 ```
 
 出力 (`--unify-same --suffix Schema`):
+
 ```typescript
 export type User = {
   id: string;
@@ -187,6 +191,7 @@ export type User = {
 ### Transform がある場合
 
 入力スキーマ:
+
 ```typescript
 export const DateSchema = z.object({
   createdAt: z.string().transform((s) => new Date(s)),
@@ -195,6 +200,7 @@ export const DateSchema = z.object({
 ```
 
 出力:
+
 ```typescript
 export type DateSchemaInput = {
   createdAt: string;
@@ -210,15 +216,19 @@ export type DateSchemaOutput = {
 ### TSDoc コメント付き (`--with-descriptions`)
 
 入力スキーマ:
+
 ```typescript
-export const UserSchema = z.object({
-  id: z.string().uuid().describe('Unique user identifier'),
-  name: z.string().describe("User's display name"),
-  email: z.string().email().describe('Email address'),
-}).describe('User account information');
+export const UserSchema = z
+  .object({
+    id: z.string().uuid().describe("Unique user identifier"),
+    name: z.string().describe("User's display name"),
+    email: z.string().email().describe("Email address"),
+  })
+  .describe("User account information");
 ```
 
 出力:
+
 ```typescript
 /**
  * User account information
@@ -272,7 +282,7 @@ export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
     z.null(),
     z.array(JsonValueSchema),
     z.record(JsonValueSchema),
-  ])
+  ]),
 );
 ```
 
@@ -285,12 +295,12 @@ export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 単一スキーマから型を抽出します。
 
 ```typescript
-import { extractZodTypes } from 'zinfer';
+import { extractZodTypes } from "zinfer";
 
 const { input, output } = extractZodTypes(
-  './schemas.ts',
-  'UserSchema',
-  './tsconfig.json'  // optional
+  "./schemas.ts",
+  "UserSchema",
+  "./tsconfig.json", // optional
 );
 ```
 
@@ -299,9 +309,9 @@ const { input, output } = extractZodTypes(
 ファイル内の全スキーマを抽出します。
 
 ```typescript
-import { extractAllSchemas } from 'zinfer';
+import { extractAllSchemas } from "zinfer";
 
-const results = extractAllSchemas('./schemas.ts');
+const results = extractAllSchemas("./schemas.ts");
 // results: ExtractResult[]
 ```
 
@@ -310,14 +320,14 @@ const results = extractAllSchemas('./schemas.ts');
 抽出結果から TypeScript 型宣言を生成します。
 
 ```typescript
-import { extractAllSchemas, generateTypeDeclarations } from 'zinfer';
+import { extractAllSchemas, generateTypeDeclarations } from "zinfer";
 
-const results = extractAllSchemas('./schemas.ts');
+const results = extractAllSchemas("./schemas.ts");
 const declarations = generateTypeDeclarations(results, {
   nameMapping: {
-    removeSuffix: 'Schema',
-    inputSuffix: 'Input',
-    outputSuffix: 'Output',
+    removeSuffix: "Schema",
+    inputSuffix: "Input",
+    outputSuffix: "Output",
   },
   declaration: {
     unifySame: true,
@@ -332,27 +342,24 @@ console.log(declarations);
 より細かい制御が必要な場合:
 
 ```typescript
-import { ZodTypeExtractor } from 'zinfer';
+import { ZodTypeExtractor } from "zinfer";
 
-const extractor = new ZodTypeExtractor('./tsconfig.json');
+const extractor = new ZodTypeExtractor("./tsconfig.json");
 
 // 単一スキーマ
 const result = extractor.extract({
-  filePath: './schemas.ts',
-  schemaName: 'UserSchema',
+  filePath: "./schemas.ts",
+  schemaName: "UserSchema",
 });
 
 // 全スキーマ
-const allResults = extractor.extractAll('./schemas.ts');
+const allResults = extractor.extractAll("./schemas.ts");
 
 // 複数スキーマを指定
-const selectedResults = extractor.extractMultiple(
-  './schemas.ts',
-  ['UserSchema', 'PostSchema']
-);
+const selectedResults = extractor.extractMultiple("./schemas.ts", ["UserSchema", "PostSchema"]);
 
 // スキーマ名の一覧
-const schemaNames = extractor.getSchemaNames('./schemas.ts');
+const schemaNames = extractor.getSchemaNames("./schemas.ts");
 ```
 
 ## 対応している Zod 機能

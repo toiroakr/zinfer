@@ -125,7 +125,7 @@ exports[`SchemaDetector > detectExportedSchemas > should detect schemas from uti
   },
   {
     "explicitType": undefined,
-    "isExported": false,
+    "isExported": true,
     "line": 33,
     "name": "NestedSchema",
   },

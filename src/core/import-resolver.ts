@@ -1,11 +1,5 @@
-import {
-  SourceFile,
-  Node,
-  ImportDeclaration,
-  Project,
-} from "ts-morph";
+import { SourceFile, ImportDeclaration, Project } from "ts-morph";
 import { SchemaDetector } from "./schema-detector.js";
-import type { DetectedSchema } from "./types.js";
 
 /**
  * Information about an imported schema.
@@ -44,10 +38,7 @@ export class ImportResolver {
    * @param project - The ts-morph project for module resolution
    * @returns Map of local names to imported schema info
    */
-  findImportedSchemas(
-    sourceFile: SourceFile,
-    project: Project
-  ): ImportedSchemaMap {
+  findImportedSchemas(sourceFile: SourceFile, project: Project): ImportedSchemaMap {
     const result: ImportedSchemaMap = new Map();
     const imports = sourceFile.getImportDeclarations();
 
@@ -60,11 +51,7 @@ export class ImportResolver {
       }
 
       // Resolve the module to a source file
-      const resolvedSourceFile = this.resolveImportedFile(
-        importDecl,
-        sourceFile,
-        project
-      );
+      const resolvedSourceFile = this.resolveImportedFile(importDecl, sourceFile, project);
 
       if (!resolvedSourceFile) {
         continue;
@@ -78,11 +65,7 @@ export class ImportResolver {
 
         // Find the actual source file containing the schema definition
         // This handles re-exports from index.ts files
-        const actualSource = this.findSchemaSource(
-          resolvedSourceFile,
-          importedName,
-          project
-        );
+        const actualSource = this.findSchemaSource(resolvedSourceFile, importedName, project);
 
         if (actualSource) {
           result.set(localName, {
@@ -106,7 +89,7 @@ export class ImportResolver {
     sourceFile: SourceFile,
     schemaName: string,
     project: Project,
-    visited: Set<string> = new Set()
+    visited: Set<string> = new Set(),
   ): { sourceFile: SourceFile; schemaName: string } | undefined {
     const filePath = sourceFile.getFilePath();
 
@@ -133,18 +116,9 @@ export class ImportResolver {
 
       if (namedExports.length === 0) {
         // This is "export * from './module'" - follow it
-        const reExportedFile = this.resolveModuleSpecifier(
-          sourceFile,
-          moduleSpecifier,
-          project
-        );
+        const reExportedFile = this.resolveModuleSpecifier(sourceFile, moduleSpecifier, project);
         if (reExportedFile) {
-          const found = this.findSchemaSource(
-            reExportedFile,
-            schemaName,
-            project,
-            visited
-          );
+          const found = this.findSchemaSource(reExportedFile, schemaName, project, visited);
           if (found) {
             return found;
           }
@@ -158,15 +132,10 @@ export class ImportResolver {
             const reExportedFile = this.resolveModuleSpecifier(
               sourceFile,
               moduleSpecifier,
-              project
+              project,
             );
             if (reExportedFile) {
-              return this.findSchemaSource(
-                reExportedFile,
-                originalName,
-                project,
-                visited
-              );
+              return this.findSchemaSource(reExportedFile, originalName, project, visited);
             }
           }
         }
@@ -182,7 +151,7 @@ export class ImportResolver {
   private resolveModuleSpecifier(
     fromFile: SourceFile,
     moduleSpecifier: string,
-    project: Project
+    project: Project,
   ): SourceFile | undefined {
     const sourceDir = fromFile.getDirectoryPath();
     const possiblePaths = [
@@ -215,7 +184,7 @@ export class ImportResolver {
   private resolveImportedFile(
     importDecl: ImportDeclaration,
     sourceFile: SourceFile,
-    project: Project
+    project: Project,
   ): SourceFile | undefined {
     const moduleSpecifier = importDecl.getModuleSpecifierValue();
 
@@ -267,10 +236,7 @@ export class ImportResolver {
   extractImportedSchemaTypes(
     importedSchemas: ImportedSchemaMap,
     project: Project,
-    extractType: (
-      sourceFile: SourceFile,
-      schemaName: string
-    ) => { input: string; output: string }
+    extractType: (sourceFile: SourceFile, schemaName: string) => { input: string; output: string },
   ): Map<string, { input: string; output: string }> {
     const result = new Map<string, { input: string; output: string }>();
 

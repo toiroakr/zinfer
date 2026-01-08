@@ -40,5 +40,5 @@ export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
     z.null(),
     z.array(JsonValueSchema),
     z.record(z.string(), JsonValueSchema),
-  ])
+  ]),
 );

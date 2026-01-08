@@ -1,11 +1,4 @@
-import {
-  SourceFile,
-  SyntaxKind,
-  Node,
-  CallExpression,
-  PropertyAccessExpression,
-  Identifier,
-} from "ts-morph";
+import { SourceFile, SyntaxKind, Node, CallExpression, PropertyAccessExpression } from "ts-morph";
 
 /**
  * Information about a getter field in a z.object schema.
@@ -62,10 +55,7 @@ export class GetterResolver {
   /**
    * Extracts getter field info from AST nodes.
    */
-  private extractGetterFieldsFromAST(
-    node: Node,
-    schemaName: string
-  ): Map<string, GetterFieldInfo> {
+  private extractGetterFieldsFromAST(node: Node, schemaName: string): Map<string, GetterFieldInfo> {
     const fieldMap = new Map<string, GetterFieldInfo>();
 
     // Find all getter declarations within the node
@@ -77,9 +67,7 @@ export class GetterResolver {
       if (!body) continue;
 
       // Find return statement
-      const returnStmt = body.getFirstDescendantByKind(
-        SyntaxKind.ReturnStatement
-      );
+      const returnStmt = body.getFirstDescendantByKind(SyntaxKind.ReturnStatement);
       if (!returnStmt) continue;
 
       const returnExpr = returnStmt.getExpression();
@@ -97,10 +85,7 @@ export class GetterResolver {
   /**
    * Parses the return expression AST to extract schema reference info.
    */
-  private parseReturnExpressionAST(
-    expr: Node,
-    schemaName: string
-  ): GetterFieldInfo | null {
+  private parseReturnExpressionAST(expr: Node, schemaName: string): GetterFieldInfo | null {
     let isArray = false;
     let isRecord = false;
     let isOptional = false;
@@ -195,9 +180,9 @@ export class GetterResolver {
    */
   resolveAnyTypes(
     typeStr: string,
-    schemaName: string,
+    _schemaName: string,
     getterFields: Map<string, GetterFieldInfo>,
-    typeName: string
+    typeName: string,
   ): string {
     let result = typeStr;
 
@@ -221,11 +206,7 @@ export class GetterResolver {
   /**
    * Replaces any type in a record field.
    */
-  private replaceRecordAny(
-    typeStr: string,
-    fieldName: string,
-    typeName: string
-  ): string {
+  private replaceRecordAny(typeStr: string, fieldName: string, typeName: string): string {
     // Find "fieldName: { [x: string]: any" or "fieldName?: { [x: string]: any"
     const fieldPatterns = [`${fieldName}: {`, `${fieldName}?: {`];
 
@@ -241,12 +222,9 @@ export class GetterResolver {
           // Find "any" after the colon
           const afterColon = typeStr.substring(colonPos).trimStart();
           if (afterColon.startsWith("any")) {
-            const anyStart = colonPos + (typeStr.substring(colonPos).indexOf("any"));
+            const anyStart = colonPos + typeStr.substring(colonPos).indexOf("any");
             const anyEnd = anyStart + 3;
-            typeStr =
-              typeStr.substring(0, anyStart) +
-              typeName +
-              typeStr.substring(anyEnd);
+            typeStr = typeStr.substring(0, anyStart) + typeName + typeStr.substring(anyEnd);
           }
         }
 
@@ -264,7 +242,7 @@ export class GetterResolver {
     typeStr: string,
     fieldName: string,
     typeName: string,
-    isArray: boolean
+    isArray: boolean,
   ): string {
     // Find "fieldName: any" or "fieldName?: any" patterns
     const fieldPatterns = [`${fieldName}: `, `${fieldName}?: `];
@@ -305,8 +283,7 @@ export class GetterResolver {
             endPos += 2;
           }
 
-          typeStr =
-            typeStr.substring(0, anyIdx) + replacement + typeStr.substring(endPos);
+          typeStr = typeStr.substring(0, anyIdx) + replacement + typeStr.substring(endPos);
         }
 
         idx = typeStr.indexOf(pattern, idx + 1);

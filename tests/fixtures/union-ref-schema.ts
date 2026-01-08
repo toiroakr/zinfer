@@ -24,11 +24,7 @@ export const BirdSchema = z.object({
 /**
  * Discriminated union using schema references
  */
-export const PetSchema = z.discriminatedUnion("kind", [
-  DogSchema,
-  CatSchema,
-  BirdSchema,
-]);
+export const PetSchema = z.discriminatedUnion("kind", [DogSchema, CatSchema, BirdSchema]);
 
 /**
  * Regular union using schema references

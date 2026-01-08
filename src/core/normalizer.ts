@@ -39,10 +39,7 @@ type __Normalize<T> =
  * @param typeKind - Either 'input' or 'output' to specify which type to extract
  * @returns A TypeScript type alias string to be injected in-memory
  */
-export function createTempTypeAlias(
-  schemaName: string,
-  typeKind: "input" | "output"
-): string {
+export function createTempTypeAlias(schemaName: string, typeKind: "input" | "output"): string {
   const typeName = typeKind === "input" ? "__TempInput" : "__TempOutput";
   return `type ${typeName} = __Normalize<z.${typeKind}<typeof ${schemaName}>>;`;
 }
@@ -51,8 +48,4 @@ export function createTempTypeAlias(
  * Names of temporary types that are injected during extraction.
  * These should be cleaned up after extraction is complete.
  */
-export const TEMP_TYPE_NAMES = [
-  "__Normalize",
-  "__TempInput",
-  "__TempOutput",
-] as const;
+export const TEMP_TYPE_NAMES = ["__Normalize", "__TempInput", "__TempOutput"] as const;

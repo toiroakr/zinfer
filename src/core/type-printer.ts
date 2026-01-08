@@ -23,10 +23,7 @@ export interface PrintOptions {
  * @param options - Formatting options
  * @returns Formatted string ready for console output
  */
-export function formatResult(
-  result: ExtractResult,
-  options: PrintOptions = {}
-): string {
+export function formatResult(result: ExtractResult, options: PrintOptions = {}): string {
   const { indent = "  ", includeSchemaName = false } = options;
   const lines: string[] = [];
 
@@ -57,7 +54,7 @@ function prettifyType(
   typeStr: string,
   indent: string,
   descriptions?: FieldDescription[],
-  prefix: string = ""
+  prefix: string = "",
 ): string {
   // If it's not an object type, return as-is
   if (!typeStr.startsWith("{") || !typeStr.endsWith("}")) {
@@ -67,7 +64,10 @@ function prettifyType(
   const prettified = prettifyObjectType(typeStr, indent, descriptions, prefix);
 
   // Remove trailing spaces from each line
-  return prettified.split('\n').map(line => line.trimEnd()).join('\n');
+  return prettified
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .join("\n");
 }
 
 /**
@@ -83,7 +83,7 @@ function createTsDocComment(description: string, indentStr: string): string {
 function getFieldDescription(
   fieldName: string,
   prefix: string,
-  descriptions?: FieldDescription[]
+  descriptions?: FieldDescription[],
 ): string | undefined {
   if (!descriptions) {
     return undefined;
@@ -101,7 +101,7 @@ function prettifyObjectType(
   typeStr: string,
   indent: string,
   descriptions?: FieldDescription[],
-  prefix: string = ""
+  prefix: string = "",
 ): string {
   let result = "";
   let depth = 0;
@@ -155,24 +155,15 @@ function prettifyObjectType(
         if (capturingFieldName && currentFieldName) {
           // We have the field name, check for description
           const cleanFieldName = currentFieldName.replace(/\?$/, "").trim();
-          const currentPath = [...pathStack, prefix]
-            .filter(Boolean)
-            .join(".");
-          const desc = getFieldDescription(
-            cleanFieldName,
-            currentPath,
-            descriptions
-          );
+          const currentPath = [...pathStack, prefix].filter(Boolean).join(".");
+          const desc = getFieldDescription(cleanFieldName, currentPath, descriptions);
 
           if (desc) {
             // Insert TSDoc comment before the field name
             const lastNewlinePos = result.lastIndexOf("\n");
             const beforeField = result.substring(0, lastNewlinePos + 1);
             const fieldPart = result.substring(lastNewlinePos + 1);
-            result =
-              beforeField +
-              createTsDocComment(desc, indent.repeat(depth)) +
-              fieldPart;
+            result = beforeField + createTsDocComment(desc, indent.repeat(depth)) + fieldPart;
           }
         }
         result += char;
@@ -217,10 +208,7 @@ function prettifyObjectType(
 /**
  * Formats the extraction result as input type only.
  */
-export function formatInputOnly(
-  result: ExtractResult,
-  options: PrintOptions = {}
-): string {
+export function formatInputOnly(result: ExtractResult, options: PrintOptions = {}): string {
   const { indent = "  " } = options;
   return prettifyType(result.input, indent);
 }
@@ -228,10 +216,7 @@ export function formatInputOnly(
 /**
  * Formats the extraction result as output type only.
  */
-export function formatOutputOnly(
-  result: ExtractResult,
-  options: PrintOptions = {}
-): string {
+export function formatOutputOnly(result: ExtractResult, options: PrintOptions = {}): string {
   const { indent = "  " } = options;
   return prettifyType(result.output, indent);
 }
@@ -266,19 +251,13 @@ function applyBrands(typeStr: string, brands?: BrandInfo[]): string {
 /**
  * Applies a brand to a specific field in an object type.
  */
-function applyBrandToField(
-  typeStr: string,
-  fieldPath: string,
-  brandName: string
-): string {
+function applyBrandToField(typeStr: string, fieldPath: string, brandName: string): string {
   // Handle nested field paths
   const parts = fieldPath.split(".");
   const fieldName = parts[parts.length - 1];
 
   // Find the field pattern (fieldName: type or fieldName?: type)
-  const fieldPatterns = [
-    new RegExp(`(${fieldName}\\??: )(\\w+)(;|\\s|\\})`),
-  ];
+  const fieldPatterns = [new RegExp(`(${fieldName}\\??: )(\\w+)(;|\\s|\\})`)];
 
   for (const pattern of fieldPatterns) {
     const match = typeStr.match(pattern);
@@ -303,47 +282,33 @@ function applyBrandToField(
 export function formatAsDeclaration(
   result: ExtractResult,
   typeName: MappedTypeName,
-  options: DeclarationOptions = {}
+  options: DeclarationOptions = {},
 ): string {
   const { inputOnly, outputOnly, unifyIfSame } = options;
   const lines: string[] = [];
   const indent = "  ";
 
-  const inputFormatted = prettifyType(
-    result.input,
-    indent,
-    result.fieldDescriptions
-  );
+  const inputFormatted = prettifyType(result.input, indent, result.fieldDescriptions);
 
   // Apply brands to output type only (brands are runtime-only, not for input)
   const outputWithBrands = applyBrands(result.output, result.brands);
-  const outputFormatted = prettifyType(
-    outputWithBrands,
-    indent,
-    result.fieldDescriptions
-  );
+  const outputFormatted = prettifyType(outputWithBrands, indent, result.fieldDescriptions);
 
   // Schema-level TSDoc comment
-  const schemaComment = result.description
-    ? `/**\n * ${result.description}\n */\n`
-    : "";
+  const schemaComment = result.description ? `/**\n * ${result.description}\n */\n` : "";
 
   // Only export if the original schema was exported
   const exportKeyword = result.isExported ? "export " : "";
 
   // If unifyIfSame is enabled and types are identical (compare without brands for input)
   if (unifyIfSame && result.input === result.output && !result.brands?.length) {
-    lines.push(
-      `${schemaComment}${exportKeyword}type ${typeName.unifiedName} = ${inputFormatted};`
-    );
+    lines.push(`${schemaComment}${exportKeyword}type ${typeName.unifiedName} = ${inputFormatted};`);
     return lines.join("\n");
   }
 
   // Input type
   if (!outputOnly) {
-    lines.push(
-      `${schemaComment}${exportKeyword}type ${typeName.inputName} = ${inputFormatted};`
-    );
+    lines.push(`${schemaComment}${exportKeyword}type ${typeName.inputName} = ${inputFormatted};`);
   }
 
   // Output type
@@ -353,9 +318,7 @@ export function formatAsDeclaration(
     }
     // Only add schema comment to output if input was not added
     const outputComment = outputOnly ? schemaComment : "";
-    lines.push(
-      `${outputComment}${exportKeyword}type ${typeName.outputName} = ${outputFormatted};`
-    );
+    lines.push(`${outputComment}${exportKeyword}type ${typeName.outputName} = ${outputFormatted};`);
   }
 
   return lines.join("\n");
@@ -372,7 +335,7 @@ export function formatAsDeclaration(
 export function formatMultipleAsDeclarations(
   results: ExtractResult[],
   mapName: (schemaName: string) => MappedTypeName,
-  options: DeclarationOptions = {}
+  options: DeclarationOptions = {},
 ): string {
   // Build a map of schema names to their mapped type names
   const typeNameMap = new Map<string, MappedTypeName>();
@@ -381,18 +344,18 @@ export function formatMultipleAsDeclarations(
   }
 
   // Replace schema references with correct type names
-  const fixedResults = results.map(result => {
+  const fixedResults = results.map((result) => {
     let input = result.input;
     let output = result.output;
 
     // Replace all schema references in the type strings
     for (const [schemaName, mappedName] of typeNameMap) {
       // Replace SchemaNameInput -> MappedNameInput
-      const inputPattern = new RegExp(`\\b${schemaName}Input\\b`, 'g');
+      const inputPattern = new RegExp(`\\b${schemaName}Input\\b`, "g");
       input = input.replace(inputPattern, mappedName.inputName);
 
       // Replace SchemaNameOutput -> MappedNameOutput
-      const outputPattern = new RegExp(`\\b${schemaName}Output\\b`, 'g');
+      const outputPattern = new RegExp(`\\b${schemaName}Output\\b`, "g");
       output = output.replace(outputPattern, mappedName.outputName);
     }
 
@@ -432,7 +395,7 @@ function hasBrands(results: ExtractResult[]): boolean {
 export function generateDeclarationFile(
   results: ExtractResult[],
   mapName: (schemaName: string) => MappedTypeName,
-  options: DeclarationOptions = {}
+  options: DeclarationOptions = {},
 ): string {
   const lines: string[] = [];
 
