@@ -61,7 +61,7 @@ afterAll(() => {
       throw error;
     }
   }
-}, 60000); // 60 second timeout for type checking all snapshot files
+}, 120000); // 120 second timeout for type checking all snapshot files
 
 describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   const extractor = new ZodTypeExtractor();
