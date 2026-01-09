@@ -14,6 +14,9 @@ importers:
       glob:
         specifier: ^13.0.0
         version: 13.0.0
+      pathe:
+        specifier: ^2.0.3
+        version: 2.0.3
       ts-morph:
         specifier: ^27.0.2
         version: 27.0.2

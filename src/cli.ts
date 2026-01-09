@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { resolve } from "path";
+import { resolve, dirname, basename, relative } from "pathe";
 import { existsSync, writeFileSync, mkdirSync } from "fs";
-import { dirname } from "path";
 import {
   ZodTypeExtractor,
   generateDeclarationFile,
@@ -416,6 +415,19 @@ function ensureDir(dirPath: string): void {
 }
 
 /**
+ * Creates test schema info from extraction results.
+ */
+function createTestSchemas(results: ExtractResult[], nameMapper: NameMapper): TestSchemaInfo[] {
+  return results
+    .filter((r) => r.isExported)
+    .map((result) => ({
+      schemaName: result.schemaName,
+      inputTypeName: nameMapper.map(result.schemaName).inputName,
+      outputTypeName: nameMapper.map(result.schemaName).outputName,
+    }));
+}
+
+/**
  * Generates test file content for single output mode (--outFile).
  */
 function generateTestFileForSingleOutput(
@@ -428,28 +440,13 @@ function generateTestFileForSingleOutput(
   const testDir = dirname(testPath);
 
   for (const [schemaFile, results] of fileResultsMap) {
-    const exportedSchemas = results.filter((r) => r.isExported);
-    if (exportedSchemas.length === 0) continue;
-
-    const fileName = schemaFile.replace(/\.ts$/, "").split("/").pop() || "";
-    const importPrefix = generateImportPrefix(fileName);
-
-    const schemas: TestSchemaInfo[] = exportedSchemas.map((result) => {
-      const mapped = nameMapper.map(result.schemaName);
-      return {
-        schemaName: result.schemaName,
-        inputTypeName: mapped.inputName,
-        outputTypeName: mapped.outputName,
-      };
-    });
-
-    const relativeSchemaPath = getRelativePath(testDir, schemaFile);
-    const relativeTypesPath = getRelativePath(testDir, typesPath);
+    const schemas = createTestSchemas(results, nameMapper);
+    if (schemas.length === 0) continue;
 
     testFiles.push({
-      schemaFilePath: relativeSchemaPath,
-      typesFilePath: relativeTypesPath,
-      importPrefix,
+      schemaFilePath: getRelativePath(testDir, schemaFile),
+      typesFilePath: getRelativePath(testDir, typesPath),
+      importPrefix: generateImportPrefix(basename(schemaFile, ".ts")),
       schemas,
     });
   }
@@ -467,62 +464,27 @@ function generateTestFileForPerFile(
   results: ExtractResult[],
   nameMapper: NameMapper,
 ): string {
-  const exportedSchemas = results.filter((r) => r.isExported);
-  if (exportedSchemas.length === 0) {
+  const schemas = createTestSchemas(results, nameMapper);
+  if (schemas.length === 0) {
     return "";
   }
 
   const testDir = dirname(testPath);
-  const fileName = schemaFile.replace(/\.ts$/, "").split("/").pop() || "";
-  const importPrefix = generateImportPrefix(fileName);
 
-  const schemas: TestSchemaInfo[] = exportedSchemas.map((result) => {
-    const mapped = nameMapper.map(result.schemaName);
-    return {
-      schemaName: result.schemaName,
-      inputTypeName: mapped.inputName,
-      outputTypeName: mapped.outputName,
-    };
-  });
-
-  const relativeSchemaPath = getRelativePath(testDir, schemaFile);
-  const relativeTypesPath = getRelativePath(testDir, typesPath);
-
-  const testFile: TestFileInfo = {
-    schemaFilePath: relativeSchemaPath,
-    typesFilePath: relativeTypesPath,
-    importPrefix,
-    schemas,
-  };
-
-  return generateTypeTests([testFile]);
+  return generateTypeTests([
+    {
+      schemaFilePath: getRelativePath(testDir, schemaFile),
+      typesFilePath: getRelativePath(testDir, typesPath),
+      importPrefix: generateImportPrefix(basename(schemaFile, ".ts")),
+      schemas,
+    },
+  ]);
 }
 
 /**
  * Gets relative path from one file to another, ensuring it starts with ./
  */
 function getRelativePath(from: string, to: string): string {
-  // Compute proper relative path
-  const fromParts = from.split("/").filter(Boolean);
-  const toParts = resolve(to).split("/").filter(Boolean);
-
-  // Find common prefix
-  let commonLength = 0;
-  for (let i = 0; i < Math.min(fromParts.length, toParts.length); i++) {
-    if (fromParts[i] === toParts[i]) {
-      commonLength++;
-    } else {
-      break;
-    }
-  }
-
-  // Build relative path
-  const upCount = fromParts.length - commonLength;
-  const downPath = toParts.slice(commonLength).join("/");
-
-  if (upCount === 0) {
-    return "./" + downPath;
-  }
-
-  return "../".repeat(upCount) + downPath;
+  const rel = relative(from, to);
+  return rel.startsWith(".") ? rel : "./" + rel;
 }

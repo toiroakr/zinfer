@@ -193,7 +193,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       const schemaNames = results.map((r) => r.schemaName);
       const descriptions = await descriptionExtractor.extractDescriptions(filePath, schemaNames);
 
-      const resultsWithDescriptions: ExtractResult[] = results.map((result) => {
+      const resultsWithDescriptions = results.map((result) => {
         const desc = descriptions.get(result.schemaName);
         if (!desc) {
           return result;
