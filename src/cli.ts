@@ -13,11 +13,15 @@ import {
   formatError,
   NoFilesMatchedError,
   NoSchemasFoundError,
+  generateTypeTests,
+  generateImportPrefix,
   type ExtractResult,
   type NameMappingOptions,
   type OutputOptions,
   type DeclarationOptions,
   type ZinferConfig,
+  type TestFileInfo,
+  type TestSchemaInfo,
 } from "./core/index.js";
 
 interface CLIOptions {
@@ -37,6 +41,7 @@ interface CLIOptions {
   dryRun?: boolean;
   withDescriptions?: boolean;
   config?: string;
+  generateTests?: boolean;
 }
 
 const program = new Command();
@@ -61,6 +66,7 @@ program
   .option("-d, --declaration", "Generate .d.ts files")
   .option("--dry-run", "Preview without writing files")
   .option("--with-descriptions", "Include Zod .describe() as TSDoc comments")
+  .option("--generate-tests", "Generate vitest type equality tests alongside type files")
   .action(async (files: string[], options: CLIOptions) => {
     try {
       await runCLI(files, options);
@@ -103,6 +109,11 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   // Find tsconfig
   const tsconfigPath = config.project ? resolve(cwd, config.project) : findTsConfig(cwd);
 
+  // Validate --generate-tests requires file output
+  if (options.generateTests && !config.outDir && !config.outFile) {
+    throw new Error("--generate-tests requires --outDir or --outFile");
+  }
+
   // Create extractor and name mapper
   const extractor = new ZodTypeExtractor(tsconfigPath);
   const nameMapper = createNameMapper(config);
@@ -129,6 +140,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   // Single output file mode
   if (config.outFile) {
     const allResults: ExtractResult[] = [];
+    const fileResultsMap: Map<string, ExtractResult[]> = new Map();
 
     for (const filePath of resolvedFiles) {
       let results = getFilteredResults(extractor, filePath, schemaFilter);
@@ -138,7 +150,10 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
         results = await addDescriptionsToResults(descriptionExtractor, filePath, results);
       }
 
-      allResults.push(...results);
+      if (results.length > 0) {
+        allResults.push(...results);
+        fileResultsMap.set(filePath, results);
+      }
     }
 
     if (allResults.length === 0) {
@@ -161,6 +176,26 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
       ensureDir(dirname(outputPath));
       writeFileSync(outputPath, content, "utf-8");
       console.log(`Generated: ${outputPath} (${allResults.length} types)`);
+    }
+
+    // Generate test file if requested
+    if (options.generateTests) {
+      const testPath = outputPath.replace(/\.ts$/, ".test.ts");
+      const testContent = generateTestFileForSingleOutput(
+        fileResultsMap,
+        outputPath,
+        testPath,
+        nameMapper,
+      );
+
+      if (options.dryRun) {
+        console.log(`Would write to: ${testPath}`);
+        console.log("---");
+        console.log(testContent);
+      } else {
+        writeFileSync(testPath, testContent, "utf-8");
+        console.log(`Generated: ${testPath} (${allResults.length * 2} test cases)`);
+      }
     }
 
     return;
@@ -198,6 +233,28 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
         ensureDir(dirname(outputPath));
         writeFileSync(outputPath, content, "utf-8");
         console.log(`Generated: ${outputPath} (${results.length} types)`);
+      }
+
+      // Generate test file if requested
+      if (options.generateTests) {
+        const testPath = outputPath.replace(/\.ts$/, ".test.ts");
+        const testContent = generateTestFileForPerFile(
+          filePath,
+          outputPath,
+          testPath,
+          results,
+          nameMapper,
+        );
+
+        if (options.dryRun) {
+          console.log(`Would write to: ${testPath}`);
+          console.log("---");
+          console.log(testContent);
+          console.log("");
+        } else {
+          writeFileSync(testPath, testContent, "utf-8");
+          console.log(`Generated: ${testPath} (${results.length * 2} test cases)`);
+        }
       }
     } else {
       // Console output mode
@@ -356,4 +413,116 @@ function ensureDir(dirPath: string): void {
   if (!existsSync(dirPath)) {
     mkdirSync(dirPath, { recursive: true });
   }
+}
+
+/**
+ * Generates test file content for single output mode (--outFile).
+ */
+function generateTestFileForSingleOutput(
+  fileResultsMap: Map<string, ExtractResult[]>,
+  typesPath: string,
+  testPath: string,
+  nameMapper: NameMapper,
+): string {
+  const testFiles: TestFileInfo[] = [];
+  const testDir = dirname(testPath);
+
+  for (const [schemaFile, results] of fileResultsMap) {
+    const exportedSchemas = results.filter((r) => r.isExported);
+    if (exportedSchemas.length === 0) continue;
+
+    const fileName = schemaFile.replace(/\.ts$/, "").split("/").pop() || "";
+    const importPrefix = generateImportPrefix(fileName);
+
+    const schemas: TestSchemaInfo[] = exportedSchemas.map((result) => {
+      const mapped = nameMapper.map(result.schemaName);
+      return {
+        schemaName: result.schemaName,
+        inputTypeName: mapped.inputName,
+        outputTypeName: mapped.outputName,
+      };
+    });
+
+    const relativeSchemaPath = getRelativePath(testDir, schemaFile);
+    const relativeTypesPath = getRelativePath(testDir, typesPath);
+
+    testFiles.push({
+      schemaFilePath: relativeSchemaPath,
+      typesFilePath: relativeTypesPath,
+      importPrefix,
+      schemas,
+    });
+  }
+
+  return generateTypeTests(testFiles);
+}
+
+/**
+ * Generates test file content for per-file output mode (--outDir).
+ */
+function generateTestFileForPerFile(
+  schemaFile: string,
+  typesPath: string,
+  testPath: string,
+  results: ExtractResult[],
+  nameMapper: NameMapper,
+): string {
+  const exportedSchemas = results.filter((r) => r.isExported);
+  if (exportedSchemas.length === 0) {
+    return "";
+  }
+
+  const testDir = dirname(testPath);
+  const fileName = schemaFile.replace(/\.ts$/, "").split("/").pop() || "";
+  const importPrefix = generateImportPrefix(fileName);
+
+  const schemas: TestSchemaInfo[] = exportedSchemas.map((result) => {
+    const mapped = nameMapper.map(result.schemaName);
+    return {
+      schemaName: result.schemaName,
+      inputTypeName: mapped.inputName,
+      outputTypeName: mapped.outputName,
+    };
+  });
+
+  const relativeSchemaPath = getRelativePath(testDir, schemaFile);
+  const relativeTypesPath = getRelativePath(testDir, typesPath);
+
+  const testFile: TestFileInfo = {
+    schemaFilePath: relativeSchemaPath,
+    typesFilePath: relativeTypesPath,
+    importPrefix,
+    schemas,
+  };
+
+  return generateTypeTests([testFile]);
+}
+
+/**
+ * Gets relative path from one file to another, ensuring it starts with ./
+ */
+function getRelativePath(from: string, to: string): string {
+  // Compute proper relative path
+  const fromParts = from.split("/").filter(Boolean);
+  const toParts = resolve(to).split("/").filter(Boolean);
+
+  // Find common prefix
+  let commonLength = 0;
+  for (let i = 0; i < Math.min(fromParts.length, toParts.length); i++) {
+    if (fromParts[i] === toParts[i]) {
+      commonLength++;
+    } else {
+      break;
+    }
+  }
+
+  // Build relative path
+  const upCount = fromParts.length - commonLength;
+  const downPath = toParts.slice(commonLength).join("/");
+
+  if (upCount === 0) {
+    return "./" + downPath;
+  }
+
+  return "../".repeat(upCount) + downPath;
 }

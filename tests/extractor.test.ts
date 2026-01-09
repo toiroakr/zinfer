@@ -16,7 +16,7 @@ const mapName = createNameMapper({ removeSuffix: "Schema" });
 afterAll(() => {
   try {
     const snapshotFiles = readdirSync(snapshotsDir)
-      .filter((f) => f.endsWith(".ts"))
+      .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
       .map((f) => resolve(snapshotsDir, f));
 
     if (snapshotFiles.length === 0) {
