@@ -41,6 +41,17 @@ export {
 
 export { BrandDetector, type SchemaBrandMap } from "./brand-detector.js";
 
+export {
+  TestGenerator,
+  generateTypeTests,
+  generateImportPrefix,
+  createTestSchemaInfo,
+  toPascalCase,
+  type TestSchemaInfo,
+  type TestFileInfo,
+  type TestGeneratorOptions,
+} from "./test-generator.js";
+
 export type {
   ExtractResult,
   FileExtractResult,

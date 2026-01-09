@@ -83,6 +83,7 @@ Options:
   -d, --declaration          Generate .d.ts files
   --dry-run                  Preview without writing files
   --with-descriptions        Include Zod .describe() as TSDoc comments
+  --generate-tests           Generate vitest type equality tests alongside type files
   -V, --version              Output the version number
   -h, --help                 Display help
 ```
@@ -426,6 +427,51 @@ const fileResult = extractor.extractFile("./schemas.ts");
 // スキーマ名の一覧
 const schemaNames = extractor.getSchemaNames("./schemas.ts");
 ```
+
+## 型テスト生成
+
+zinfer が生成した型が `z.input<typeof Schema>` / `z.output<typeof Schema>` と一致することを検証する vitest テストを自動生成できます。
+
+### 使用方法
+
+```bash
+# 型定義とテストを同時に生成
+zinfer "src/schemas/*.ts" --outDir ./types --generate-tests --suffix Schema
+# → ./types/user.ts (型定義)
+# → ./types/user.test.ts (テスト)
+
+# 単一ファイルに出力する場合
+zinfer "src/schemas/*.ts" --outFile ./types.ts --generate-tests --suffix Schema
+# → ./types.ts (型定義)
+# → ./types.test.ts (テスト)
+
+# テストを実行
+vitest run
+```
+
+### 生成されるテストの例
+
+```typescript
+import { describe, it, expectTypeOf } from "vitest";
+import type { z } from "zod";
+
+import { UserSchema } from "../schemas/user";
+import type { UserInput, UserOutput } from "./user";
+
+describe("Type equality tests", () => {
+  describe("user", () => {
+    it("UserSchema input matches z.input", () => {
+      expectTypeOf<UserInput>().toEqualTypeOf<z.input<typeof UserSchema>>();
+    });
+
+    it("UserSchema output matches z.output", () => {
+      expectTypeOf<UserOutput>().toEqualTypeOf<z.output<typeof UserSchema>>();
+    });
+  });
+});
+```
+
+スキーマを変更した後に `--generate-tests` を再実行することで、型の一致を継続的に検証できます。
 
 ## 対応している Zod 機能
 

@@ -16,6 +16,15 @@ export {
   createFileResolver,
   defineConfig,
   type ZinferConfig,
+  // Test generation
+  TestGenerator,
+  generateTypeTests,
+  generateImportPrefix,
+  createTestSchemaInfo,
+  toPascalCase,
+  type TestSchemaInfo,
+  type TestFileInfo,
+  type TestGeneratorOptions,
 } from "./core/index.js";
 
 // Type exports
