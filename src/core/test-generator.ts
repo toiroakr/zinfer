@@ -5,7 +5,7 @@
  * match z.input<typeof Schema> and z.output<typeof Schema>.
  */
 
-import { basename } from "path";
+import { basename } from "pathe";
 import type { MappedTypeName } from "./types.js";
 
 /**

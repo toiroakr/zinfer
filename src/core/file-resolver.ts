@@ -1,5 +1,5 @@
 import { glob } from "glob";
-import { resolve, dirname, basename, extname, relative, join } from "path";
+import { resolve, dirname, basename, extname, relative, join } from "pathe";
 import type { OutputOptions } from "./types.js";
 
 /**

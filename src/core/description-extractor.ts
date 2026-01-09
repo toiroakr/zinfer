@@ -1,15 +1,6 @@
 import { pathToFileURL } from "url";
-import { resolve } from "path";
-
-/**
- * Field description information.
- */
-export interface FieldDescription {
-  /** Field path (e.g., "user.name" for nested fields) */
-  path: string;
-  /** Description text from .describe() */
-  description: string;
-}
+import { resolve } from "pathe";
+import type { FieldDescription } from "./types.js";
 
 /**
  * Schema description information.

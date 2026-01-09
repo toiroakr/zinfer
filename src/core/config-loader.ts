@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { readFile } from "fs/promises";
-import { resolve } from "path";
+import { resolve } from "pathe";
 import { pathToFileURL } from "url";
 
 /**

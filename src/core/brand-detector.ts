@@ -1,14 +1,5 @@
 import { SourceFile, Node, CallExpression } from "ts-morph";
-
-/**
- * Information about a branded type in a schema.
- */
-export interface BrandInfo {
-  /** The brand name (e.g., "UserId") */
-  brandName: string;
-  /** The field path where the brand is applied (empty string for root-level) */
-  fieldPath: string;
-}
+import type { BrandInfo } from "./types.js";
 
 /**
  * Map of schema name to its brand information.

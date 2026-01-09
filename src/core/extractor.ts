@@ -74,13 +74,7 @@ export class ZodTypeExtractor {
    * @returns Array of extraction results for each schema
    */
   extractAll(filePath: string): ExtractResult[] {
-    // Get or add the source file
-    let sourceFile = this.project.getSourceFile(filePath);
-    if (!sourceFile) {
-      sourceFile = this.project.addSourceFileAtPath(filePath);
-    }
-
-    // Detect all exported schemas
+    const sourceFile = this.getOrAddSourceFile(filePath);
     const schemas = this.schemaDetector.detectExportedSchemas(sourceFile);
 
     return this.extractMultipleFromSourceFile(sourceFile, schemas);
@@ -94,13 +88,7 @@ export class ZodTypeExtractor {
    * @returns Array of extraction results
    */
   extractMultiple(filePath: string, schemaNames: string[]): ExtractResult[] {
-    // Get or add the source file
-    let sourceFile = this.project.getSourceFile(filePath);
-    if (!sourceFile) {
-      sourceFile = this.project.addSourceFileAtPath(filePath);
-    }
-
-    // Get schema info including explicit types
+    const sourceFile = this.getOrAddSourceFile(filePath);
     const allSchemas = this.schemaDetector.detectExportedSchemas(sourceFile);
     const schemas = schemaNames.map((name) => {
       const found = allSchemas.find((s) => s.name === name);
@@ -130,12 +118,14 @@ export class ZodTypeExtractor {
    * @returns Array of schema names
    */
   getSchemaNames(filePath: string): string[] {
-    let sourceFile = this.project.getSourceFile(filePath);
-    if (!sourceFile) {
-      sourceFile = this.project.addSourceFileAtPath(filePath);
-    }
+    return this.schemaDetector.getSchemaNames(this.getOrAddSourceFile(filePath));
+  }
 
-    return this.schemaDetector.getSchemaNames(sourceFile);
+  /**
+   * Gets or adds a source file to the project.
+   */
+  private getOrAddSourceFile(filePath: string): SourceFile {
+    return this.project.getSourceFile(filePath) ?? this.project.addSourceFileAtPath(filePath);
   }
 
   /**

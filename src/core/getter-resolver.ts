@@ -297,18 +297,6 @@ export class GetterResolver {
    * Checks if a schema has getter-based self-references.
    */
   hasSelfReferences(getterFields: Map<string, GetterFieldInfo>): boolean {
-    for (const info of getterFields.values()) {
-      if (info.isSelfRef) {
-        return true;
-      }
-    }
-    return false;
+    return Array.from(getterFields.values()).some((info) => info.isSelfRef);
   }
-}
-
-/**
- * Creates a new GetterResolver instance.
- */
-export function createGetterResolver(): GetterResolver {
-  return new GetterResolver();
 }
