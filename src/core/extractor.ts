@@ -303,10 +303,15 @@ export class ZodTypeExtractor {
       if (schema.explicitType) {
         // schema.explicitType already contains just the type name (e.g., "JsonValue")
         const typeName = schema.explicitType;
-        // Replace type name with self-referencing Input/Output types
-        const typeNamePattern = new RegExp(`\\b${typeName}\\b`, "g");
-        input = input.replace(typeNamePattern, `${schemaName}Input`);
-        output = output.replace(typeNamePattern, `${schemaName}Output`);
+        // Only replace if the type name is a valid identifier (not a complex type)
+        if (this.isValidIdentifier(typeName)) {
+          // Escape special regex characters in the type name
+          const escapedTypeName = this.escapeRegExp(typeName);
+          // Replace type name with self-referencing Input/Output types
+          const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
+          input = input.replace(typeNamePattern, `${schemaName}Input`);
+          output = output.replace(typeNamePattern, `${schemaName}Output`);
+        }
       }
 
       results.push({
@@ -510,14 +515,50 @@ export class ZodTypeExtractor {
   /**
    * Simplifies Zod internal function types to Function.
    * Replaces patterns like z.core.$InferInnerFunctionType<...> with Function.
+   * Handles nested type parameters properly.
    */
   private simplifyZodFunctionTypes(typeStr: string): string {
-    // Pattern for Zod internal function types
-    // z.core.$InferInnerFunctionType<z.core.$ZodFunctionArgs, z.ZodAny>
-    // z.core.$InferOuterFunctionType<z.core.$ZodFunctionArgs, z.core.$ZodFunctionOut>
-    const zodFunctionPattern = /z\.core\.\$Infer(?:Inner|Outer)FunctionType<[^>]+>/g;
+    // Pattern prefixes for Zod internal function types
+    const zodFunctionPrefixes = [
+      "z.core.$InferInnerFunctionType<",
+      "z.core.$InferOuterFunctionType<",
+    ];
 
-    return typeStr.replace(zodFunctionPattern, "Function");
+    let result = typeStr;
+    let modified = true;
+
+    // Loop until no more replacements are made (handles nested cases)
+    while (modified) {
+      modified = false;
+      for (const prefix of zodFunctionPrefixes) {
+        const idx = result.indexOf(prefix);
+        if (idx === -1) continue;
+
+        // Find the matching closing bracket using bracket counting
+        const startIdx = idx + prefix.length;
+        let depth = 1;
+        let endIdx = startIdx;
+
+        while (endIdx < result.length && depth > 0) {
+          const char = result[endIdx];
+          if (char === "<") {
+            depth++;
+          } else if (char === ">") {
+            depth--;
+          }
+          endIdx++;
+        }
+
+        if (depth === 0) {
+          // Replace the entire pattern with "Function"
+          result = result.substring(0, idx) + "Function" + result.substring(endIdx);
+          modified = true;
+          break; // Start over to handle any new matches
+        }
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -531,5 +572,20 @@ export class ZodTypeExtractor {
         typeAlias.remove();
       }
     }
+  }
+
+  /**
+   * Escapes special characters in a string for use in a RegExp.
+   */
+  private escapeRegExp(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  /**
+   * Checks if a string is a valid TypeScript identifier.
+   * Used to determine if a type name can be safely used in regex replacement.
+   */
+  private isValidIdentifier(str: string): boolean {
+    return /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(str);
   }
 }

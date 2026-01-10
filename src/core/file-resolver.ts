@@ -93,6 +93,10 @@ export class FileResolver {
    * @returns Generated filename
    */
   applyPattern(pattern: string, vars: { name: string; ext: string }): string {
-    return pattern.replace(/\[name\]/g, vars.name).replace(/\[ext\]/g, vars.ext);
+    // Escape $ in replacement strings to prevent regex special character interpretation
+    // In String.replace(), $& means the matched substring, $1 means first capture group, etc.
+    const escapedName = vars.name.replace(/\$/g, "$$$$");
+    const escapedExt = vars.ext.replace(/\$/g, "$$$$");
+    return pattern.replace(/\[name\]/g, escapedName).replace(/\[ext\]/g, escapedExt);
   }
 }

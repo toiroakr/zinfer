@@ -1,4 +1,5 @@
 import { SourceFile, ImportDeclaration, Project } from "ts-morph";
+import { join } from "pathe";
 import { SchemaDetector } from "./schema-detector.js";
 
 /**
@@ -154,10 +155,10 @@ export class ImportResolver {
   ): SourceFile | undefined {
     const sourceDir = fromFile.getDirectoryPath();
     const possiblePaths = [
-      `${sourceDir}/${moduleSpecifier}.ts`,
-      `${sourceDir}/${moduleSpecifier}/index.ts`,
-      `${sourceDir}/${moduleSpecifier}.js`,
-      `${sourceDir}/${moduleSpecifier}/index.js`,
+      join(sourceDir, `${moduleSpecifier}.ts`),
+      join(sourceDir, moduleSpecifier, "index.ts"),
+      join(sourceDir, `${moduleSpecifier}.js`),
+      join(sourceDir, moduleSpecifier, "index.js"),
     ];
 
     for (const possiblePath of possiblePaths) {
@@ -198,10 +199,10 @@ export class ImportResolver {
       // Try to resolve manually for index.ts patterns
       const sourceDir = sourceFile.getDirectoryPath();
       const possiblePaths = [
-        `${sourceDir}/${moduleSpecifier}.ts`,
-        `${sourceDir}/${moduleSpecifier}/index.ts`,
-        `${sourceDir}/${moduleSpecifier}.js`,
-        `${sourceDir}/${moduleSpecifier}/index.js`,
+        join(sourceDir, `${moduleSpecifier}.ts`),
+        join(sourceDir, moduleSpecifier, "index.ts"),
+        join(sourceDir, `${moduleSpecifier}.js`),
+        join(sourceDir, moduleSpecifier, "index.js"),
       ];
 
       for (const possiblePath of possiblePaths) {

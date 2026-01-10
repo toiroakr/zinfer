@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { resolve, dirname, basename, relative } from "pathe";
+import { resolve, dirname, basename, relative, parse as parsePath } from "pathe";
 import { existsSync, writeFileSync, mkdirSync } from "fs";
 import {
   ZodTypeExtractor,
@@ -173,7 +173,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
       console.log(content);
     } else {
       ensureDir(dirname(outputPath));
-      writeFileSync(outputPath, content, "utf-8");
+      writeFile(outputPath, content);
       console.log(`Generated: ${outputPath} (${allResults.length} types)`);
     }
 
@@ -192,7 +192,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
         console.log("---");
         console.log(testContent);
       } else {
-        writeFileSync(testPath, testContent, "utf-8");
+        writeFile(testPath, testContent);
         console.log(`Generated: ${testPath} (${allResults.length * 2} test cases)`);
       }
     }
@@ -230,7 +230,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
         console.log("");
       } else {
         ensureDir(dirname(outputPath));
-        writeFileSync(outputPath, content, "utf-8");
+        writeFile(outputPath, content);
         console.log(`Generated: ${outputPath} (${results.length} types)`);
       }
 
@@ -251,7 +251,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
           console.log(testContent);
           console.log("");
         } else {
-          writeFileSync(testPath, testContent, "utf-8");
+          writeFile(testPath, testContent);
           console.log(`Generated: ${testPath} (${results.length * 2} test cases)`);
         }
       }
@@ -330,7 +330,7 @@ function mergeCliWithConfig(cliOptions: CLIOptions, fileConfig: ZinferConfig): Z
   // Merge CLI options (only non-undefined values)
   if (cliOptions.project !== undefined) merged.project = cliOptions.project;
   if (cliOptions.schemas !== undefined) {
-    merged.schemas = cliOptions.schemas.split(",").map((s) => s.trim());
+    merged.schemas = parseSchemaNames(cliOptions.schemas);
   }
   if (cliOptions.inputOnly !== undefined) merged.inputOnly = cliOptions.inputOnly;
   if (cliOptions.outputOnly !== undefined) merged.outputOnly = cliOptions.outputOnly;
@@ -374,15 +374,81 @@ function createNameMapper(config: ZinferConfig): NameMapper {
 }
 
 /**
+ * Parses schema names from a comma-separated string.
+ * Filters out empty strings and validates identifier format.
+ *
+ * @param schemasStr - Comma-separated schema names
+ * @returns Array of valid schema names
+ * @throws Error if any schema name is invalid
+ */
+function parseSchemaNames(schemasStr: string): string[] {
+  const schemas = schemasStr
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  // Validate that each schema name is a valid identifier
+  const identifierPattern = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+  for (const schema of schemas) {
+    if (!identifierPattern.test(schema)) {
+      throw new Error(
+        `Invalid schema name: "${schema}". Schema names must be valid TypeScript identifiers.`,
+      );
+    }
+  }
+
+  return schemas;
+}
+
+/**
  * Parses custom mapping string: "Schema1:Type1,Schema2:Type2"
+ * Validates both schema names and type names.
+ *
+ * @param mapStr - Custom mapping string
+ * @returns Map of schema names to type names
+ * @throws Error if any mapping is invalid
  */
 function parseCustomMap(mapStr: string): Record<string, string> {
   const result: Record<string, string> = {};
+  const identifierPattern = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+
   for (const pair of mapStr.split(",")) {
-    const [from, to] = pair.split(":").map((s) => s.trim());
-    if (from && to) {
-      result[from] = to;
+    const trimmedPair = pair.trim();
+    if (!trimmedPair) continue;
+
+    const colonIndex = trimmedPair.indexOf(":");
+    if (colonIndex === -1) {
+      throw new Error(`Invalid mapping format: "${trimmedPair}". Expected "SchemaName:TypeName".`);
     }
+
+    const from = trimmedPair.substring(0, colonIndex).trim();
+    const to = trimmedPair.substring(colonIndex + 1).trim();
+
+    if (!from || !to) {
+      throw new Error(
+        `Invalid mapping: "${trimmedPair}". Both schema name and type name are required.`,
+      );
+    }
+
+    if (!identifierPattern.test(from)) {
+      throw new Error(
+        `Invalid schema name in mapping: "${from}". Must be a valid TypeScript identifier.`,
+      );
+    }
+
+    if (!identifierPattern.test(to)) {
+      throw new Error(
+        `Invalid type name in mapping: "${to}". Must be a valid TypeScript identifier.`,
+      );
+    }
+
+    if (result[from] !== undefined) {
+      console.warn(
+        `Warning: Duplicate mapping for "${from}". Using "${to}" (overwriting "${result[from]}").`,
+      );
+    }
+
+    result[from] = to;
   }
   return result;
 }
@@ -392,14 +458,26 @@ function parseCustomMap(mapStr: string): Record<string, string> {
  */
 function findTsConfig(startDir: string): string | undefined {
   let currentDir = startDir;
-  const root = resolve("/");
+  // Get the root directory in a cross-platform way (e.g., "/" on Unix, "C:\" on Windows)
+  const root = parsePath(resolve(startDir)).root;
 
   while (currentDir !== root) {
     const tsconfigPath = resolve(currentDir, "tsconfig.json");
     if (existsSync(tsconfigPath)) {
       return tsconfigPath;
     }
-    currentDir = resolve(currentDir, "..");
+    const parentDir = resolve(currentDir, "..");
+    // Prevent infinite loop at root
+    if (parentDir === currentDir) {
+      break;
+    }
+    currentDir = parentDir;
+  }
+
+  // Check root directory as well
+  const rootTsconfig = resolve(root, "tsconfig.json");
+  if (existsSync(rootTsconfig)) {
+    return rootTsconfig;
   }
 
   return undefined;
@@ -407,10 +485,29 @@ function findTsConfig(startDir: string): string | undefined {
 
 /**
  * Ensures a directory exists.
+ * @throws Error if the directory cannot be created
  */
 function ensureDir(dirPath: string): void {
   if (!existsSync(dirPath)) {
-    mkdirSync(dirPath, { recursive: true });
+    try {
+      mkdirSync(dirPath, { recursive: true });
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException;
+      throw new Error(`Failed to create directory "${dirPath}": ${err.message}`);
+    }
+  }
+}
+
+/**
+ * Writes content to a file with proper error handling.
+ * @throws Error if the file cannot be written
+ */
+function writeFile(filePath: string, content: string): void {
+  try {
+    writeFileSync(filePath, content, "utf-8");
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    throw new Error(`Failed to write file "${filePath}": ${err.message}`);
   }
 }
 

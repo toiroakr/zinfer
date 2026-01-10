@@ -257,15 +257,52 @@ function applyBrandToField(typeStr: string, fieldPath: string, brandName: string
   const fieldName = parts[parts.length - 1];
 
   // Find the field pattern (fieldName: type or fieldName?: type)
-  const fieldPatterns = [new RegExp(`(${fieldName}\\??: )(\\w+)(;|\\s|\\})`)];
+  const fieldPatterns = [`${fieldName}: `, `${fieldName}?: `];
 
   for (const pattern of fieldPatterns) {
-    const match = typeStr.match(pattern);
-    if (match) {
-      const [fullMatch, prefix, fieldType, suffix] = match;
-      const brandedType = `${fieldType} & BRAND<"${brandName}">`;
-      return typeStr.replace(fullMatch, `${prefix}${brandedType}${suffix}`);
+    const idx = typeStr.indexOf(pattern);
+    if (idx === -1) continue;
+
+    const valueStart = idx + pattern.length;
+
+    // Find the end of the field type by tracking braces/brackets/parentheses
+    let depth = 0;
+    let endIdx = valueStart;
+    let inString = false;
+    let stringChar = "";
+
+    while (endIdx < typeStr.length) {
+      const char = typeStr[endIdx];
+      const prevChar = typeStr[endIdx - 1];
+
+      // Track string literals
+      if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+          stringChar = "";
+        }
+      }
+
+      if (!inString) {
+        if (char === "{" || char === "[" || char === "(" || char === "<") {
+          depth++;
+        } else if (char === "}" || char === "]" || char === ")" || char === ">") {
+          if (depth === 0) break;
+          depth--;
+        } else if (char === ";" && depth === 0) {
+          break;
+        }
+      }
+      endIdx++;
     }
+
+    // Extract the current type
+    const fieldType = typeStr.substring(valueStart, endIdx).trim();
+    const brandedType = `${fieldType} & BRAND<"${brandName}">`;
+    return typeStr.substring(0, valueStart) + brandedType + typeStr.substring(endIdx);
   }
 
   return typeStr;

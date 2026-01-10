@@ -112,8 +112,16 @@ export class ConfigLoader {
    * Loads configuration from package.json's "zinfer" field.
    */
   private async loadFromPackageJson(packageJsonPath: string): Promise<ZinferConfig | null> {
+    let content: string;
     try {
-      const content = await readFile(packageJsonPath, "utf-8");
+      content = await readFile(packageJsonPath, "utf-8");
+    } catch (error) {
+      // File read error (permissions, not found, etc.) - silently return null
+      // since package.json config is optional
+      return null;
+    }
+
+    try {
       const packageJson = JSON.parse(content);
 
       if (packageJson.zinfer && typeof packageJson.zinfer === "object") {
@@ -121,7 +129,9 @@ export class ConfigLoader {
       }
 
       return null;
-    } catch {
+    } catch (error) {
+      // JSON parse error - warn the user since this is likely a syntax error
+      console.warn(`Warning: Failed to parse ${packageJsonPath}: ${(error as Error).message}`);
       return null;
     }
   }
