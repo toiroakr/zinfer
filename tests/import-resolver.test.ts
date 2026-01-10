@@ -75,21 +75,4 @@ describe("ImportResolver", () => {
       expect(importedSchemas.size).toBe(0);
     });
   });
-
-  describe("clearCache", () => {
-    it("should clear the processed files cache", () => {
-      const consumerPath = resolve(fixturesDir, "import-test/consumer.ts");
-      const sourceFile = project.addSourceFileAtPath(consumerPath);
-
-      // First call
-      resolver.findImportedSchemas(sourceFile, project);
-
-      // Clear cache
-      resolver.clearCache();
-
-      // Should be able to process again
-      const importedSchemas = resolver.findImportedSchemas(sourceFile, project);
-      expect(importedSchemas.size).toBe(2);
-    });
-  });
 });

@@ -84,7 +84,7 @@ describe("GetterResolver", () => {
       ]);
 
       const typeStr = "{ value: string; children?: any[]; }";
-      const result = resolver.resolveAnyTypes(typeStr, "TreeNodeSchema", getterFields, "TreeNode");
+      const result = resolver.resolveAnyTypes(typeStr, getterFields, "TreeNode");
 
       expect(result).toBe("{ value: string; children?: TreeNode[]; }");
     });
@@ -104,12 +104,7 @@ describe("GetterResolver", () => {
       ]);
 
       const typeStr = "{ name: string; items: { [x: string]: any }; }";
-      const result = resolver.resolveAnyTypes(
-        typeStr,
-        "NestedRecordSchema",
-        getterFields,
-        "NestedRecord",
-      );
+      const result = resolver.resolveAnyTypes(typeStr, getterFields, "NestedRecord");
 
       expect(result).toBe("{ name: string; items: { [x: string]: NestedRecord }; }");
     });
@@ -129,7 +124,7 @@ describe("GetterResolver", () => {
       ]);
 
       const typeStr = "{ value: string; other: any; }";
-      const result = resolver.resolveAnyTypes(typeStr, "MySchema", getterFields, "MyType");
+      const result = resolver.resolveAnyTypes(typeStr, getterFields, "MyType");
 
       expect(result).toBe("{ value: string; other: any; }");
     });
@@ -143,7 +138,7 @@ describe("GetterResolver", () => {
       ]);
 
       const typeStr = "{ value: string; child?: any; }";
-      const result = resolver.resolveAnyTypes(typeStr, "NodeSchema", getterFields, "Node");
+      const result = resolver.resolveAnyTypes(typeStr, getterFields, "Node");
 
       expect(result).toBe("{ value: string; child?: Node; }");
     });
