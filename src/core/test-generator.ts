@@ -5,7 +5,7 @@
  * match z.input<typeof Schema> and z.output<typeof Schema>.
  */
 
-import { basename } from "path";
+import { basename, extname } from "pathe";
 import type { MappedTypeName } from "./types.js";
 
 /**
@@ -53,10 +53,23 @@ export function toPascalCase(str: string): string {
 }
 
 /**
+ * Removes file extension from a path.
+ * Handles .ts, .js, .tsx, .jsx, .mts, .mjs, .cts, .cjs extensions.
+ */
+function removeExtension(filePath: string): string {
+  const ext = extname(filePath);
+  const supportedExtensions = [".ts", ".js", ".tsx", ".jsx", ".mts", ".mjs", ".cts", ".cjs"];
+  if (supportedExtensions.includes(ext)) {
+    return filePath.slice(0, -ext.length);
+  }
+  return filePath;
+}
+
+/**
  * Generates a unique prefix from a file path.
  */
 export function generateImportPrefix(filePath: string): string {
-  const name = basename(filePath, ".ts");
+  const name = removeExtension(basename(filePath));
   return toPascalCase(name);
 }
 
@@ -142,13 +155,13 @@ import type { z } from "zod";`;
    */
   private generateFileImports(file: TestFileInfo): string {
     const lines: string[] = [];
-    const fileLabel = basename(file.schemaFilePath).replace(/\.(ts|js)$/, "");
+    const fileLabel = removeExtension(basename(file.schemaFilePath));
 
     lines.push(`// --- ${fileLabel} ---`);
 
     // Remove extension for imports (TypeScript/bundlers handle resolution)
-    const schemaPath = file.schemaFilePath.replace(/\.(ts|js)$/, "");
-    const typesPath = file.typesFilePath.replace(/\.(ts|js)$/, "");
+    const schemaPath = removeExtension(file.schemaFilePath);
+    const typesPath = removeExtension(file.typesFilePath);
 
     // Schema imports (runtime values with aliases)
     const schemaImports = file.schemas
@@ -189,7 +202,7 @@ ${describes}
    * Generates a describe block for a single file.
    */
   private generateFileDescribe(file: TestFileInfo): string {
-    const fileLabel = basename(file.schemaFilePath, ".ts");
+    const fileLabel = removeExtension(basename(file.schemaFilePath));
     const tests = file.schemas
       .map((s) => this.generateSchemaTests(file.importPrefix, s))
       .join("\n\n");

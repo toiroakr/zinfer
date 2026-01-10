@@ -77,6 +77,51 @@ export class SchemaDetector {
   }
 
   /**
+   * Known Zod schema builder functions that follow the z. prefix.
+   */
+  private static readonly ZOD_SCHEMA_BUILDERS = new Set([
+    "object",
+    "string",
+    "number",
+    "boolean",
+    "array",
+    "tuple",
+    "record",
+    "map",
+    "set",
+    "union",
+    "intersection",
+    "literal",
+    "enum",
+    "nativeEnum",
+    "nullable",
+    "optional",
+    "any",
+    "unknown",
+    "never",
+    "void",
+    "null",
+    "undefined",
+    "bigint",
+    "date",
+    "symbol",
+    "function",
+    "lazy",
+    "promise",
+    "instanceof",
+    "discriminatedUnion",
+    "preprocess",
+    "pipeline",
+    "custom",
+    "coerce",
+    "transformer",
+    "effect",
+    "brand",
+    "strictObject",
+    "looseObject",
+  ]);
+
+  /**
    * Checks if a variable declaration is a Zod schema.
    *
    * @param declaration - The variable declaration to check
@@ -103,9 +148,20 @@ export class SchemaDetector {
 
     const initText = initializer.getText();
 
-    // Check if it starts with z. (common Zod pattern)
+    // Check if it starts with z. followed by a known Zod schema builder
     if (initText.startsWith("z.")) {
-      return true;
+      // Extract the method name after "z."
+      const afterZ = initText.substring(2);
+      // Find where the method name ends (at '(' or '.')
+      const endIdx = Math.min(
+        afterZ.indexOf("(") !== -1 ? afterZ.indexOf("(") : afterZ.length,
+        afterZ.indexOf(".") !== -1 ? afterZ.indexOf(".") : afterZ.length,
+      );
+      const methodName = afterZ.substring(0, endIdx);
+
+      if (SchemaDetector.ZOD_SCHEMA_BUILDERS.has(methodName)) {
+        return true;
+      }
     }
 
     // Check if it's a method chain on another schema variable
@@ -168,12 +224,78 @@ export class SchemaDetector {
 
     const typeText = typeNode.getText();
 
-    // Match patterns like z.ZodType<T>, z.ZodSchema<T>, ZodType<T>, ZodSchema<T>
-    const zodTypePattern = /^(?:z\.)?(?:ZodType|ZodSchema|ZodEffects)<\s*(.+?)(?:\s*,\s*.+)?\s*>$/;
-    const match = typeText.match(zodTypePattern);
+    // Check if it matches Zod type patterns
+    const zodTypePatterns = [
+      "z.ZodType<",
+      "z.ZodSchema<",
+      "z.ZodEffects<",
+      "ZodType<",
+      "ZodSchema<",
+      "ZodEffects<",
+    ];
 
-    if (match) {
-      return match[1].trim();
+    let matchedPattern: string | undefined;
+    for (const pattern of zodTypePatterns) {
+      if (typeText.startsWith(pattern)) {
+        matchedPattern = pattern;
+        break;
+      }
+    }
+
+    if (!matchedPattern) {
+      return undefined;
+    }
+
+    // Extract the first type parameter using bracket counting
+    const startIdx = matchedPattern.length;
+    return this.extractFirstTypeParameter(typeText, startIdx);
+  }
+
+  /**
+   * Extracts the first type parameter from a generic type string.
+   * Handles nested brackets properly.
+   *
+   * @param typeText - The full type text (e.g., "ZodType<{ a: string }, ZodTypeDef>")
+   * @param startIdx - The index after the opening "<"
+   * @returns The first type parameter, or undefined if parsing fails
+   */
+  private extractFirstTypeParameter(typeText: string, startIdx: number): string | undefined {
+    let depth = 1;
+    let endIdx = startIdx;
+    let inString = false;
+    let stringChar = "";
+
+    while (endIdx < typeText.length && depth > 0) {
+      const char = typeText[endIdx];
+      const prevChar = typeText[endIdx - 1];
+
+      // Track string literals
+      if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+          stringChar = "";
+        }
+      }
+
+      if (!inString) {
+        if (char === "<" || char === "{" || char === "[" || char === "(") {
+          depth++;
+        } else if (char === ">" || char === "}" || char === "]" || char === ")") {
+          depth--;
+          if (depth === 0) break;
+        } else if (char === "," && depth === 1) {
+          // Found the comma separating type parameters at depth 1
+          break;
+        }
+      }
+      endIdx++;
+    }
+
+    if (endIdx > startIdx) {
+      return typeText.substring(startIdx, endIdx).trim();
     }
 
     return undefined;

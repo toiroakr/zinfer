@@ -76,7 +76,7 @@ export class NameMapper {
    * @returns A function that maps schema names to type names
    */
   createMapFunction(): (schemaName: string) => MappedTypeName {
-    return (schemaName: string) => this.map(schemaName);
+    return this.map.bind(this);
   }
 }
 

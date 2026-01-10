@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { readFile } from "fs/promises";
-import { resolve } from "path";
+import { resolve } from "pathe";
 import { pathToFileURL } from "url";
 
 /**
@@ -112,8 +112,16 @@ export class ConfigLoader {
    * Loads configuration from package.json's "zinfer" field.
    */
   private async loadFromPackageJson(packageJsonPath: string): Promise<ZinferConfig | null> {
+    let content: string;
     try {
-      const content = await readFile(packageJsonPath, "utf-8");
+      content = await readFile(packageJsonPath, "utf-8");
+    } catch (error) {
+      // File read error (permissions, not found, etc.) - silently return null
+      // since package.json config is optional
+      return null;
+    }
+
+    try {
       const packageJson = JSON.parse(content);
 
       if (packageJson.zinfer && typeof packageJson.zinfer === "object") {
@@ -121,17 +129,12 @@ export class ConfigLoader {
       }
 
       return null;
-    } catch {
+    } catch (error) {
+      // JSON parse error - warn the user since this is likely a syntax error
+      console.warn(`Warning: Failed to parse ${packageJsonPath}: ${(error as Error).message}`);
       return null;
     }
   }
-}
-
-/**
- * Creates a new ConfigLoader instance.
- */
-export function createConfigLoader(): ConfigLoader {
-  return new ConfigLoader();
 }
 
 /**

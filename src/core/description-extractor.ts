@@ -1,15 +1,6 @@
 import { pathToFileURL } from "url";
-import { resolve } from "path";
-
-/**
- * Field description information.
- */
-export interface FieldDescription {
-  /** Field path (e.g., "user.name" for nested fields) */
-  path: string;
-  /** Description text from .describe() */
-  description: string;
-}
+import { resolve } from "pathe";
+import type { FieldDescription } from "./types.js";
 
 /**
  * Schema description information.
@@ -242,11 +233,4 @@ export class DescriptionExtractor {
 
     return undefined;
   }
-}
-
-/**
- * Creates a new DescriptionExtractor instance.
- */
-export function createDescriptionExtractor(): DescriptionExtractor {
-  return new DescriptionExtractor();
 }

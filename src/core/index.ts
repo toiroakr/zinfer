@@ -16,9 +16,9 @@ export { SchemaDetector } from "./schema-detector.js";
 
 export { NameMapper, createNameMapper } from "./name-mapper.js";
 
-export { FileResolver, createFileResolver } from "./file-resolver.js";
+export { FileResolver } from "./file-resolver.js";
 
-export { DescriptionExtractor, createDescriptionExtractor } from "./description-extractor.js";
+export { DescriptionExtractor } from "./description-extractor.js";
 
 export {
   ZinferError,
@@ -32,7 +32,6 @@ export {
 
 export {
   ConfigLoader,
-  createConfigLoader,
   mergeConfig,
   defineConfig,
   type ZinferConfig,

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from "vitest";
-import { resolve } from "path";
+import { resolve } from "pathe";
 import { ZodTypeExtractor } from "../src/core/extractor.js";
 import { generateDeclarationFile } from "../src/core/type-printer.js";
 import { createNameMapper } from "../src/core/name-mapper.js";
@@ -11,6 +11,23 @@ import { readdirSync } from "fs";
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
 const snapshotsDir = resolve(import.meta.dirname, "__file_snapshots__");
 const mapName = createNameMapper({ removeSuffix: "Schema" });
+
+/**
+ * Creates a standard schema test case.
+ */
+function createSchemaTest(
+  extractor: ZodTypeExtractor,
+  schemaName: string,
+  description: string = "should generate TypeScript declarations",
+) {
+  describe(`${schemaName}.ts`, () => {
+    it(description, async () => {
+      const results = extractor.extractAll(resolve(fixturesDir, `${schemaName}.ts`));
+      const output = generateDeclarationFile(results, mapName);
+      await expect(output).toMatchFileSnapshot(`__file_snapshots__/${schemaName}.ts`);
+    });
+  });
+}
 
 // After all tests, run tsgo on all generated snapshots (single invocation)
 afterAll(() => {
@@ -65,117 +82,69 @@ afterAll(() => {
 describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   const extractor = new ZodTypeExtractor();
 
-  describe("basic-schema.ts", () => {
-    it("should generate TypeScript declarations", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "basic-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/basic-schema.ts");
-    });
-  });
-
-  describe("transform-schema.ts", () => {
-    it("should generate TypeScript declarations with transforms", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "transform-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/transform-schema.ts");
-    });
-  });
-
-  describe("nested-schema.ts", () => {
-    it("should generate TypeScript declarations with nested objects", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "nested-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/nested-schema.ts");
-    });
-  });
-
-  describe("union-schema.ts", () => {
-    it("should generate TypeScript declarations with unions", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "union-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/union-schema.ts");
-    });
-  });
-
-  describe("intersection-schema.ts", () => {
-    it("should generate TypeScript declarations with intersections", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "intersection-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/intersection-schema.ts");
-    });
-  });
-
-  describe("enum-schema.ts", () => {
-    it("should generate TypeScript declarations with enums", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "enum-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/enum-schema.ts");
-    });
-  });
-
-  describe("utility-types-schema.ts", () => {
-    it("should generate TypeScript declarations with utility types", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "utility-types-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/utility-types-schema.ts");
-    });
-  });
-
-  describe("multi-schema.ts", () => {
-    it("should generate TypeScript declarations for multiple schemas", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "multi-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/multi-schema.ts");
-    });
-  });
-
-  describe("lazy-schema.ts", () => {
-    it("should generate TypeScript declarations with circular references", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "lazy-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/lazy-schema.ts");
-    });
-  });
-
-  describe("getter-schema.ts", () => {
-    it("should generate TypeScript declarations with getter-based recursive schemas", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "getter-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/getter-schema.ts");
-    });
-  });
-
-  describe("cross-ref-schema.ts", () => {
-    it("should generate TypeScript declarations with cross-references", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "cross-ref-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/cross-ref-schema.ts");
-    });
-  });
-
-  describe("mixed-export-schema.ts", () => {
-    it("should generate TypeScript declarations respecting export status", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "mixed-export-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/mixed-export-schema.ts");
-    });
-  });
-
-  describe("union-ref-schema.ts", () => {
-    it("should generate TypeScript declarations with union references", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "union-ref-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/union-ref-schema.ts");
-    });
-  });
-
-  describe("brand-schema.ts", () => {
-    it("should generate TypeScript declarations with brand information", async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "brand-schema.ts"));
-      const output = generateDeclarationFile(results, mapName);
-      await expect(output).toMatchFileSnapshot("__file_snapshots__/brand-schema.ts");
-    });
-  });
+  // Standard schema tests
+  createSchemaTest(extractor, "basic-schema");
+  createSchemaTest(
+    extractor,
+    "transform-schema",
+    "should generate TypeScript declarations with transforms",
+  );
+  createSchemaTest(
+    extractor,
+    "nested-schema",
+    "should generate TypeScript declarations with nested objects",
+  );
+  createSchemaTest(
+    extractor,
+    "union-schema",
+    "should generate TypeScript declarations with unions",
+  );
+  createSchemaTest(
+    extractor,
+    "intersection-schema",
+    "should generate TypeScript declarations with intersections",
+  );
+  createSchemaTest(extractor, "enum-schema", "should generate TypeScript declarations with enums");
+  createSchemaTest(
+    extractor,
+    "utility-types-schema",
+    "should generate TypeScript declarations with utility types",
+  );
+  createSchemaTest(
+    extractor,
+    "multi-schema",
+    "should generate TypeScript declarations for multiple schemas",
+  );
+  createSchemaTest(
+    extractor,
+    "lazy-schema",
+    "should generate TypeScript declarations with circular references",
+  );
+  createSchemaTest(
+    extractor,
+    "getter-schema",
+    "should generate TypeScript declarations with getter-based recursive schemas",
+  );
+  createSchemaTest(
+    extractor,
+    "cross-ref-schema",
+    "should generate TypeScript declarations with cross-references",
+  );
+  createSchemaTest(
+    extractor,
+    "mixed-export-schema",
+    "should generate TypeScript declarations respecting export status",
+  );
+  createSchemaTest(
+    extractor,
+    "union-ref-schema",
+    "should generate TypeScript declarations with union references",
+  );
+  createSchemaTest(
+    extractor,
+    "brand-schema",
+    "should generate TypeScript declarations with brand information",
+  );
 
   describe("described-schema.ts", () => {
     it("should generate TypeScript declarations without TSDoc comments by default", async () => {
@@ -193,7 +162,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       const schemaNames = results.map((r) => r.schemaName);
       const descriptions = await descriptionExtractor.extractDescriptions(filePath, schemaNames);
 
-      const resultsWithDescriptions: ExtractResult[] = results.map((result) => {
+      const resultsWithDescriptions = results.map((result) => {
         const desc = descriptions.get(result.schemaName);
         if (!desc) {
           return result;
