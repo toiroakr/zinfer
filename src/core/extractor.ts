@@ -526,10 +526,15 @@ export class ZodTypeExtractor {
 
     let result = typeStr;
     let modified = true;
+    // Safety limit to prevent infinite loops in case of malformed input
+    const maxIterations = 100;
+    let iterations = 0;
 
     // Loop until no more replacements are made (handles nested cases)
-    while (modified) {
+    while (modified && iterations < maxIterations) {
       modified = false;
+      iterations++;
+
       for (const prefix of zodFunctionPrefixes) {
         const idx = result.indexOf(prefix);
         if (idx === -1) continue;
@@ -555,6 +560,7 @@ export class ZodTypeExtractor {
           modified = true;
           break; // Start over to handle any new matches
         }
+        // If depth > 0, the bracket is unbalanced - skip this match to avoid infinite loop
       }
     }
 

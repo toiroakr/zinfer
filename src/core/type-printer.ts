@@ -369,6 +369,13 @@ export function formatAsDeclaration(
  * @param options - Declaration options
  * @returns TypeScript type declarations string
  */
+/**
+ * Escapes special characters in a string for use in a RegExp.
+ */
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function formatMultipleAsDeclarations(
   results: ExtractResult[],
   mapName: (schemaName: string) => MappedTypeName,
@@ -387,12 +394,15 @@ export function formatMultipleAsDeclarations(
 
     // Replace all schema references in the type strings
     for (const [schemaName, mappedName] of typeNameMap) {
+      // Escape special regex characters in schema name
+      const escapedSchemaName = escapeRegExp(schemaName);
+
       // Replace SchemaNameInput -> MappedNameInput
-      const inputPattern = new RegExp(`\\b${schemaName}Input\\b`, "g");
+      const inputPattern = new RegExp(`\\b${escapedSchemaName}Input\\b`, "g");
       input = input.replace(inputPattern, mappedName.inputName);
 
       // Replace SchemaNameOutput -> MappedNameOutput
-      const outputPattern = new RegExp(`\\b${schemaName}Output\\b`, "g");
+      const outputPattern = new RegExp(`\\b${escapedSchemaName}Output\\b`, "g");
       output = output.replace(outputPattern, mappedName.outputName);
     }
 

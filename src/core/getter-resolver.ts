@@ -207,20 +207,25 @@ export class GetterResolver {
   private replaceRecordAny(typeStr: string, fieldName: string, typeName: string): string {
     // Find "fieldName: { [x: string]: any" or "fieldName?: { [x: string]: any"
     const fieldPatterns = [`${fieldName}: {`, `${fieldName}?: {`];
+    const indexSigPattern = "[x: string]:";
 
     for (const pattern of fieldPatterns) {
       let idx = typeStr.indexOf(pattern);
       while (idx !== -1) {
         // Find the index signature pattern
         const afterBrace = idx + pattern.length;
-        const indexSigStart = typeStr.indexOf("[x: string]:", afterBrace);
+        const indexSigStart = typeStr.indexOf(indexSigPattern, afterBrace);
 
         if (indexSigStart !== -1 && indexSigStart < afterBrace + 20) {
-          const colonPos = indexSigStart + "[x: string]:".length;
-          // Find "any" after the colon
-          const afterColon = typeStr.substring(colonPos).trimStart();
-          if (afterColon.startsWith("any")) {
-            const anyStart = colonPos + typeStr.substring(colonPos).indexOf("any");
+          const colonPos = indexSigStart + indexSigPattern.length;
+          // Find "any" after the colon - count whitespace explicitly
+          let scanPos = colonPos;
+          while (scanPos < typeStr.length && /\s/.test(typeStr[scanPos])) {
+            scanPos++;
+          }
+
+          if (typeStr.substring(scanPos, scanPos + 3) === "any") {
+            const anyStart = scanPos;
             const anyEnd = anyStart + 3;
             typeStr = typeStr.substring(0, anyStart) + typeName + typeStr.substring(anyEnd);
           }
