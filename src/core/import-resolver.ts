@@ -25,7 +25,6 @@ export type ImportedSchemaMap = Map<string, ImportedSchemaInfo>;
  */
 export class ImportResolver {
   private schemaDetector: SchemaDetector;
-  private processedFiles: Set<string> = new Set();
 
   constructor() {
     this.schemaDetector = new SchemaDetector();
@@ -223,61 +222,5 @@ export class ImportResolver {
     }
 
     return undefined;
-  }
-
-  /**
-   * Extracts schemas from imported files and returns their types.
-   *
-   * @param importedSchemas - Map of imported schema info
-   * @param project - The ts-morph project
-   * @param extractType - Function to extract type from a schema
-   * @returns Map of local schema name to its input/output types
-   */
-  extractImportedSchemaTypes(
-    importedSchemas: ImportedSchemaMap,
-    project: Project,
-    extractType: (sourceFile: SourceFile, schemaName: string) => { input: string; output: string },
-  ): Map<string, { input: string; output: string }> {
-    const result = new Map<string, { input: string; output: string }>();
-
-    // Group by source file
-    const byFile = new Map<string, ImportedSchemaInfo[]>();
-    for (const info of importedSchemas.values()) {
-      if (!info.resolved) continue;
-
-      const existing = byFile.get(info.sourceFilePath) || [];
-      existing.push(info);
-      byFile.set(info.sourceFilePath, existing);
-    }
-
-    // Extract types from each file
-    for (const [filePath, schemas] of byFile) {
-      // Skip if already processed (avoid circular dependencies)
-      if (this.processedFiles.has(filePath)) {
-        continue;
-      }
-      this.processedFiles.add(filePath);
-
-      const sourceFile = project.getSourceFile(filePath);
-      if (!sourceFile) continue;
-
-      for (const schemaInfo of schemas) {
-        try {
-          const types = extractType(sourceFile, schemaInfo.originalName);
-          result.set(schemaInfo.localName, types);
-        } catch {
-          // Failed to extract, skip
-        }
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * Clears the processed files cache.
-   */
-  clearCache(): void {
-    this.processedFiles.clear();
   }
 }

@@ -128,13 +128,6 @@ export class ConfigLoader {
 }
 
 /**
- * Creates a new ConfigLoader instance.
- */
-export function createConfigLoader(): ConfigLoader {
-  return new ConfigLoader();
-}
-
-/**
  * Merges CLI options with config file options.
  * CLI options take precedence over config file options.
  */

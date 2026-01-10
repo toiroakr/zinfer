@@ -173,14 +173,12 @@ export class GetterResolver {
    * Uses structured parsing instead of regex.
    *
    * @param typeStr - The extracted type string with `any` placeholders
-   * @param schemaName - The schema name being extracted
    * @param getterFields - Map of field name to getter field info
    * @param typeName - The generated type name to use for self-references
    * @returns The resolved type string with proper self-references
    */
   resolveAnyTypes(
     typeStr: string,
-    _schemaName: string,
     getterFields: Map<string, GetterFieldInfo>,
     typeName: string,
   ): string {

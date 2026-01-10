@@ -13,7 +13,6 @@ export {
   NameMapper,
   createNameMapper,
   FileResolver,
-  createFileResolver,
   defineConfig,
   type ZinferConfig,
   // Test generation
@@ -43,11 +42,11 @@ import {
   ZodTypeExtractor,
   generateDeclarationFile,
   NameMapper,
+  formatResult,
   type ExtractResult,
   type NameMappingOptions,
   type DeclarationOptions,
 } from "./core/index.js";
-import { formatResult } from "./core/index.js";
 
 /**
  * Simple API to extract input and output types from a Zod schema.

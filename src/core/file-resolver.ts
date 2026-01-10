@@ -1,5 +1,5 @@
 import { glob } from "glob";
-import { resolve, dirname, basename, extname, relative, join } from "pathe";
+import { resolve, dirname, basename, extname, join } from "pathe";
 import type { OutputOptions } from "./types.js";
 
 /**
@@ -95,22 +95,4 @@ export class FileResolver {
   applyPattern(pattern: string, vars: { name: string; ext: string }): string {
     return pattern.replace(/\[name\]/g, vars.name).replace(/\[ext\]/g, vars.ext);
   }
-
-  /**
-   * Computes relative path from one file to another.
-   *
-   * @param from - Source file path
-   * @param to - Target file path
-   * @returns Relative path
-   */
-  relativePath(from: string, to: string): string {
-    return relative(dirname(from), to);
-  }
-}
-
-/**
- * Creates a FileResolver instance.
- */
-export function createFileResolver(): FileResolver {
-  return new FileResolver();
 }

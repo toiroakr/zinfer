@@ -234,10 +234,3 @@ export class DescriptionExtractor {
     return undefined;
   }
 }
-
-/**
- * Creates a new DescriptionExtractor instance.
- */
-export function createDescriptionExtractor(): DescriptionExtractor {
-  return new DescriptionExtractor();
-}

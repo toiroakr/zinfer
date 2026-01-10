@@ -220,24 +220,17 @@ export class ZodTypeExtractor {
           const outputTypeName = `${schemaName}Output`;
           const originalInputType = inputType;
 
-          inputType = this.getterResolver.resolveAnyTypes(
-            inputType,
-            schemaName,
-            getterFields,
-            inputTypeName,
-          );
+          inputType = this.getterResolver.resolveAnyTypes(inputType, getterFields, inputTypeName);
 
           if (outputType === "any") {
             outputType = this.getterResolver.resolveAnyTypes(
               originalInputType,
-              schemaName,
               getterFields,
               outputTypeName,
             );
           } else {
             outputType = this.getterResolver.resolveAnyTypes(
               outputType,
-              schemaName,
               getterFields,
               outputTypeName,
             );
