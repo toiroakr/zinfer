@@ -127,6 +127,16 @@ export class ExtractionError extends ZinferError {
 }
 
 /**
+ * Error when CLI options are invalid.
+ */
+export class InvalidOptionError extends ZinferError {
+  constructor(optionName: string, reason: string, hint?: string) {
+    super(`Invalid option "${optionName}": ${reason}`, "INVALID_OPTION", hint);
+    this.name = "InvalidOptionError";
+  }
+}
+
+/**
  * Formats any error for CLI output.
  */
 export function formatError(error: unknown): string {

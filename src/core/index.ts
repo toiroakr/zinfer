@@ -27,8 +27,18 @@ export {
   NoFilesMatchedError,
   TypeScriptError,
   ExtractionError,
+  InvalidOptionError,
   formatError,
 } from "./errors.js";
+
+export {
+  setVerbose,
+  isVerbose,
+  logVerbose,
+  logWarning,
+  logDebugError,
+  logProgress,
+} from "./logger.js";
 
 export {
   ConfigLoader,

@@ -12,8 +12,12 @@ import {
   formatError,
   NoFilesMatchedError,
   NoSchemasFoundError,
+  InvalidOptionError,
   generateTypeTests,
   generateImportPrefix,
+  setVerbose,
+  logVerbose,
+  logProgress,
   type ExtractResult,
   type NameMappingOptions,
   type OutputOptions,
@@ -41,6 +45,7 @@ interface CLIOptions {
   withDescriptions?: boolean;
   config?: string;
   generateTests?: boolean;
+  verbose?: boolean;
 }
 
 const program = new Command();
@@ -66,6 +71,7 @@ program
   .option("--dry-run", "Preview without writing files")
   .option("--with-descriptions", "Include Zod .describe() as TSDoc comments")
   .option("--generate-tests", "Generate vitest type equality tests alongside type files")
+  .option("-v, --verbose", "Enable verbose output")
   .action(async (files: string[], options: CLIOptions) => {
     try {
       await runCLI(files, options);
@@ -83,12 +89,23 @@ program.parse();
 async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   const cwd = process.cwd();
 
+  // Enable verbose mode if requested
+  if (options.verbose) {
+    setVerbose(true);
+    logVerbose("Verbose mode enabled");
+  }
+
   // Load config file
+  logVerbose("Loading configuration...");
   const configLoader = new ConfigLoader();
   const { config: fileConfig } = await configLoader.load(cwd);
 
   // Merge CLI options with config file (CLI takes precedence)
   const config = mergeCliWithConfig(options, fileConfig);
+
+  // Validate options
+  validateOptions(config);
+  logVerbose("Configuration validated");
 
   // Use files from CLI args, or from config, or fail
   const inputFiles = files.length > 0 ? files : config.include || [];
@@ -98,15 +115,18 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   }
 
   // Resolve file paths (support glob patterns)
+  logVerbose("Resolving input files...");
   const fileResolver = new FileResolver();
   const resolvedFiles = await fileResolver.resolveInputFiles(inputFiles, cwd);
 
   if (resolvedFiles.length === 0) {
     throw new NoFilesMatchedError(inputFiles);
   }
+  logVerbose(`Found ${resolvedFiles.length} file(s) to process`);
 
   // Find tsconfig
   const tsconfigPath = config.project ? resolve(cwd, config.project) : findTsConfig(cwd);
+  logVerbose(`Using tsconfig: ${tsconfigPath || "(none)"}`);
 
   // Validate --generate-tests requires file output
   if (options.generateTests && !config.outDir && !config.outFile) {
@@ -138,10 +158,13 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
 
   // Single output file mode
   if (config.outFile) {
+    logVerbose("Processing files for single output...");
     const allResults: ExtractResult[] = [];
     const fileResultsMap: Map<string, ExtractResult[]> = new Map();
 
-    for (const filePath of resolvedFiles) {
+    for (let i = 0; i < resolvedFiles.length; i++) {
+      const filePath = resolvedFiles[i];
+      logProgress(i + 1, resolvedFiles.length, `Processing ${basename(filePath)}`);
       let results = getFilteredResults(extractor, filePath, schemaFilter);
 
       // Add descriptions if enabled
@@ -201,12 +224,16 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   }
 
   // Per-file output mode or console output
+  logVerbose("Processing files...");
   let totalResults = 0;
 
-  for (const filePath of resolvedFiles) {
+  for (let i = 0; i < resolvedFiles.length; i++) {
+    const filePath = resolvedFiles[i];
+    logProgress(i + 1, resolvedFiles.length, `Processing ${basename(filePath)}`);
     let results = getFilteredResults(extractor, filePath, schemaFilter);
 
     if (results.length === 0) {
+      logVerbose(`  No schemas found in ${basename(filePath)}`);
       continue;
     }
 
@@ -349,6 +376,39 @@ function mergeCliWithConfig(cliOptions: CLIOptions, fileConfig: ZinferConfig): Z
     merged.withDescriptions = cliOptions.withDescriptions;
 
   return merged;
+}
+
+/**
+ * Validates CLI options for conflicts and invalid values.
+ * @throws InvalidOptionError if any validation fails
+ */
+function validateOptions(config: ZinferConfig): void {
+  // Check mutually exclusive options
+  if (config.inputOnly && config.outputOnly) {
+    throw new InvalidOptionError(
+      "--input-only / --output-only",
+      "Cannot use both options together",
+      "Use only one of --input-only or --output-only",
+    );
+  }
+
+  // Check conflicting output options
+  if (config.outFile && (config.outDir || config.outPattern)) {
+    throw new InvalidOptionError(
+      "--outFile",
+      "Cannot use with --outDir or --outPattern",
+      "Use --outFile for single output, or --outDir/--outPattern for multiple outputs",
+    );
+  }
+
+  // Check empty suffix
+  if (config.suffix === "") {
+    throw new InvalidOptionError(
+      "--suffix",
+      "Empty suffix is not allowed",
+      "Provide a non-empty suffix value or omit the option",
+    );
+  }
 }
 
 /**

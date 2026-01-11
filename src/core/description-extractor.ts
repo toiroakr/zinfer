@@ -1,5 +1,6 @@
 import { pathToFileURL } from "url";
 import { resolve } from "pathe";
+import { logDebugError } from "./logger.js";
 import type { FieldDescription } from "./types.js";
 
 /**
@@ -131,8 +132,8 @@ export class DescriptionExtractor {
         if (meta && typeof meta.description === "string") {
           return meta.description;
         }
-      } catch {
-        // meta() may throw if not available
+      } catch (error) {
+        logDebugError("meta() call failed", error);
       }
     }
 

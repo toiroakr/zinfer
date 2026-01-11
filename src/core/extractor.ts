@@ -5,6 +5,7 @@ import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver } from "./import-resolver.js";
 import { BrandDetector } from "./brand-detector.js";
+import { logDebugError } from "./logger.js";
 import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
 
 // Re-export ExtractResult for backward compatibility
@@ -182,8 +183,8 @@ export class ZodTypeExtractor {
           output: outputType,
           isExported: false, // Imported schemas won't be re-exported
         });
-      } catch {
-        // Failed to extract imported schema type
+      } catch (error) {
+        logDebugError(`Failed to extract imported schema "${localName}"`, error);
       } finally {
         this.cleanupTemporaryTypes(importedSourceFile);
       }
