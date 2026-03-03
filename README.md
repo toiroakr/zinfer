@@ -1,64 +1,64 @@
 # zinfer
 
-Zod スキーマから TypeScript の input/output 型を抽出するツール。
+A tool to extract TypeScript input/output types from Zod schemas.
 
-## 特徴
+## Features
 
-- Zod スキーマから `z.input<T>` / `z.output<T>` 型をテキストとして抽出
-- TypeScript Compiler API (ts-morph) を使用した正確な型解析
-- 元のソースファイルを変更しない
-- CLI とライブラリ API の両方をサポート
-- 循環参照 (`z.lazy`, getter パターン) に対応
-- `.describe()` を TSDoc コメントとして出力
-- `.brand()` によるブランド型をサポート
-- 設定ファイル対応 (`zinfer.config.ts`, `package.json`)
+- Extract `z.input<T>` / `z.output<T>` types as text from Zod schemas
+- Accurate type analysis using TypeScript Compiler API (ts-morph)
+- Non-invasive: does not modify original source files
+- Supports both CLI and library API
+- Handles circular references (`z.lazy`, getter patterns)
+- Outputs `.describe()` as TSDoc comments
+- Supports branded types via `.brand()`
+- Configuration file support (`zinfer.config.ts`, `package.json`)
 
-## インストール
+## Installation
 
 ```bash
 npm install zinfer
 ```
 
-## クイックスタート
+## Quick Start
 
 ### CLI
 
 ```bash
-# 単一ファイルから全スキーマを抽出
+# Extract all schemas from a single file
 zinfer src/schemas/user.ts
 
-# Glob パターンで複数ファイルを処理
+# Process multiple files with glob patterns
 zinfer "src/**/*.schema.ts"
 
-# ファイルに出力
+# Output to files
 zinfer src/schemas.ts --outDir ./types
 
-# input/output が同一なら1つの型に統一
+# Merge into a single type when input/output are identical
 zinfer src/schemas.ts --merge-same --suffix Schema
 ```
 
-### ライブラリ API
+### Library API
 
 ```typescript
 import { extractZodTypes, extractAllSchemas, extractAndFormat } from "zinfer";
 
-// 単一スキーマの抽出
+// Extract a single schema
 const { input, output } = extractZodTypes("./schemas.ts", "UserSchema");
 console.log(input); // { id: string; name: string; }
 console.log(output); // { id: string; name: string; }
 
-// フォーマット済みの出力を取得
+// Get formatted output
 const formatted = extractAndFormat("./schemas.ts", "UserSchema");
 console.log(formatted);
 
-// ファイル内の全スキーマを抽出
+// Extract all schemas from a file
 const results = extractAllSchemas("./schemas.ts");
 for (const result of results) {
   console.log(`${result.schemaName}: ${result.input}`);
 }
 ```
 
-## CLI オプション
+## CLI Options
 
 ```
 Usage: zinfer [options] [files...]
@@ -88,7 +88,7 @@ Options:
   -h, --help                 Display help
 ```
 
-## 設定ファイル
+## Configuration File
 
 ### zinfer.config.ts
 
@@ -96,41 +96,41 @@ Options:
 import { defineConfig } from "zinfer";
 
 export default defineConfig({
-  // 処理対象ファイル
+  // Target files
   include: ["src/**/*.schema.ts"],
 
-  // 除外パターン
+  // Exclude patterns
   exclude: ["**/*.test.ts"],
 
-  // tsconfig.json のパス
+  // Path to tsconfig.json
   project: "./tsconfig.json",
 
-  // 抽出するスキーマ名（指定しない場合は全て）
+  // Schema names to extract (all if not specified)
   schemas: ["UserSchema", "PostSchema"],
 
-  // 出力オプション
+  // Output options
   outDir: "./types",
   outFile: "./types/index.ts",
   outPattern: "[name].types.ts",
   declaration: true,
 
-  // 型出力オプション
-  inputOnly: false, // input 型のみ出力
-  outputOnly: false, // output 型のみ出力
-  mergeSame: true, // input === output なら1つの型に
+  // Type output options
+  inputOnly: false, // Output only input types
+  outputOnly: false, // Output only output types
+  mergeSame: true, // Merge into single type when input === output
 
-  // 型名オプション
-  suffix: "Schema", // スキーマ名から削除するサフィックス
-  inputSuffix: "Input", // input 型のサフィックス
-  outputSuffix: "Output", // output 型のサフィックス
+  // Type name options
+  suffix: "Schema", // Suffix to remove from schema names
+  inputSuffix: "Input", // Suffix for input types
+  outputSuffix: "Output", // Suffix for output types
 
-  // カスタムマッピング
+  // Custom mappings
   map: {
     UserSchema: "User",
     PostSchema: "Article",
   },
 
-  // .describe() を TSDoc として出力
+  // Output .describe() as TSDoc
   withDescriptions: true,
 });
 ```
@@ -148,21 +148,21 @@ export default defineConfig({
 }
 ```
 
-設定ファイルの検索順序:
+Config file resolution order:
 
 1. `zinfer.config.ts`
 2. `zinfer.config.mts`
 3. `zinfer.config.js`
 4. `zinfer.config.mjs`
-5. `package.json` の `zinfer` フィールド
+5. `zinfer` field in `package.json`
 
-CLI オプションは設定ファイルより優先されます。
+CLI options take precedence over config file settings.
 
-## 出力例
+## Output Examples
 
-### 基本的な出力
+### Basic Output
 
-入力スキーマ:
+Input schema:
 
 ```typescript
 export const UserSchema = z.object({
@@ -172,7 +172,7 @@ export const UserSchema = z.object({
 });
 ```
 
-出力 (デフォルト):
+Output (default):
 
 ```typescript
 export type UserSchemaInput = {
@@ -188,7 +188,7 @@ export type UserSchemaOutput = {
 };
 ```
 
-出力 (`--merge-same --suffix Schema`):
+Output (`--merge-same --suffix Schema`):
 
 ```typescript
 export type User = {
@@ -198,9 +198,9 @@ export type User = {
 };
 ```
 
-### Transform がある場合
+### With Transforms
 
-入力スキーマ:
+Input schema:
 
 ```typescript
 export const DateSchema = z.object({
@@ -209,7 +209,7 @@ export const DateSchema = z.object({
 });
 ```
 
-出力:
+Output:
 
 ```typescript
 export type DateSchemaInput = {
@@ -223,9 +223,9 @@ export type DateSchemaOutput = {
 };
 ```
 
-### TSDoc コメント付き (`--with-descriptions`)
+### With TSDoc Comments (`--with-descriptions`)
 
-入力スキーマ:
+Input schema:
 
 ```typescript
 export const UserSchema = z
@@ -237,7 +237,7 @@ export const UserSchema = z
   .describe("User account information");
 ```
 
-出力:
+Output:
 
 ```typescript
 /**
@@ -253,9 +253,9 @@ export type UserSchemaInput = {
 };
 ```
 
-### ブランド型
+### Branded Types
 
-入力スキーマ:
+Input schema:
 
 ```typescript
 export const UserIdSchema = z.string().brand<"UserId">();
@@ -266,7 +266,7 @@ export const UserSchema = z.object({
 });
 ```
 
-出力:
+Output:
 
 ```typescript
 import type { BRAND } from "zod";
@@ -286,11 +286,11 @@ export type UserSchemaOutput = {
 };
 ```
 
-ブランド型は output 型にのみ適用されます。input 型にはブランドは含まれません。
+Branded types are applied only to output types. Input types do not include brands.
 
-## 循環参照のサポート
+## Circular Reference Support
 
-### Getter パターン (推奨)
+### Getter Pattern (Recommended)
 
 ```typescript
 interface Category {
@@ -308,7 +308,7 @@ const CategoryBaseSchema = z.object({
 export const CategorySchema: z.ZodType<Category> = CategoryBaseSchema;
 ```
 
-### z.lazy パターン
+### z.lazy Pattern
 
 ```typescript
 export type JsonValue =
@@ -331,13 +331,13 @@ export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 );
 ```
 
-明示的な型注釈 (`z.ZodType<T>`) がある場合、その型名が出力に使用されます。
+When an explicit type annotation (`z.ZodType<T>`) is present, that type name is used in the output.
 
-## ライブラリ API
+## Library API
 
 ### extractZodTypes
 
-単一スキーマから型を抽出します。
+Extracts types from a single schema.
 
 ```typescript
 import { extractZodTypes } from "zinfer";
@@ -351,7 +351,7 @@ const { input, output } = extractZodTypes(
 
 ### extractAllSchemas
 
-ファイル内の全スキーマを抽出します。
+Extracts all schemas from a file.
 
 ```typescript
 import { extractAllSchemas } from "zinfer";
@@ -362,14 +362,14 @@ const results = extractAllSchemas("./schemas.ts");
 
 ### extractAndFormat
 
-型を抽出してフォーマット済みの文字列として取得します。
+Extracts types and returns them as a formatted string.
 
 ```typescript
 import { extractAndFormat } from "zinfer";
 
 const formatted = extractAndFormat("./schemas.ts", "UserSchema");
 console.log(formatted);
-// 出力:
+// Output:
 // // input
 // { id: string; name: string; }
 //
@@ -379,7 +379,7 @@ console.log(formatted);
 
 ### generateTypeDeclarations
 
-抽出結果から TypeScript 型宣言を生成します。
+Generates TypeScript type declarations from extraction results.
 
 ```typescript
 import { extractAllSchemas, generateTypeDeclarations } from "zinfer";
@@ -399,57 +399,57 @@ const declarations = generateTypeDeclarations(results, {
 console.log(declarations);
 ```
 
-### ZodTypeExtractor クラス
+### ZodTypeExtractor Class
 
-より細かい制御が必要な場合:
+For more fine-grained control:
 
 ```typescript
 import { ZodTypeExtractor } from "zinfer";
 
 const extractor = new ZodTypeExtractor("./tsconfig.json");
 
-// 単一スキーマ
+// Single schema
 const result = extractor.extract({
   filePath: "./schemas.ts",
   schemaName: "UserSchema",
 });
 
-// 全スキーマ
+// All schemas
 const allResults = extractor.extractAll("./schemas.ts");
 
-// 複数スキーマを指定
+// Multiple specific schemas
 const selectedResults = extractor.extractMultiple("./schemas.ts", ["UserSchema", "PostSchema"]);
 
-// ファイル単位で抽出（ファイルパス付き）
+// Extract by file (includes file path)
 const fileResult = extractor.extractFile("./schemas.ts");
 // fileResult: { filePath: string; schemas: ExtractResult[] }
 
-// スキーマ名の一覧
+// List schema names
 const schemaNames = extractor.getSchemaNames("./schemas.ts");
 ```
 
-## 型テスト生成
+## Type Test Generation
 
-zinfer が生成した型が `z.input<typeof Schema>` / `z.output<typeof Schema>` と一致することを検証する vitest テストを自動生成できます。
+zinfer can automatically generate vitest tests that verify the generated types match `z.input<typeof Schema>` / `z.output<typeof Schema>`.
 
-### 使用方法
+### Usage
 
 ```bash
-# 型定義とテストを同時に生成
+# Generate type definitions and tests simultaneously
 zinfer "src/schemas/*.ts" --outDir ./types --generate-tests --suffix Schema
-# → ./types/user.ts (型定義)
-# → ./types/user.test.ts (テスト)
+# -> ./types/user.ts (type definitions)
+# -> ./types/user.test.ts (tests)
 
-# 単一ファイルに出力する場合
+# When outputting to a single file
 zinfer "src/schemas/*.ts" --outFile ./types.ts --generate-tests --suffix Schema
-# → ./types.ts (型定義)
-# → ./types.test.ts (テスト)
+# -> ./types.ts (type definitions)
+# -> ./types.test.ts (tests)
 
-# テストを実行
+# Run the tests
 vitest run
 ```
 
-### 生成されるテストの例
+### Example Generated Test
 
 ```typescript
 import { describe, it, expectTypeOf } from "vitest";
@@ -471,24 +471,24 @@ describe("Type equality tests", () => {
 });
 ```
 
-スキーマを変更した後に `--generate-tests` を再実行することで、型の一致を継続的に検証できます。
+Re-run with `--generate-tests` after modifying schemas to continuously verify type correctness.
 
-## 対応している Zod 機能
+## Supported Zod Features
 
-- 基本型: `z.string()`, `z.number()`, `z.boolean()`, `z.date()`, etc.
-- オブジェクト: `z.object()`
-- 配列: `z.array()`
+- Primitives: `z.string()`, `z.number()`, `z.boolean()`, `z.date()`, etc.
+- Objects: `z.object()`
+- Arrays: `z.array()`
 - Union: `z.union()`, `z.discriminatedUnion()`
 - Intersection: `z.intersection()`, `.and()`, `.merge()`
 - Enum: `z.enum()`, `z.nativeEnum()`
 - Optional/Nullable: `.optional()`, `.nullable()`
 - Transform: `.transform()`
 - Refine: `.refine()`, `.superRefine()`
-- ユーティリティ: `.partial()`, `.pick()`, `.omit()`, `.extend()`
-- 循環参照: `z.lazy()`, getter パターン
-- 説明: `.describe()`
-- ブランド型: `.brand()`
+- Utilities: `.partial()`, `.pick()`, `.omit()`, `.extend()`
+- Circular references: `z.lazy()`, getter patterns
+- Descriptions: `.describe()`
+- Branded types: `.brand()`
 
-## ライセンス
+## License
 
 MIT

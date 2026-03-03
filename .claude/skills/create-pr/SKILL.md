@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: PRを作成する。ユーザーが「PR」「プルリクエスト」「pull request」の作成を依頼した場合は必ずこのスキルを使用すること。ghコマンドを直接使わず、このスキルを経由すること。
+description: Create a pull request. Always use this skill when the user requests creating a PR. Route through this skill instead of using gh commands directly.
 allowed-tools: Bash, Read, Grep, Write
 ---
 
@@ -162,7 +162,7 @@ Use conventional commits format:
 
 ## Example
 
-When user says: "PRを作成して"
+When user says: "create a PR"
 
 1. Run CI checks (build, lint, format:check, typecheck, knip, test)
 2. If lint/format fails, run auto-fix and retry

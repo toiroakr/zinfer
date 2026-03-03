@@ -1,6 +1,6 @@
 ---
 name: commit
-description: コードの変更をコミット・プッシュする。ユーザーが「commit」「push」「コミット」「プッシュ」を依頼した場合は必ずこのスキルを使用すること。
+description: Commit and push code changes. Always use this skill when the user requests committing or pushing.
 allowed-tools: Bash, Read, Grep, Write, Edit
 ---
 
@@ -161,11 +161,11 @@ If a PR exists for the current branch, verify the PR title and body accurately r
 
 ## Commit-Only vs Push
 
-| User request          | Steps executed                                          |
-| --------------------- | ------------------------------------------------------- |
-| "commit" / "コミット" | Steps 1-4. Also Steps 5-6 if a PR exists for the branch |
-| "push" / "プッシュ"   | Steps 1-6                                               |
-| "commit and push"     | Steps 1-6                                               |
+| User request      | Steps executed                                          |
+| ----------------- | ------------------------------------------------------- |
+| "commit"          | Steps 1-4. Also Steps 5-6 if a PR exists for the branch |
+| "push"            | Steps 1-6                                               |
+| "commit and push" | Steps 1-6                                               |
 
 ## Important Notes
 
@@ -175,7 +175,7 @@ If a PR exists for the current branch, verify the PR title and body accurately r
 
 ## Example
 
-When user says: "コミットしてプッシュして"
+When user says: "commit and push"
 
 1. Check git status, stage changes
 2. Run CI checks (build, lint, format:check, typecheck, knip, test) → auto-fix if lint/format fails
