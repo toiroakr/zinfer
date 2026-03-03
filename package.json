@@ -9,6 +9,10 @@
     "zod"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/toiroakr/zinfer.git"
+  },
   "bin": {
     "zinfer": "./bin/zinfer"
   },
@@ -19,6 +23,10 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
