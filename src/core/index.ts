@@ -22,27 +22,16 @@ export { DescriptionExtractor } from "./description-extractor.js";
 
 export {
   ZinferError,
-  SchemaNotFoundError,
   NoSchemasFoundError,
   NoFilesMatchedError,
-  TypeScriptError,
-  ExtractionError,
   InvalidOptionError,
   formatError,
 } from "./errors.js";
 
-export {
-  setVerbose,
-  isVerbose,
-  logVerbose,
-  logWarning,
-  logDebugError,
-  logProgress,
-} from "./logger.js";
+export { setVerbose, logVerbose, logDebugError, logProgress } from "./logger.js";
 
 export {
   ConfigLoader,
-  mergeConfig,
   defineConfig,
   type ZinferConfig,
   type ConfigLoadResult,

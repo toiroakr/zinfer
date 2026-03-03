@@ -138,20 +138,6 @@ export class ConfigLoader {
 }
 
 /**
- * Merges CLI options with config file options.
- * CLI options take precedence over config file options.
- */
-export function mergeConfig(
-  configFile: ZinferConfig,
-  cliOptions: Partial<ZinferConfig>,
-): ZinferConfig {
-  return {
-    ...configFile,
-    ...Object.fromEntries(Object.entries(cliOptions).filter(([_, v]) => v !== undefined)),
-  };
-}
-
-/**
  * Defines a zinfer configuration with type checking.
  * Use this in zinfer.config.ts for type safety.
  *

@@ -12,26 +12,12 @@ export function setVerbose(enabled: boolean): void {
 }
 
 /**
- * Returns whether verbose mode is enabled.
- */
-export function isVerbose(): boolean {
-  return verboseEnabled;
-}
-
-/**
  * Logs a verbose message (only when verbose mode is enabled).
  */
 export function logVerbose(message: string, ...args: unknown[]): void {
   if (verboseEnabled) {
     console.log(`[verbose] ${message}`, ...args);
   }
-}
-
-/**
- * Logs a warning message (always shown).
- */
-export function logWarning(message: string, ...args: unknown[]): void {
-  console.warn(`Warning: ${message}`, ...args);
 }
 
 /**
