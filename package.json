@@ -57,7 +57,7 @@
     "oxlint": "^1.38.0",
     "typescript": "^5.7.2",
     "vitest": "^4.0.16",
-    "zod": "^4.3.5"
+    "zod": "4.3.5"
   },
   "peerDependencies": {
     "typescript": ">=5.0.0",
