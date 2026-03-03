@@ -4,16 +4,11 @@
     "config:best-practices",
     ":automergeMinor",
     ":dependencyDashboard",
-    "github>aquaproj/aqua-renovate-config#2.2.1"
+    "github>aquaproj/aqua-renovate-config#2.10.0"
   ],
   "labels": ["dependencies"],
   "minimumReleaseAge": "7 days",
   "prConcurrentLimit": 5,
-  "postUpgradeTasks": {
-    "commands": ["aqua upc -prune"],
-    "fileFilters": ["aqua-checksums.json"],
-    "executionMode": "update"
-  },
   "packageRules": [
     {
       "matchDepTypes": ["devDependencies"],
@@ -24,12 +19,12 @@
       "matchPackageNames": ["vitest", "@vitest/*"]
     },
     {
-      "groupName": "typescript",
-      "matchPackageNames": ["typescript", "@types/*", "@typescript/*"]
+      "groupName": "linting and formatting",
+      "matchPackageNames": ["oxlint", "oxfmt", "knip"]
     },
     {
-      "groupName": "zod",
-      "matchPackageNames": ["zod"]
+      "groupName": "typescript",
+      "matchPackageNames": ["typescript", "@types/*", "@typescript/*"]
     }
   ]
 }
