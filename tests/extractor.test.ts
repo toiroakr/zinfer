@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { resolve } from "pathe";
 import { ZodTypeExtractor } from "../src/core/extractor.js";
 import { generateDeclarationFile } from "../src/core/type-printer.js";
@@ -81,6 +81,12 @@ afterAll(() => {
 
 describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   const extractor = new ZodTypeExtractor();
+
+  // Warm up ts-morph project by triggering Zod module resolution
+  // The first type resolution is slow (~5s in CI) as it processes Zod's entire type system
+  beforeAll(() => {
+    extractor.extractAll(resolve(fixturesDir, "basic-schema.ts"));
+  });
 
   // Standard schema tests
   createSchemaTest(extractor, "basic-schema");
