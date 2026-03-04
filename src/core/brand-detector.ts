@@ -29,6 +29,9 @@ export class BrandDetector {
         const init = decl.getInitializer();
         if (!init) continue;
 
+        // Quick text check to skip expensive AST walk when no .brand() is present
+        if (!init.getText().includes(".brand")) continue;
+
         const brands = this.findBrandsInNode(init, "");
         if (brands.length > 0) {
           result.set(schemaName, brands);

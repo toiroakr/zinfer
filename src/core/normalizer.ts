@@ -43,9 +43,3 @@ export function createTempTypeAlias(schemaName: string, typeKind: "input" | "out
   const typeName = typeKind === "input" ? "__TempInput" : "__TempOutput";
   return `type ${typeName} = __Normalize<z.${typeKind}<typeof ${schemaName}>>;`;
 }
-
-/**
- * Names of temporary types that are injected during extraction.
- * These should be cleaned up after extraction is complete.
- */
-export const TEMP_TYPE_NAMES = ["__Normalize", "__TempInput", "__TempOutput"] as const;

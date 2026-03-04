@@ -5,6 +5,8 @@ import type { DetectedSchema } from "./types.js";
  * Detects Zod schemas in TypeScript source files.
  */
 export class SchemaDetector {
+  private cache = new Map<string, DetectedSchema[]>();
+
   /**
    * Detects all Zod schemas in a source file.
    *
@@ -12,6 +14,10 @@ export class SchemaDetector {
    * @returns Array of detected schema information (including non-exported schemas)
    */
   detectExportedSchemas(sourceFile: SourceFile): DetectedSchema[] {
+    const filePath = sourceFile.getFilePath();
+    const cached = this.cache.get(filePath);
+    if (cached) return cached;
+
     const schemas: DetectedSchema[] = [];
 
     // Find all variable declarations
@@ -73,6 +79,7 @@ export class SchemaDetector {
 
     // Return all schemas (both exported and non-exported)
     // The isExported flag is used by the type printer to control export keyword
+    this.cache.set(filePath, schemas);
     return schemas;
   }
 

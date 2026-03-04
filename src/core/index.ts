@@ -1,4 +1,4 @@
-export { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias, TEMP_TYPE_NAMES } from "./normalizer.js";
+export { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias } from "./normalizer.js";
 
 export { ZodTypeExtractor, type ExtractOptions } from "./extractor.js";
 
