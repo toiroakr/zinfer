@@ -5,3 +5,5 @@ export type User = {
   name: string;
   age?: number | undefined;
 };
+export type UserInput = User;
+export type UserOutput = User;

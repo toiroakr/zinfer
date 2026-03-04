@@ -59,8 +59,8 @@ export class NameMapper {
    * Creates the full mapped names object from a base name.
    */
   private createMappedNames(originalName: string, baseName: string): MappedTypeName {
-    const inputSuffix = this.options.inputSuffix || DEFAULT_OPTIONS.inputSuffix;
-    const outputSuffix = this.options.outputSuffix || DEFAULT_OPTIONS.outputSuffix;
+    const inputSuffix = this.options.inputSuffix ?? DEFAULT_OPTIONS.inputSuffix;
+    const outputSuffix = this.options.outputSuffix ?? DEFAULT_OPTIONS.outputSuffix;
 
     return {
       originalName,

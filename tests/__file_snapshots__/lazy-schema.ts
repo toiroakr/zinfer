@@ -2,23 +2,23 @@
 
 export type CategoryInput = {
   name: string;
-  subcategories: readonly CategoryInput[];
+  subcategories: CategoryInput[];
 };
 
 export type CategoryOutput = {
   name: string;
-  subcategories: readonly CategoryOutput[];
+  subcategories: CategoryOutput[];
 };
 
 export type TreeNodeInput = {
   value: string;
-  children: readonly TreeNodeInput[];
+  children: TreeNodeInput[];
   parent?: TreeNodeInput | undefined;
 };
 
 export type TreeNodeOutput = {
   value: string;
-  children: readonly TreeNodeOutput[];
+  children: TreeNodeOutput[];
   parent?: TreeNodeOutput | undefined;
 };
 

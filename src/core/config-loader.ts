@@ -39,6 +39,8 @@ export interface ZinferConfig {
   declaration?: boolean;
   /** Include Zod .describe() as TSDoc comments */
   withDescriptions?: boolean;
+  /** Generate vitest type equality tests alongside type files */
+  generateTests?: boolean;
 }
 
 /**

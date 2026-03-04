@@ -38,7 +38,7 @@ export type ProfileInput = {
     role: "admin" | "user" | "guest";
     age?: number | undefined;
   };
-  tags: readonly string[];
+  tags: string[];
   address?: {
     street: string;
     city: string;
@@ -55,7 +55,7 @@ export type ProfileOutput = {
     role: "admin" | "user" | "guest";
     age?: number | undefined;
   };
-  tags: readonly string[];
+  tags: string[];
   address?: {
     street: string;
     city: string;

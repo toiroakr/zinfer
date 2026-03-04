@@ -269,18 +269,30 @@ export class ZodTypeExtractor {
       // Check if this schema is a union with member references
       const unionRef = unionReferenceMap.get(schemaName);
       if (unionRef && unionRef.memberSchemas.length > 0) {
-        // Build union type from member type names
-        const inputMembers = unionRef.memberSchemas.map((member) => `${member}Input`).join(" | ");
-        const outputMembers = unionRef.memberSchemas.map((member) => `${member}Output`).join(" | ");
-
-        results.push({
-          schemaName,
-          input: inputMembers,
-          output: outputMembers,
-          isExported: raw.isExported,
-          brands,
+        // Only use named references for exported members; inline non-exported ones
+        const exportedMembers = unionRef.memberSchemas.filter((member) => {
+          const memberRaw = rawTypes.get(member);
+          return memberRaw?.isExported;
         });
-        continue;
+
+        if (exportedMembers.length === unionRef.memberSchemas.length) {
+          // All members are exported, use named references
+          const inputMembers = unionRef.memberSchemas.map((member) => `${member}Input`).join(" | ");
+          const outputMembers = unionRef.memberSchemas
+            .map((member) => `${member}Output`)
+            .join(" | ");
+
+          results.push({
+            schemaName,
+            input: inputMembers,
+            output: outputMembers,
+            isExported: raw.isExported,
+            brands,
+          });
+          continue;
+        }
+
+        // Some members are non-exported; fall through to inline extraction
       }
 
       let { input, output } = raw;

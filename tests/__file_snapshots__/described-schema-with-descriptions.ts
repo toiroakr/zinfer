@@ -61,7 +61,7 @@ export type ProfileInput = {
     age?: number | undefined;
   };
   /** User tags for categorization */
-  tags: readonly string[];
+  tags: string[];
   /** User's primary address */
   address?: {
     street: string;
@@ -81,7 +81,7 @@ export type ProfileOutput = {
     age?: number | undefined;
   };
   /** User tags for categorization */
-  tags: readonly string[];
+  tags: string[];
   /** User's primary address */
   address?: {
     street: string;
