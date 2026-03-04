@@ -1,5 +1,11 @@
 # zinfer
 
+## 0.1.4
+
+### Patch Changes
+
+- 71948be: Skip file dependency resolution in ts-morph Project for faster initialization; optimize single-line type post-processing; add early return in simplifyZodFunctionTypes when no Zod patterns present
+
 ## 0.1.3
 
 ### Patch Changes
