@@ -1,5 +1,5 @@
 import { Project, SourceFile, TypeFormatFlags, ts } from "ts-morph";
-import { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias, TEMP_TYPE_NAMES } from "./normalizer.js";
+import { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias } from "./normalizer.js";
 import { SchemaDetector } from "./schema-detector.js";
 import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
@@ -33,6 +33,7 @@ export class ZodTypeExtractor {
   private referenceAnalyzer: SchemaReferenceAnalyzer;
   private importResolver: ImportResolver;
   private brandDetector: BrandDetector;
+  private importedSchemaCache = new Map<string, { input: string; output: string }>();
 
   /**
    * Creates a new ZodTypeExtractor instance.
@@ -45,7 +46,7 @@ export class ZodTypeExtractor {
     this.schemaDetector = new SchemaDetector();
     this.getterResolver = new GetterResolver();
     this.referenceAnalyzer = new SchemaReferenceAnalyzer();
-    this.importResolver = new ImportResolver();
+    this.importResolver = new ImportResolver(this.schemaDetector);
     this.brandDetector = new BrandDetector();
   }
 
@@ -141,23 +142,18 @@ export class ZodTypeExtractor {
     // Find and resolve imported schemas
     const importedSchemas = this.importResolver.findImportedSchemas(sourceFile, this.project);
 
-    // Analyze getter fields for all schemas
-    const getterFieldMap = this.getterResolver.analyzeGetterFields(sourceFile);
-
     // Build schema names set including imports
     const schemaNames = new Set(schemas.map((s) => s.name));
     for (const localName of importedSchemas.keys()) {
       schemaNames.add(localName);
     }
 
-    // Analyze cross-schema references
-    const referenceMap = this.referenceAnalyzer.analyzeReferences(sourceFile, schemaNames);
+    // Analyze getter fields for target schemas only
+    const getterFieldMap = this.getterResolver.analyzeGetterFields(sourceFile, schemaNames);
 
-    // Analyze union schema references
-    const unionReferenceMap = this.referenceAnalyzer.analyzeUnionReferences(
-      sourceFile,
-      schemaNames,
-    );
+    // Analyze cross-schema references and union references in a single pass
+    const { references: referenceMap, unionReferences: unionReferenceMap } =
+      this.referenceAnalyzer.analyzeAllReferences(sourceFile, schemaNames);
 
     // Detect branded types
     const brandMap = this.brandDetector.detectBrands(sourceFile, schemaNames);
@@ -165,17 +161,36 @@ export class ZodTypeExtractor {
     // First pass: extract raw types for all schemas
     const rawTypes = new Map<string, { input: string; output: string; isExported: boolean }>();
 
+    // Inject __Normalize once for the main source file
+    this.ensureNormalizeType(sourceFile);
+
     // Extract types from imported schemas first
     for (const [localName, importInfo] of importedSchemas) {
       if (!importInfo.resolved) continue;
 
+      // Check cache for previously extracted imported schemas
+      const cacheKey = `${importInfo.sourceFilePath}:${importInfo.originalName}`;
+      const cached = this.importedSchemaCache.get(cacheKey);
+      if (cached) {
+        rawTypes.set(localName, {
+          input: cached.input,
+          output: cached.output,
+          isExported: false,
+        });
+        continue;
+      }
+
       const importedSourceFile = this.project.getSourceFile(importInfo.sourceFilePath);
       if (!importedSourceFile) continue;
 
+      this.ensureNormalizeType(importedSourceFile);
       try {
         this.injectTemporaryTypes(importedSourceFile, importInfo.originalName);
         const inputType = this.resolveType(importedSourceFile, "__TempInput");
         const outputType = this.resolveType(importedSourceFile, "__TempOutput");
+
+        // Cache the result
+        this.importedSchemaCache.set(cacheKey, { input: inputType, output: outputType });
 
         // Use local name as the key (how it's referenced in current file)
         rawTypes.set(localName, {
@@ -187,6 +202,7 @@ export class ZodTypeExtractor {
         logDebugError(`Failed to extract imported schema "${localName}"`, error);
       } finally {
         this.cleanupTemporaryTypes(importedSourceFile);
+        this.cleanupNormalizeType(importedSourceFile);
       }
     }
 
@@ -243,6 +259,9 @@ export class ZodTypeExtractor {
         this.cleanupTemporaryTypes(sourceFile);
       }
     }
+
+    // Clean up __Normalize from the main source file after all schemas are processed
+    this.cleanupNormalizeType(sourceFile);
 
     // Add imported schemas to results first (so they're defined before use)
     for (const [localName] of importedSchemas) {
@@ -462,13 +481,31 @@ export class ZodTypeExtractor {
   }
 
   /**
-   * Injects the Normalize type and temporary type aliases into the source file.
+   * Injects the __Normalize type definition into a source file if not already present.
+   */
+  private ensureNormalizeType(sourceFile: SourceFile): void {
+    if (!sourceFile.getTypeAlias("__Normalize")) {
+      sourceFile.addStatements([NORMALIZE_TYPE_DEFINITION]);
+    }
+  }
+
+  /**
+   * Removes the __Normalize type definition from a source file.
+   */
+  private cleanupNormalizeType(sourceFile: SourceFile): void {
+    const typeAlias = sourceFile.getTypeAlias("__Normalize");
+    if (typeAlias) {
+      typeAlias.remove();
+    }
+  }
+
+  /**
+   * Injects temporary type aliases into the source file.
+   * The __Normalize type must already be present (via ensureNormalizeType).
    * These are added in-memory only and never saved to disk.
    */
   private injectTemporaryTypes(sourceFile: SourceFile, schemaName: string): void {
-    // Add the Normalize type definition and temporary type aliases at the end of the file
     sourceFile.addStatements([
-      NORMALIZE_TYPE_DEFINITION,
       createTempTypeAlias(schemaName, "input"),
       createTempTypeAlias(schemaName, "output"),
     ]);
@@ -577,11 +614,11 @@ export class ZodTypeExtractor {
   }
 
   /**
-   * Removes the temporary types that were injected during extraction.
-   * This ensures the original file remains unmodified.
+   * Removes the temporary input/output types that were injected during extraction.
+   * Does not remove __Normalize (managed separately via ensureNormalizeType/cleanupNormalizeType).
    */
   private cleanupTemporaryTypes(sourceFile: SourceFile): void {
-    for (const name of TEMP_TYPE_NAMES) {
+    for (const name of ["__TempInput", "__TempOutput"] as const) {
       const typeAlias = sourceFile.getTypeAlias(name);
       if (typeAlias) {
         typeAlias.remove();

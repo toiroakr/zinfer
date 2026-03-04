@@ -43,10 +43,14 @@ export type UnionReferenceMap = Map<string, UnionReferenceInfo>;
  */
 export class SchemaReferenceAnalyzer {
   /**
-   * Analyzes a source file to find all schema references.
+   * Analyzes a source file to find all schema references and union references in a single pass.
    */
-  analyzeReferences(sourceFile: SourceFile, schemaNames: Set<string>): SchemaReferenceMap {
-    const result: SchemaReferenceMap = new Map();
+  analyzeAllReferences(
+    sourceFile: SourceFile,
+    schemaNames: Set<string>,
+  ): { references: SchemaReferenceMap; unionReferences: UnionReferenceMap } {
+    const references: SchemaReferenceMap = new Map();
+    const unionReferences: UnionReferenceMap = new Map();
 
     const statements = sourceFile.getVariableStatements();
     for (const stmt of statements) {
@@ -59,37 +63,17 @@ export class SchemaReferenceAnalyzer {
 
         const refs = this.findSchemaReferences(init, schemaNames, schemaName);
         if (refs.length > 0) {
-          result.set(schemaName, refs);
+          references.set(schemaName, refs);
         }
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * Analyzes a source file to find union schema references.
-   */
-  analyzeUnionReferences(sourceFile: SourceFile, schemaNames: Set<string>): UnionReferenceMap {
-    const result: UnionReferenceMap = new Map();
-
-    const statements = sourceFile.getVariableStatements();
-    for (const stmt of statements) {
-      for (const decl of stmt.getDeclarations()) {
-        const schemaName = decl.getName();
-        if (!schemaNames.has(schemaName)) continue;
-
-        const init = decl.getInitializer();
-        if (!init) continue;
 
         const unionRef = this.findUnionReference(init, schemaNames, schemaName);
         if (unionRef) {
-          result.set(schemaName, unionRef);
+          unionReferences.set(schemaName, unionRef);
         }
       }
     }
 
-    return result;
+    return { references, unionReferences };
   }
 
   /**

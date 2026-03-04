@@ -27,9 +27,14 @@ export type ImportedSchemaMap = Map<string, ImportedSchemaInfo>;
  */
 export class ImportResolver {
   private schemaDetector: SchemaDetector;
+  private moduleResolutionCache = new Map<string, SourceFile | undefined>();
+  private schemaSourceCache = new Map<
+    string,
+    { sourceFile: SourceFile; schemaName: string } | undefined
+  >();
 
-  constructor() {
-    this.schemaDetector = new SchemaDetector();
+  constructor(schemaDetector?: SchemaDetector) {
+    this.schemaDetector = schemaDetector ?? new SchemaDetector();
   }
 
   /**
@@ -94,6 +99,12 @@ export class ImportResolver {
   ): { sourceFile: SourceFile; schemaName: string } | undefined {
     const filePath = sourceFile.getFilePath();
 
+    // Check cross-call cache first
+    const cacheKey = `${filePath}:${schemaName}`;
+    if (this.schemaSourceCache.has(cacheKey)) {
+      return this.schemaSourceCache.get(cacheKey);
+    }
+
     // Prevent infinite loops
     if (visited.has(filePath)) {
       return undefined;
@@ -103,7 +114,9 @@ export class ImportResolver {
     // Check if the schema is defined directly in this file
     const schemas = this.schemaDetector.detectExportedSchemas(sourceFile);
     if (schemas.some((s) => s.name === schemaName)) {
-      return { sourceFile, schemaName };
+      const result = { sourceFile, schemaName };
+      this.schemaSourceCache.set(cacheKey, result);
+      return result;
     }
 
     // Check export declarations for re-exports
@@ -121,6 +134,7 @@ export class ImportResolver {
         if (reExportedFile) {
           const found = this.findSchemaSource(reExportedFile, schemaName, project, visited);
           if (found) {
+            this.schemaSourceCache.set(cacheKey, found);
             return found;
           }
         }
@@ -136,13 +150,18 @@ export class ImportResolver {
               project,
             );
             if (reExportedFile) {
-              return this.findSchemaSource(reExportedFile, originalName, project, visited);
+              const found = this.findSchemaSource(reExportedFile, originalName, project, visited);
+              if (found) {
+                this.schemaSourceCache.set(cacheKey, found);
+                return found;
+              }
             }
           }
         }
       }
     }
 
+    this.schemaSourceCache.set(cacheKey, undefined);
     return undefined;
   }
 
@@ -166,6 +185,11 @@ export class ImportResolver {
     moduleSpecifier: string,
     project: Project,
   ): SourceFile | undefined {
+    const cacheKey = `${sourceDir}:${moduleSpecifier}`;
+    if (this.moduleResolutionCache.has(cacheKey)) {
+      return this.moduleResolutionCache.get(cacheKey);
+    }
+
     const possiblePaths = [
       join(sourceDir, `${moduleSpecifier}.ts`),
       join(sourceDir, moduleSpecifier, "index.ts"),
@@ -184,10 +208,12 @@ export class ImportResolver {
         }
       }
       if (resolved) {
+        this.moduleResolutionCache.set(cacheKey, resolved);
         return resolved;
       }
     }
 
+    this.moduleResolutionCache.set(cacheKey, undefined);
     return undefined;
   }
 

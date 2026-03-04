@@ -31,13 +31,15 @@ export class GetterResolver {
    * @param sourceFile - The ts-morph SourceFile to analyze
    * @returns Map of schema name to field info
    */
-  analyzeGetterFields(sourceFile: SourceFile): GetterFieldMap {
+  analyzeGetterFields(sourceFile: SourceFile, schemaNames?: Set<string>): GetterFieldMap {
     const result: GetterFieldMap = new Map();
 
     const statements = sourceFile.getVariableStatements();
     for (const stmt of statements) {
       for (const decl of stmt.getDeclarations()) {
         const schemaName = decl.getName();
+        if (schemaNames && !schemaNames.has(schemaName)) continue;
+
         const init = decl.getInitializer();
         if (!init) continue;
 
