@@ -465,10 +465,12 @@ export class ZodTypeExtractor {
       return new Project({
         tsConfigFilePath: tsconfigPath,
         skipAddingFilesFromTsConfig: true,
+        skipFileDependencyResolution: true,
       });
     }
 
     return new Project({
+      skipFileDependencyResolution: true,
       compilerOptions: {
         strict: true,
         target: ts.ScriptTarget.ESNext,
@@ -529,10 +531,15 @@ export class ZodTypeExtractor {
     let rawType = type.getText(typeAlias, formatFlags);
 
     // Remove trailing spaces from each line (ts-morph 27+ may add them)
-    rawType = rawType
-      .split("\n")
-      .map((line) => line.trimEnd())
-      .join("\n");
+    // Skip split/map/join for single-line types (most common case)
+    if (rawType.includes("\n")) {
+      rawType = rawType
+        .split("\n")
+        .map((line) => line.trimEnd())
+        .join("\n");
+    } else {
+      rawType = rawType.trimEnd();
+    }
 
     // Expand enum types: if the type is a single identifier, check if it's an enum
     if (/^[A-Z][a-zA-Z0-9]*$/.test(rawType)) {
@@ -568,6 +575,9 @@ export class ZodTypeExtractor {
    * Handles nested type parameters properly.
    */
   private simplifyZodFunctionTypes(typeStr: string): string {
+    // Quick check: skip if no Zod function type patterns are present
+    if (!typeStr.includes("z.core.$Infer")) return typeStr;
+
     // Pattern prefixes for Zod internal function types
     const zodFunctionPrefixes = [
       "z.core.$InferInnerFunctionType<",
