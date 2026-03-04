@@ -63,5 +63,5 @@
     "typescript": ">=5.0.0",
     "zod": ">=3.0.0"
   },
-  "packageManager": "pnpm@10.27.0"
+  "packageManager": "pnpm@10.30.3"
 }
