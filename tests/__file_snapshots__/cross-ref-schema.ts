@@ -15,23 +15,23 @@ export type AddressOutput = {
 export type UserInput = {
   name: string;
   address: AddressInput;
-  previousAddresses?: readonly AddressInput[];
+  previousAddresses?: AddressInput[];
 };
 
 export type UserOutput = {
   name: string;
   address: AddressOutput;
-  previousAddresses?: readonly AddressOutput[];
+  previousAddresses?: AddressOutput[];
 };
 
 export type CompanyInput = {
   name: string;
   headquarters: AddressInput;
-  employees: readonly UserInput[];
+  employees: UserInput[];
 };
 
 export type CompanyOutput = {
   name: string;
   headquarters: AddressOutput;
-  employees: readonly UserOutput[];
+  employees: UserOutput[];
 };

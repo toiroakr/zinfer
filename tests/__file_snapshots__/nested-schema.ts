@@ -7,7 +7,7 @@ export type PersonInput = {
     city: string;
     zipCode: string;
   };
-  alternateAddresses: readonly {
+  alternateAddresses: {
     street: string;
     city: string;
     zipCode: string;
@@ -21,7 +21,7 @@ export type PersonOutput = {
     city: string;
     zipCode: string;
   };
-  alternateAddresses: readonly {
+  alternateAddresses: {
     street: string;
     city: string;
     zipCode: string;

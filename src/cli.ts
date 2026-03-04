@@ -129,7 +129,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   logVerbose(`Using tsconfig: ${tsconfigPath || "(none)"}`);
 
   // Validate --generate-tests requires file output
-  if (options.generateTests && !config.outDir && !config.outFile) {
+  if (config.generateTests && !config.outDir && !config.outFile) {
     throw new Error("--generate-tests requires --outDir or --outFile");
   }
 
@@ -201,7 +201,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
     }
 
     // Generate test file if requested
-    if (options.generateTests) {
+    if (config.generateTests) {
       const testPath = outputPath.replace(/\.ts$/, ".test.ts");
       const testContent = generateTestFileForSingleOutput(
         fileResultsMap,
@@ -262,7 +262,7 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
       }
 
       // Generate test file if requested
-      if (options.generateTests) {
+      if (config.generateTests) {
         const testPath = outputPath.replace(/\.ts$/, ".test.ts");
         const testContent = generateTestFileForPerFile(
           filePath,
@@ -374,6 +374,7 @@ function mergeCliWithConfig(cliOptions: CLIOptions, fileConfig: ZinferConfig): Z
   if (cliOptions.declaration !== undefined) merged.declaration = cliOptions.declaration;
   if (cliOptions.withDescriptions !== undefined)
     merged.withDescriptions = cliOptions.withDescriptions;
+  if (cliOptions.generateTests !== undefined) merged.generateTests = cliOptions.generateTests;
 
   return merged;
 }
@@ -420,10 +421,10 @@ function createNameMapper(config: ZinferConfig): NameMapper {
   if (config.suffix) {
     mappingOptions.removeSuffix = config.suffix;
   }
-  if (config.inputSuffix) {
+  if (config.inputSuffix != null) {
     mappingOptions.inputSuffix = config.inputSuffix;
   }
-  if (config.outputSuffix) {
+  if (config.outputSuffix != null) {
     mappingOptions.outputSuffix = config.outputSuffix;
   }
   if (config.map) {

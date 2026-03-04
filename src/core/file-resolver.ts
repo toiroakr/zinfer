@@ -51,16 +51,18 @@ export class FileResolver {
       return resolve(cwd, options.outFile);
     }
 
-    // Determine base name and extension
+    // Determine base name, extension, and parent directory name
     const inputBasename = basename(inputPath);
     const inputExt = extname(inputPath);
     const inputName = inputBasename.slice(0, -inputExt.length);
+    const inputDir = basename(dirname(inputPath));
 
     // Apply output pattern
     let outputName: string;
     if (options.outPattern) {
       outputName = this.applyPattern(options.outPattern, {
         name: inputName,
+        dir: inputDir,
         ext: options.declaration ? ".d.ts" : ".ts",
       });
     } else {
@@ -86,17 +88,22 @@ export class FileResolver {
    *
    * Supported placeholders:
    * - [name]: Input filename without extension
+   * - [dir]: Parent directory name of the input file
    * - [ext]: Output extension (including dot)
    *
    * @param pattern - Pattern template (e.g., "[name].types[ext]")
    * @param vars - Variables to substitute
    * @returns Generated filename
    */
-  applyPattern(pattern: string, vars: { name: string; ext: string }): string {
+  applyPattern(pattern: string, vars: { name: string; dir?: string; ext: string }): string {
     // Escape $ in replacement strings to prevent regex special character interpretation
     // In String.replace(), $& means the matched substring, $1 means first capture group, etc.
     const escapedName = vars.name.replace(/\$/g, "$$$$");
+    const escapedDir = (vars.dir ?? vars.name).replace(/\$/g, "$$$$");
     const escapedExt = vars.ext.replace(/\$/g, "$$$$");
-    return pattern.replace(/\[name\]/g, escapedName).replace(/\[ext\]/g, escapedExt);
+    return pattern
+      .replace(/\[name\]/g, escapedName)
+      .replace(/\[dir\]/g, escapedDir)
+      .replace(/\[ext\]/g, escapedExt);
   }
 }

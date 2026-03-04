@@ -2,12 +2,12 @@
 
 export type TreeNodeInput = {
   value: string;
-  children?: readonly TreeNodeInput[] | undefined;
+  children?: TreeNodeInput[] | undefined;
 };
 
 export type TreeNodeOutput = {
   value: string;
-  children?: readonly TreeNodeOutput[] | undefined;
+  children?: TreeNodeOutput[] | undefined;
 };
 
 export type NestedRecordInput = {

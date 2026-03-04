@@ -425,6 +425,16 @@ export function formatAsDeclaration(
   // If mergeSame is enabled and types are identical (compare without brands for input)
   if (mergeSame && result.input === result.output && !result.brands?.length) {
     lines.push(`${schemaComment}${exportKeyword}type ${typeName.unifiedName} = ${inputFormatted};`);
+    // Emit aliases for input/output names that differ from the unified name
+    if (typeName.inputName !== typeName.unifiedName) {
+      lines.push(`${exportKeyword}type ${typeName.inputName} = ${typeName.unifiedName};`);
+    }
+    if (
+      typeName.outputName !== typeName.unifiedName &&
+      typeName.outputName !== typeName.inputName
+    ) {
+      lines.push(`${exportKeyword}type ${typeName.outputName} = ${typeName.unifiedName};`);
+    }
     return lines.join("\n");
   }
 
@@ -466,33 +476,124 @@ export function formatMultipleAsDeclarations(
   mapName: (schemaName: string) => MappedTypeName,
   options: DeclarationOptions = {},
 ): string {
-  // Build a map of schema names to their mapped type names
+  // Build a map of schema names to their mapped type names (exported only)
   const typeNameMap = new Map<string, MappedTypeName>();
   for (const result of results) {
+    if (!result.isExported) continue;
     typeNameMap.set(result.schemaName, mapName(result.schemaName));
   }
 
-  // Replace schema references with correct type names
-  const fixedResults = results.map((result) => {
+  // Pass 1: Replace schema references with correct type names
+  let fixedResults = results.map((result) => {
     let input = result.input;
     let output = result.output;
 
-    // Replace all schema references in the type strings
     for (const [schemaName, mappedName] of typeNameMap) {
-      // Escape special regex characters in schema name
       const escapedSchemaName = escapeRegExp(schemaName);
 
-      // Replace SchemaNameInput -> MappedNameInput
       const inputPattern = new RegExp(`\\b${escapedSchemaName}Input\\b`, "g");
       input = input.replace(inputPattern, mappedName.inputName);
 
-      // Replace SchemaNameOutput -> MappedNameOutput
       const outputPattern = new RegExp(`\\b${escapedSchemaName}Output\\b`, "g");
       output = output.replace(outputPattern, mappedName.outputName);
     }
 
     return { ...result, input, output };
   });
+
+  // Pass 2: When mergeSame is enabled, determine which schemas can be merged and
+  // replace input/output-specific names with unified names.
+  // Uses topological sort to process schemas in dependency order so that
+  // transitive merges (A → B → C) are resolved in a single pass.
+  if (options.mergeSame) {
+    // Build dependency graph: which schemas does each schema reference?
+    const deps = new Map<string, Set<string>>();
+    for (const result of fixedResults) {
+      const refSet = new Set<string>();
+      for (const [, mapped] of typeNameMap) {
+        if (mapped.inputName === mapped.unifiedName) continue;
+        const inputRe = new RegExp(`\\b${escapeRegExp(mapped.inputName)}\\b`);
+        const outputRe = new RegExp(`\\b${escapeRegExp(mapped.outputName)}\\b`);
+        if (inputRe.test(result.input) || outputRe.test(result.output)) {
+          refSet.add(mapped.inputName);
+        }
+      }
+      deps.set(result.schemaName, refSet);
+    }
+
+    // Map inputName back to schemaName for dependency lookup
+    const inputNameToSchema = new Map<string, string>();
+    for (const [schemaName, mapped] of typeNameMap) {
+      inputNameToSchema.set(mapped.inputName, schemaName);
+    }
+
+    // Topological sort (Kahn's algorithm)
+    const inDegree = new Map<string, number>();
+    const graph = new Map<string, string[]>();
+    for (const result of fixedResults) {
+      inDegree.set(result.schemaName, 0);
+      graph.set(result.schemaName, []);
+    }
+    for (const [schemaName, refInputNames] of deps) {
+      let count = 0;
+      for (const refInputName of refInputNames) {
+        const depSchema = inputNameToSchema.get(refInputName);
+        if (depSchema && graph.has(depSchema)) {
+          graph.get(depSchema)!.push(schemaName);
+          count++;
+        }
+      }
+      inDegree.set(schemaName, count);
+    }
+    const order: string[] = [];
+    const queue = [...inDegree.entries()].filter(([, d]) => d === 0).map(([n]) => n);
+    while (queue.length > 0) {
+      const node = queue.shift()!;
+      order.push(node);
+      for (const next of graph.get(node) ?? []) {
+        const d = inDegree.get(next)! - 1;
+        inDegree.set(next, d);
+        if (d === 0) queue.push(next);
+      }
+    }
+    // Append any remaining (cyclic) schemas at the end
+    for (const result of fixedResults) {
+      if (!order.includes(result.schemaName)) order.push(result.schemaName);
+    }
+
+    // Process in topological order, accumulating merged schemas
+    const mergedSet = new Set<string>();
+    const resultMap = new Map(fixedResults.map((r) => [r.schemaName, r]));
+
+    for (const schemaName of order) {
+      const result = resultMap.get(schemaName);
+      if (!result) continue;
+
+      let { input, output } = result;
+
+      // Apply unifications from already-determined merged schemas
+      for (const mergedSchema of mergedSet) {
+        const mapped = typeNameMap.get(mergedSchema);
+        if (!mapped) continue;
+        const escapedInput = escapeRegExp(mapped.inputName);
+        const escapedOutput = escapeRegExp(mapped.outputName);
+        input = input.replace(new RegExp(`\\b${escapedInput}\\b`, "g"), mapped.unifiedName);
+        output = output.replace(new RegExp(`\\b${escapedOutput}\\b`, "g"), mapped.unifiedName);
+      }
+
+      resultMap.set(schemaName, { ...result, input, output });
+
+      // Check if this schema is now mergeable
+      if (input === output && !(result.brands && result.brands.length > 0)) {
+        const mapped = typeNameMap.get(schemaName);
+        if (mapped && mapped.inputName !== mapped.unifiedName) {
+          mergedSet.add(schemaName);
+        }
+      }
+    }
+
+    fixedResults = fixedResults.map((r) => resultMap.get(r.schemaName) ?? r);
+  }
 
   const declarations: string[] = [];
 
