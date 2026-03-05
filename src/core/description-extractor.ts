@@ -1,6 +1,7 @@
-import { pathToFileURL } from "url";
+import { readFileSync } from "fs";
 import { resolve } from "pathe";
-import { logDebugError } from "./logger.js";
+import { createJiti, type Jiti } from "jiti";
+import { logDebugError, logVerbose } from "./logger.js";
 import type { FieldDescription } from "./types.js";
 
 /**
@@ -16,9 +17,58 @@ export interface SchemaDescription {
 }
 
 /**
+ * Options for the DescriptionExtractor.
+ */
+export interface DescriptionExtractorOptions {
+  /** Path to tsconfig.json for resolving path aliases */
+  tsconfigPath?: string;
+}
+
+/**
  * Extracts descriptions from Zod schemas by dynamically importing the module.
+ * Uses jiti for TypeScript-aware module resolution (extensionless imports, path aliases).
  */
 export class DescriptionExtractor {
+  private jiti: Jiti;
+
+  constructor(options?: DescriptionExtractorOptions) {
+    this.jiti = createJiti(import.meta.url, {
+      ...(options?.tsconfigPath ? { alias: this.loadPathAliases(options.tsconfigPath) } : {}),
+      interopDefault: false,
+    });
+  }
+
+  /**
+   * Loads path aliases from tsconfig.json for module resolution.
+   */
+  private loadPathAliases(tsconfigPath: string): Record<string, string> {
+    try {
+      const tsconfig = JSON.parse(readFileSync(tsconfigPath, "utf-8"));
+      const paths = tsconfig?.compilerOptions?.paths;
+      const baseUrl = tsconfig?.compilerOptions?.baseUrl || ".";
+      const basePath = resolve(tsconfigPath, "..", baseUrl);
+
+      if (!paths) return {};
+
+      const aliases: Record<string, string> = {};
+      for (const [key, values] of Object.entries(paths)) {
+        const targetValues = values as string[];
+        if (targetValues.length > 0) {
+          // Convert "key/*" → "key" and "value/*" → "basePath/value"
+          const aliasKey = key.replace(/\/\*$/, "");
+          const aliasValue = resolve(basePath, targetValues[0].replace(/\/\*$/, ""));
+          aliases[aliasKey] = aliasValue;
+        }
+      }
+
+      logVerbose(`Loaded path aliases from ${tsconfigPath}: ${JSON.stringify(aliases)}`);
+      return aliases;
+    } catch (error) {
+      logDebugError(`Failed to load tsconfig paths from ${tsconfigPath}`, error);
+      return {};
+    }
+  }
+
   /**
    * Extracts descriptions from schemas in a file.
    *
@@ -33,15 +83,15 @@ export class DescriptionExtractor {
     const result = new Map<string, SchemaDescription>();
 
     try {
-      // Convert to absolute path and file URL for dynamic import
       const absolutePath = resolve(filePath);
-      const fileUrl = pathToFileURL(absolutePath).href;
 
-      // Dynamically import the module
-      const module = await import(fileUrl);
+      // Use jiti for TypeScript-aware module resolution
+      const module = await this.jiti.import(absolutePath);
+
+      const moduleObj = module as Record<string, unknown>;
 
       for (const schemaName of schemaNames) {
-        const schema = module[schemaName];
+        const schema = moduleObj[schemaName];
         if (!schema) {
           continue;
         }
@@ -66,11 +116,12 @@ export class DescriptionExtractor {
   private extractFromSchema(schema: unknown, schemaName: string): SchemaDescription {
     const fields: FieldDescription[] = [];
 
-    // Get schema-level description
-    const schemaDesc = this.getDescription(schema);
+    // Get schema-level description (unwrap through effects/transforms)
+    const schemaDesc = this.getDescriptionDeep(schema);
 
-    // Extract field descriptions recursively
-    this.extractFieldDescriptions(schema, "", fields);
+    // Extract field descriptions recursively (unwrap through effects/transforms first)
+    const innerSchema = this.unwrapToInnerSchema(schema);
+    this.extractFieldDescriptions(innerSchema, "", fields);
 
     return {
       schemaName,
@@ -98,8 +149,8 @@ export class DescriptionExtractor {
         for (const [key, fieldSchema] of Object.entries(shape)) {
           const path = prefix ? `${prefix}.${key}` : key;
 
-          // Get description for this field
-          const desc = this.getDescription(fieldSchema);
+          // Get description for this field (check through effects/transforms)
+          const desc = this.getDescriptionDeep(fieldSchema);
           if (desc) {
             fields.push({ path, description: desc });
           }
@@ -112,6 +163,36 @@ export class DescriptionExtractor {
         }
       }
     }
+  }
+
+  /**
+   * Gets the description from a Zod schema, looking through effects/transforms.
+   * First checks the outer schema, then unwraps through ZodEffects to find descriptions.
+   */
+  private getDescriptionDeep(schema: unknown): string | undefined {
+    // First try direct description
+    const directDesc = this.getDescription(schema);
+    if (directDesc) return directDesc;
+
+    // Try unwrapping through effects (transform/refine/preprocess)
+    if (!schema || typeof schema !== "object") return undefined;
+
+    const zodSchema = schema as Record<string, unknown>;
+    const _def = zodSchema._def as Record<string, unknown> | undefined;
+
+    // Zod v3: ZodEffects wraps the inner schema in _def.schema
+    if (_def?.typeName === "ZodEffects" && _def.schema) {
+      return this.getDescriptionDeep(_def.schema);
+    }
+
+    // Zod v4: effects/pipe type
+    const type = zodSchema.type as string | undefined;
+    const def = zodSchema.def as Record<string, unknown> | undefined;
+    if ((type === "effects" || type === "pipe") && def?.in) {
+      return this.getDescriptionDeep(def.in);
+    }
+
+    return undefined;
   }
 
   /**
@@ -173,7 +254,34 @@ export class DescriptionExtractor {
   }
 
   /**
-   * Unwraps optional/nullable/default wrappers to get the inner schema.
+   * Unwraps effects/transform wrappers to get the inner schema for field extraction.
+   * This handles ZodEffects (from .transform(), .refine(), .preprocess()).
+   */
+  private unwrapToInnerSchema(schema: unknown): unknown {
+    if (!schema || typeof schema !== "object") {
+      return schema;
+    }
+
+    const zodSchema = schema as Record<string, unknown>;
+    const _def = zodSchema._def as Record<string, unknown> | undefined;
+
+    // Zod v3: ZodEffects wraps the inner schema in _def.schema
+    if (_def?.typeName === "ZodEffects" && _def.schema) {
+      return this.unwrapToInnerSchema(_def.schema);
+    }
+
+    // Zod v4: effects/pipe type
+    const type = zodSchema.type as string | undefined;
+    const def = zodSchema.def as Record<string, unknown> | undefined;
+    if ((type === "effects" || type === "pipe") && def?.in) {
+      return this.unwrapToInnerSchema(def.in);
+    }
+
+    return schema;
+  }
+
+  /**
+   * Unwraps optional/nullable/default/effects wrappers to get the inner schema.
    * Supports both Zod v3 and v4.
    */
   private unwrapSchema(schema: unknown): unknown {
@@ -193,6 +301,11 @@ export class DescriptionExtractor {
       }
     }
 
+    // Zod v4: effects/pipe type
+    if ((type === "effects" || type === "pipe") && def?.in) {
+      return this.unwrapSchema(def.in);
+    }
+
     // Zod v3 fallback: check _def.typeName
     const _def = zodSchema._def as Record<string, unknown> | undefined;
     if (_def) {
@@ -204,6 +317,11 @@ export class DescriptionExtractor {
         if (_def.innerType) {
           return this.unwrapSchema(_def.innerType);
         }
+      }
+
+      // Zod v3: ZodEffects wraps the inner schema in _def.schema
+      if (_def.typeName === "ZodEffects" && _def.schema) {
+        return this.unwrapSchema(_def.schema);
       }
     }
 
