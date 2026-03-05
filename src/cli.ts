@@ -136,7 +136,9 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
   // Create extractor and name mapper
   const extractor = new ZodTypeExtractor(tsconfigPath);
   const nameMapper = createNameMapper(config);
-  const descriptionExtractor = config.withDescriptions ? new DescriptionExtractor() : null;
+  const descriptionExtractor = config.withDescriptions
+    ? new DescriptionExtractor({ tsconfigPath: tsconfigPath })
+    : null;
 
   // Parse schema names if specified
   const schemaFilter = config.schemas;
