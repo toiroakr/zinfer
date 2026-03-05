@@ -1,5 +1,11 @@
 # zinfer
 
+## 0.1.5
+
+### Patch Changes
+
+- 6a2b99e: Use jiti for TypeScript-aware module resolution in DescriptionExtractor, enabling extensionless imports and tsconfig path alias support. Also handle ZodEffects unwrapping to correctly extract descriptions through transform/refine/preprocess wrappers.
+
 ## 0.1.4
 
 ### Patch Changes
