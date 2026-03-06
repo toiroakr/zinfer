@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Commit and push code changes. Always use this skill when the user requests committing or pushing.
+description: Commit and push code changes. Always use this skill when the user requests committing or pushing. Triggers on: commit, push, コミット, プッシュ, pushして, コミットして. IMPORTANT - even if CI checks were already run earlier in the conversation, this skill MUST be used for every commit/push to ensure checks pass against the latest state of the code.
 allowed-tools: Bash, Read, Grep, Write, Edit
 ---
 
