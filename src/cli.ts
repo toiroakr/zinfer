@@ -5,6 +5,7 @@ import { existsSync, writeFileSync, mkdirSync } from "fs";
 import {
   ZodTypeExtractor,
   generateDeclarationFile,
+  relativizeImportPaths,
   NameMapper,
   FileResolver,
   DescriptionExtractor,
@@ -184,13 +185,10 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
       throw new NoSchemasFoundError(resolvedFiles, schemaFilter);
     }
 
-    const content = generateDeclarationFile(
-      allResults,
-      nameMapper.createMapFunction(),
-      declOptions,
-    );
+    let content = generateDeclarationFile(allResults, nameMapper.createMapFunction(), declOptions);
 
     const outputPath = resolve(cwd, config.outFile);
+    content = relativizeImportPaths(content, outputPath);
 
     if (options.dryRun) {
       console.log(`Would write to: ${outputPath}`);
@@ -248,9 +246,10 @@ async function runCLI(files: string[], options: CLIOptions): Promise<void> {
 
     // File output mode
     if (config.outDir || config.outPattern) {
-      const content = generateDeclarationFile(results, nameMapper.createMapFunction(), declOptions);
+      let content = generateDeclarationFile(results, nameMapper.createMapFunction(), declOptions);
 
       const outputPath = fileResolver.resolveOutputPath(filePath, outputOptions, cwd);
+      content = relativizeImportPaths(content, outputPath);
 
       if (options.dryRun) {
         console.log(`Would write to: ${outputPath}`);

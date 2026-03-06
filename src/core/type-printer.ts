@@ -1,3 +1,4 @@
+import { relative, dirname, isAbsolute } from "pathe";
 import type {
   ExtractResult,
   MappedTypeName,
@@ -660,4 +661,30 @@ export function generateDeclarationFile(
   lines.push("");
 
   return lines.join("\n");
+}
+
+/**
+ * Converts absolute `import("...")` paths in generated type content to relative paths.
+ *
+ * TypeScript's type printer may emit absolute file paths in `import()` type syntax
+ * (e.g., `import("/Users/foo/bar/src/types/plugin").SomeType`).
+ * These must be converted to relative paths so the output is portable across machines.
+ *
+ * @param content - The generated file content
+ * @param outputFilePath - Absolute path to the output file
+ * @returns Content with absolute import paths replaced by relative paths
+ */
+export function relativizeImportPaths(content: string, outputFilePath: string): string {
+  const outputDir = dirname(outputFilePath);
+
+  return content.replace(/import\("([^"]+)"\)/g, (_match, importPath: string) => {
+    if (!isAbsolute(importPath)) {
+      return _match;
+    }
+    let rel = relative(outputDir, importPath);
+    if (!rel.startsWith(".")) {
+      rel = "./" + rel;
+    }
+    return `import("${rel}")`;
+  });
 }
