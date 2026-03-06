@@ -1,5 +1,11 @@
 # zinfer
 
+## 0.1.7
+
+### Patch Changes
+
+- aed9366: Add regression tests for previously fixed bugs (config merging, suffix handling, union extraction, type generation) and fix missing re-export of `relativizeImportPaths` from core barrel file.
+
 ## 0.1.6
 
 ### Patch Changes
