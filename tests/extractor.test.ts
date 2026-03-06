@@ -187,6 +187,34 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("multiline-description-schema.ts", () => {
+    it("should generate TSDoc comments with multiline descriptions", async () => {
+      const filePath = resolve(fixturesDir, "multiline-description-schema.ts");
+      const results = extractor.extractAll(filePath);
+      const descriptionExtractor = new DescriptionExtractor();
+
+      const schemaNames = results.map((r) => r.schemaName);
+      const descriptions = await descriptionExtractor.extractDescriptions(filePath, schemaNames);
+
+      const resultsWithDescriptions = results.map((result) => {
+        const desc = descriptions.get(result.schemaName);
+        if (!desc) {
+          return result;
+        }
+        return {
+          ...result,
+          description: desc.description,
+          fieldDescriptions: desc.fields,
+        };
+      });
+
+      const output = generateDeclarationFile(resultsWithDescriptions, mapName);
+      await expect(output).toMatchFileSnapshot(
+        "__file_snapshots__/multiline-description-schema.ts",
+      );
+    });
+  });
+
   describe("declaration options", () => {
     it("should generate with inputOnly option", async () => {
       const results = extractor.extractAll(resolve(fixturesDir, "transform-schema.ts"));

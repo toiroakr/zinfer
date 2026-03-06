@@ -74,7 +74,15 @@ function prettifyType(
  * Creates a TSDoc comment line.
  */
 function createTsDocComment(description: string, indentStr: string): string {
-  return `${indentStr}/** ${description} */\n`;
+  const lines = description.split("\n");
+  if (lines.length === 1) {
+    return `${indentStr}/** ${description} */\n`;
+  }
+  return (
+    [`${indentStr}/**`, ...lines.map((line) => `${indentStr} * ${line}`), `${indentStr} */`].join(
+      "\n",
+    ) + "\n"
+  );
 }
 
 /**
@@ -417,7 +425,12 @@ export function formatAsDeclaration(
   const outputFormatted = prettifyType(outputWithBrands, indent, result.fieldDescriptions);
 
   // Schema-level TSDoc comment
-  const schemaComment = result.description ? `/**\n * ${result.description}\n */\n` : "";
+  const schemaComment = result.description
+    ? `/**\n${result.description
+        .split("\n")
+        .map((line) => ` * ${line}`)
+        .join("\n")}\n */\n`
+    : "";
 
   // Only export if the original schema was exported
   const exportKeyword = result.isExported ? "export " : "";
