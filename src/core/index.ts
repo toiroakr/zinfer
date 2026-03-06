@@ -9,6 +9,7 @@ export {
   formatAsDeclaration,
   formatMultipleAsDeclarations,
   generateDeclarationFile,
+  relativizeImportPaths,
   type PrintOptions,
 } from "./type-printer.js";
 

@@ -215,6 +215,26 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("array-readonly-schema.ts", () => {
+    it("should not add readonly modifier to regular arrays", async () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "array-readonly-schema.ts"));
+      const output = generateDeclarationFile(results, mapName);
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/array-readonly-schema.ts");
+    });
+  });
+
+  describe("union-nonexport-member-schema.ts", () => {
+    it("should inline non-exported union members instead of using named references", async () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "union-nonexport-member-schema.ts"),
+      );
+      const output = generateDeclarationFile(results, mapName);
+      await expect(output).toMatchFileSnapshot(
+        "__file_snapshots__/union-nonexport-member-schema.ts",
+      );
+    });
+  });
+
   describe("declaration options", () => {
     it("should generate with inputOnly option", async () => {
       const results = extractor.extractAll(resolve(fixturesDir, "transform-schema.ts"));
@@ -232,6 +252,12 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       const results = extractor.extractAll(resolve(fixturesDir, "basic-schema.ts"));
       const output = generateDeclarationFile(results, mapName, { mergeSame: true });
       await expect(output).toMatchFileSnapshot("__file_snapshots__/options-mergeSame.ts");
+    });
+
+    it("should merge transitively and emit aliases for multi-schema with mergeSame", async () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "mergeSame-multi-schema.ts"));
+      const output = generateDeclarationFile(results, mapName, { mergeSame: true });
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/options-mergeSame-multi.ts");
     });
   });
 });
