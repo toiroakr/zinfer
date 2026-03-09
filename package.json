@@ -6,7 +6,8 @@
     "schema",
     "type-extraction",
     "typescript",
-    "zod"
+    "zod",
+    "zod-to-ts"
   ],
   "license": "MIT",
   "repository": {
