@@ -1,5 +1,11 @@
 # zinfer
 
+## 0.1.8
+
+### Patch Changes
+
+- 933288d: Fix tuple types being expanded into arrays (e.g., `[string, number]` became `(string | number)[]`)
+
 ## 0.1.7
 
 ### Patch Changes
