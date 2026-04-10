@@ -11,6 +11,10 @@
   "prConcurrentLimit": 5,
   "packageRules": [
     {
+      "matchDatasources": ["npm"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
       "matchDepTypes": ["devDependencies"],
       "automerge": true
     },
