@@ -223,6 +223,14 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("tuple-schema.ts", () => {
+    it("should preserve tuple types instead of expanding to arrays", async () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "tuple-schema.ts"));
+      const output = generateDeclarationFile(results, mapName);
+      await expect(output).toMatchFileSnapshot("__file_snapshots__/tuple-schema.ts");
+    });
+  });
+
   describe("union-nonexport-member-schema.ts", () => {
     it("should inline non-exported union members instead of using named references", async () => {
       const results = extractor.extractAll(

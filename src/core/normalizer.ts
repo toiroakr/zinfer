@@ -13,11 +13,13 @@ type __Normalize<T> =
     ? T
     : T extends (...args: infer A) => infer R
       ? (...args: __Normalize<A>) => __Normalize<R>
-      : T extends (infer U)[]
-        ? __Normalize<U>[]
-        : T extends readonly (infer U)[]
-          ? readonly __Normalize<U>[]
-          : T extends string
+      : T extends readonly any[]
+        ? number extends T['length']
+          ? T extends (infer U)[]
+            ? __Normalize<U>[]
+            : readonly __Normalize<T[number]>[]
+          : { [K in keyof T]: __Normalize<T[K]> }
+        : T extends string
             ? T extends object ? string : T
             : T extends number
               ? T extends object ? number : T
