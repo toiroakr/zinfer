@@ -52,7 +52,7 @@
   "devDependencies": {
     "@changesets/cli": "2.30.0",
     "@types/node": "25.5.2",
-    "@typescript/native-preview": "7.0.0-dev.20260407.1",
+    "@typescript/native-preview": "7.0.0-dev.20260409.1",
     "knip": "6.3.1",
     "lefthook": "2.1.5",
     "oxfmt": "0.44.0",
