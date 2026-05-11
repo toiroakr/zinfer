@@ -59,7 +59,7 @@
     "oxlint": "1.62.0",
     "typescript": "6.0.3",
     "vitest": "4.1.5",
-    "zod": "4.4.2"
+    "zod": "4.4.3"
   },
   "peerDependencies": {
     "typescript": ">=5.0.0",
