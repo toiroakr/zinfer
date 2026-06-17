@@ -3,6 +3,7 @@
   "type": "module",
   "imports": {
     "#/*": "./schemas/*",
+    "#src/*": "./schemas/*",
     "#shared": "./schemas/shared.js"
   }
 }

@@ -294,5 +294,31 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       expect(consumer!.input).toContain("id: string");
       expect(consumer!.input).not.toContain("any");
     });
+
+    it("should preserve field descriptions when a schema imports via the #/* wildcard pattern", async () => {
+      const filePath = resolve(fixturesDir, "subpath-import/described-consumer.ts");
+      const descriptionExtractor = new DescriptionExtractor();
+
+      const descriptions = await descriptionExtractor.extractDescriptions(filePath, [
+        "DescribedConsumerSchema",
+      ]);
+
+      const desc = descriptions.get("DescribedConsumerSchema");
+      const nameField = desc?.fields.find((f) => f.path === "name");
+      expect(nameField?.description).toBe("The user's name");
+    });
+
+    it("should preserve field descriptions when a schema imports via a named subpath prefix (#src/*)", async () => {
+      const filePath = resolve(fixturesDir, "subpath-import/described-named-consumer.ts");
+      const descriptionExtractor = new DescriptionExtractor();
+
+      const descriptions = await descriptionExtractor.extractDescriptions(filePath, [
+        "DescribedNamedConsumerSchema",
+      ]);
+
+      const desc = descriptions.get("DescribedNamedConsumerSchema");
+      const nameField = desc?.fields.find((f) => f.path === "name");
+      expect(nameField?.description).toBe("The user's name");
+    });
   });
 });
