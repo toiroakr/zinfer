@@ -1,5 +1,5 @@
-import { readFileSync } from "fs";
-import { resolve } from "pathe";
+import { existsSync, readFileSync } from "fs";
+import { dirname, join, resolve } from "pathe";
 import { createJiti, type Jiti } from "jiti";
 import { logDebugError, logVerbose } from "./logger.js";
 import type { FieldDescription } from "./types.js";
@@ -29,13 +29,120 @@ export interface DescriptionExtractorOptions {
  * Uses jiti for TypeScript-aware module resolution (extensionless imports, path aliases).
  */
 export class DescriptionExtractor {
-  private jiti: Jiti;
+  private tsconfigAliases: Record<string, string>;
+  /** jiti instances keyed by the nearest package.json path (so each module's subpath imports resolve correctly). */
+  private jitiCache = new Map<string, Jiti>();
 
   constructor(options?: DescriptionExtractorOptions) {
-    this.jiti = createJiti(import.meta.url, {
-      ...(options?.tsconfigPath ? { alias: this.loadPathAliases(options.tsconfigPath) } : {}),
+    this.tsconfigAliases = options?.tsconfigPath ? this.loadPathAliases(options.tsconfigPath) : {};
+  }
+
+  /**
+   * Returns a jiti instance configured to resolve the module at `filePath`.
+   *
+   * Node only resolves the bare "#/" subpath import form (e.g.
+   * "#/schemas/user.js") natively from Node 26 onward; older Node rejects it as
+   * an invalid internal imports specifier. jiti delegates subpath-imports
+   * resolution to the running Node, so on Node < 26 it cannot import modules
+   * that rely on a package.json `imports` `#/*` mapping. We bridge this by
+   * reading the nearest package.json `imports` field and registering jiti
+   * aliases for it (the same mechanism we already use for tsconfig `paths`),
+   * which makes resolution work regardless of the Node version.
+   */
+  private getJiti(filePath: string): Jiti {
+    const packageJsonPath = this.findNearestPackageJson(filePath);
+    const cacheKey = packageJsonPath ?? "";
+
+    const cached = this.jitiCache.get(cacheKey);
+    if (cached) return cached;
+
+    const importAliases = packageJsonPath ? this.loadSubpathImports(packageJsonPath) : {};
+    const alias = { ...this.tsconfigAliases, ...importAliases };
+
+    const jiti = createJiti(import.meta.url, {
+      ...(Object.keys(alias).length ? { alias } : {}),
       interopDefault: false,
     });
+
+    this.jitiCache.set(cacheKey, jiti);
+    return jiti;
+  }
+
+  /**
+   * Walks up from a file to find the nearest package.json.
+   */
+  private findNearestPackageJson(filePath: string): string | undefined {
+    let dir = dirname(resolve(filePath));
+
+    while (true) {
+      const candidate = join(dir, "package.json");
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+      const parent = dirname(dir);
+      if (parent === dir) {
+        return undefined;
+      }
+      dir = parent;
+    }
+  }
+
+  /**
+   * Loads subpath import aliases from a package.json `imports` field.
+   *
+   * Wildcard keys keep their trailing "/" (e.g. "#/*" -> "#/", "#src/*" ->
+   * "#src/") so that prefix matching never collides with unrelated keys such as
+   * an exact "#shared" import.
+   */
+  private loadSubpathImports(packageJsonPath: string): Record<string, string> {
+    try {
+      const pkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+      const imports = pkg?.imports;
+      if (!imports || typeof imports !== "object") return {};
+
+      const packageDir = dirname(packageJsonPath);
+      const aliases: Record<string, string> = {};
+
+      for (const [key, value] of Object.entries(imports)) {
+        const target = this.resolveImportTarget(value);
+        if (!target) continue;
+
+        if (key.endsWith("*")) {
+          // Wildcard mapping: drop the trailing "*" but keep the "/" so the
+          // alias matches "#/..." / "#src/..." without matching "#shared".
+          const aliasKey = key.slice(0, -1);
+          let aliasValue = resolve(packageDir, target.replace(/\*$/, ""));
+          if (aliasKey.endsWith("/") && !aliasValue.endsWith("/")) {
+            aliasValue += "/";
+          }
+          aliases[aliasKey] = aliasValue;
+        } else {
+          aliases[key] = resolve(packageDir, target);
+        }
+      }
+
+      logVerbose(`Loaded subpath imports from ${packageJsonPath}: ${JSON.stringify(aliases)}`);
+      return aliases;
+    } catch (error) {
+      logDebugError(`Failed to load subpath imports from ${packageJsonPath}`, error);
+      return {};
+    }
+  }
+
+  /**
+   * Resolves a package.json `imports` target to a file path string.
+   * Targets may be a plain string or a conditional object.
+   */
+  private resolveImportTarget(value: unknown): string | undefined {
+    if (typeof value === "string") return value;
+    if (value && typeof value === "object") {
+      const conditions = value as Record<string, unknown>;
+      for (const condition of ["import", "node", "default", "require"]) {
+        const resolved = this.resolveImportTarget(conditions[condition]);
+        if (resolved) return resolved;
+      }
+    }
+    return undefined;
   }
 
   /**
@@ -86,7 +193,7 @@ export class DescriptionExtractor {
       const absolutePath = resolve(filePath);
 
       // Use jiti for TypeScript-aware module resolution
-      const module = await this.jiti.import(absolutePath);
+      const module = await this.getJiti(absolutePath).import(absolutePath);
 
       const moduleObj = module as Record<string, unknown>;
 
