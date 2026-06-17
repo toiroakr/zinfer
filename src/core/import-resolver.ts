@@ -51,8 +51,16 @@ export class ImportResolver {
     for (const importDecl of imports) {
       const moduleSpecifier = importDecl.getModuleSpecifierValue();
 
-      // Skip node_modules imports
-      if (!moduleSpecifier.startsWith(".") && !moduleSpecifier.startsWith("/")) {
+      // Skip bare module specifiers (node_modules), but allow relative,
+      // absolute, and subpath imports (package.json "imports" field, e.g.
+      // "#/schemas/user.js"). Subpath imports — including the "#/*" form — are
+      // resolved by TypeScript's own module resolution (requires the
+      // TypeScript 6 bundled by ts-morph).
+      if (
+        !moduleSpecifier.startsWith(".") &&
+        !moduleSpecifier.startsWith("/") &&
+        !moduleSpecifier.startsWith("#")
+      ) {
         continue;
       }
 
