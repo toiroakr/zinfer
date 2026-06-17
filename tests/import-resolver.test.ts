@@ -74,5 +74,34 @@ describe("ImportResolver", () => {
 
       expect(importedSchemas.size).toBe(0);
     });
+
+    it("should resolve subpath imports with a wildcard pattern (#/*)", () => {
+      const consumerPath = resolve(fixturesDir, "subpath-import/consumer.ts");
+      const sourceFile = project.addSourceFileAtPath(consumerPath);
+
+      const importedSchemas = resolver.findImportedSchemas(sourceFile, project);
+
+      expect(importedSchemas.size).toBe(2);
+      expect(importedSchemas.has("SharedSchema")).toBe(true);
+      expect(importedSchemas.has("AnotherSharedSchema")).toBe(true);
+
+      const sharedInfo = importedSchemas.get("SharedSchema")!;
+      expect(sharedInfo.localName).toBe("SharedSchema");
+      expect(sharedInfo.originalName).toBe("SharedSchema");
+      expect(sharedInfo.resolved).toBe(true);
+      expect(sharedInfo.sourceFilePath).toContain("subpath-import/schemas/shared.ts");
+    });
+
+    it("should resolve exact (non-wildcard) subpath imports", () => {
+      const consumerPath = resolve(fixturesDir, "subpath-import/exact-consumer.ts");
+      const sourceFile = project.addSourceFileAtPath(consumerPath);
+
+      const importedSchemas = resolver.findImportedSchemas(sourceFile, project);
+
+      expect(importedSchemas.has("SharedSchema")).toBe(true);
+      const sharedInfo = importedSchemas.get("SharedSchema")!;
+      expect(sharedInfo.resolved).toBe(true);
+      expect(sharedInfo.sourceFilePath).toContain("subpath-import/schemas/shared.ts");
+    });
   });
 });

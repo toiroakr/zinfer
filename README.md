@@ -488,6 +488,33 @@ Re-run with `--generate-tests` after modifying schemas to continuously verify ty
 - Circular references: `z.lazy()`, getter patterns
 - Descriptions: `.describe()`
 - Branded types: `.brand()`
+- Imported schemas: relative imports and subpath imports (package.json `imports` field, including the `#/*` form)
+
+## Subpath Imports
+
+Schemas imported via the package.json [`imports`](https://nodejs.org/api/packages.html#subpath-imports) field are resolved automatically, including the `#/*` wildcard form supported by TypeScript 6 / Node 26.
+
+```json
+// package.json
+{
+  "imports": {
+    "#/*": "./src/*"
+  }
+}
+```
+
+```typescript
+// src/user.ts
+import { z } from "zod";
+import { AddressSchema } from "#/address.js";
+
+export const UserSchema = z.object({
+  name: z.string(),
+  address: AddressSchema,
+});
+```
+
+The imported `AddressSchema` is resolved through the nearest package.json `imports` map (wildcard, exact, and conditional targets are all supported) so that its type is inlined into the generated output.
 
 ## License
 

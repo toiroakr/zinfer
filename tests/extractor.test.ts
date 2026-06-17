@@ -268,4 +268,32 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       await expect(output).toMatchFileSnapshot("__file_snapshots__/options-mergeSame-multi.ts");
     });
   });
+
+  describe('subpath imports (package.json "imports" field)', () => {
+    it("should resolve schemas imported via the #/* wildcard pattern", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "subpath-import/consumer.ts"));
+      const consumer = results.find((r) => r.schemaName === "ConsumerSchema");
+
+      expect(consumer).toBeDefined();
+      // The imported SharedSchema / AnotherSharedSchema must be fully resolved
+      // (not collapsed to `any`) for the object shape to be inferred correctly.
+      expect(consumer!.input).toContain("shared: {");
+      expect(consumer!.input).toContain("id: string");
+      expect(consumer!.input).toContain("another: {");
+      expect(consumer!.input).toContain("value: number");
+      expect(consumer!.input).not.toContain("any");
+    });
+
+    it("should resolve schemas imported via an exact subpath key", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "subpath-import/exact-consumer.ts"),
+      );
+      const consumer = results.find((r) => r.schemaName === "ExactConsumerSchema");
+
+      expect(consumer).toBeDefined();
+      expect(consumer!.input).toContain("shared: {");
+      expect(consumer!.input).toContain("id: string");
+      expect(consumer!.input).not.toContain("any");
+    });
+  });
 });
