@@ -4,7 +4,6 @@ import { ZodTypeExtractor } from "../src/core/extractor.js";
 import { generateDeclarationFile } from "../src/core/type-printer.js";
 import { createNameMapper } from "../src/core/name-mapper.js";
 import { DescriptionExtractor } from "../src/core/description-extractor.js";
-import type { ExtractResult } from "../src/core/types.js";
 import { execSync } from "child_process";
 import { readdirSync } from "fs";
 
