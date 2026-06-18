@@ -111,7 +111,10 @@ export class DescriptionExtractor {
           // Wildcard mapping: drop the trailing "*" but keep the "/" so the
           // alias matches "#/..." / "#src/..." without matching "#shared".
           const aliasKey = key.slice(0, -1);
-          let aliasValue = resolve(packageDir, target.replace(/\*$/, ""));
+          // Strip "*" and any suffix after it (e.g. "./src/*.ts" -> "./src/"):
+          // jiti resolves the extension itself, so only the prefix directory
+          // is needed. A bare trailing "*" ("./schemas/*") is handled too.
+          let aliasValue = resolve(packageDir, target.replace(/\*.*$/, ""));
           if (aliasKey.endsWith("/") && !aliasValue.endsWith("/")) {
             aliasValue += "/";
           }
