@@ -320,5 +320,18 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       const nameField = desc?.fields.find((f) => f.path === "name");
       expect(nameField?.description).toBe("The user's name");
     });
+
+    it("should preserve field descriptions when the #/* target has a suffix after the wildcard (#/* -> ./src/*.ts)", async () => {
+      const filePath = resolve(fixturesDir, "subpath-import-suffix/consumer.ts");
+      const descriptionExtractor = new DescriptionExtractor();
+
+      const descriptions = await descriptionExtractor.extractDescriptions(filePath, [
+        "SuffixConsumerSchema",
+      ]);
+
+      const desc = descriptions.get("SuffixConsumerSchema");
+      const nameField = desc?.fields.find((f) => f.path === "name");
+      expect(nameField?.description).toBe("The user's name");
+    });
   });
 });
