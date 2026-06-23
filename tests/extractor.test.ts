@@ -137,6 +137,11 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   );
   createSchemaTest(
     extractor,
+    "strict-object-schema",
+    "should generate TypeScript declarations with strictObject cross-references",
+  );
+  createSchemaTest(
+    extractor,
     "mixed-export-schema",
     "should generate TypeScript declarations respecting export status",
   );

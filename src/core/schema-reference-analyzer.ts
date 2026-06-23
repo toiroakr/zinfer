@@ -209,7 +209,7 @@ export class SchemaReferenceAnalyzer {
   ): SchemaReferenceInfo[] {
     const refs: SchemaReferenceInfo[] = [];
 
-    // Find z.object() call
+    // Find Zod object calls
     const objectCalls = this.findZodObjectCalls(node);
 
     for (const objectCall of objectCalls) {
@@ -243,10 +243,11 @@ export class SchemaReferenceAnalyzer {
   }
 
   /**
-   * Finds all z.object() calls in a node (including the node itself).
+   * Finds all Zod object calls in a node (including the node itself).
    */
   private findZodObjectCalls(node: Node): CallExpression[] {
     const calls: CallExpression[] = [];
+    const objectBuilders = new Set(["object", "strictObject", "looseObject"]);
 
     // Check the node itself
     const checkNode = (n: Node) => {
@@ -255,7 +256,7 @@ export class SchemaReferenceAnalyzer {
         if (Node.isPropertyAccessExpression(expr)) {
           const obj = expr.getExpression();
           const method = expr.getName();
-          if (Node.isIdentifier(obj) && obj.getText() === "z" && method === "object") {
+          if (Node.isIdentifier(obj) && obj.getText() === "z" && objectBuilders.has(method)) {
             calls.push(n);
           }
         }
