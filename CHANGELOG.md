@@ -1,5 +1,11 @@
 # zinfer
 
+## 0.2.3
+
+### Patch Changes
+
+- 8ec6316: Preserve named schema references inside `z.strictObject()` and `z.looseObject()` fields instead of expanding them inline.
+
 ## 0.2.2
 
 ### Patch Changes
