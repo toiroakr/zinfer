@@ -42,6 +42,7 @@ export type UnionReferenceMap = Map<string, UnionReferenceInfo>;
  * Analyzes schema references to detect cross-schema dependencies.
  */
 export class SchemaReferenceAnalyzer {
+  private static readonly OBJECT_BUILDERS = new Set(["object", "strictObject", "looseObject"]);
   /**
    * Analyzes a source file to find all schema references and union references in a single pass.
    */
@@ -247,7 +248,6 @@ export class SchemaReferenceAnalyzer {
    */
   private findZodObjectCalls(node: Node): CallExpression[] {
     const calls: CallExpression[] = [];
-    const objectBuilders = new Set(["object", "strictObject", "looseObject"]);
 
     // Check the node itself
     const checkNode = (n: Node) => {
@@ -256,7 +256,11 @@ export class SchemaReferenceAnalyzer {
         if (Node.isPropertyAccessExpression(expr)) {
           const obj = expr.getExpression();
           const method = expr.getName();
-          if (Node.isIdentifier(obj) && obj.getText() === "z" && objectBuilders.has(method)) {
+          if (
+            Node.isIdentifier(obj) &&
+            obj.getText() === "z" &&
+            SchemaReferenceAnalyzer.OBJECT_BUILDERS.has(method)
+          ) {
             calls.push(n);
           }
         }
