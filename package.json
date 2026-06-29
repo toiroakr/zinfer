@@ -53,10 +53,10 @@
     "@changesets/cli": "2.31.0",
     "@types/node": "25.9.4",
     "@typescript/native-preview": "7.0.0-dev.20260622.1",
-    "knip": "6.17.1",
+    "knip": "6.18.0",
     "lefthook": "2.1.9",
-    "oxfmt": "0.55.0",
-    "oxlint": "1.70.0",
+    "oxfmt": "0.56.0",
+    "oxlint": "1.71.0",
     "typescript": "6.0.3",
     "vitest": "4.1.9",
     "zod": "4.4.3"
