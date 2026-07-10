@@ -1,5 +1,11 @@
 # zinfer
 
+## 0.2.5
+
+### Patch Changes
+
+- 054a3a5: Preserve exported schema aliases inside unions with imported or non-exported members, including references inherited from shared object shapes.
+
 ## 0.2.4
 
 ### Patch Changes
