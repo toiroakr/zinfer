@@ -155,6 +155,11 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "brand-schema",
     "should generate TypeScript declarations with brand information",
   );
+  createSchemaTest(
+    extractor,
+    "described-ref-schema",
+    "should keep named schema references when .describe() wraps them",
+  );
 
   describe("described-schema.ts", () => {
     it("should generate TypeScript declarations without TSDoc comments by default", async () => {

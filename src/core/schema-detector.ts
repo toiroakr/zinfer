@@ -155,20 +155,12 @@ export class SchemaDetector {
 
     const initText = initializer.getText();
 
-    // Check if it starts with z. followed by a known Zod schema builder
-    if (initText.startsWith("z.")) {
-      // Extract the method name after "z."
-      const afterZ = initText.substring(2);
-      // Find where the method name ends (at '(' or '.')
-      const endIdx = Math.min(
-        afterZ.indexOf("(") !== -1 ? afterZ.indexOf("(") : afterZ.length,
-        afterZ.indexOf(".") !== -1 ? afterZ.indexOf(".") : afterZ.length,
-      );
-      const methodName = afterZ.substring(0, endIdx);
-
-      if (SchemaDetector.ZOD_SCHEMA_BUILDERS.has(methodName)) {
-        return true;
-      }
+    // Check if it starts with z. followed by a known Zod schema builder.
+    // Whitespace is allowed around the dot: formatters break long chains
+    // into multiple lines (e.g. `z\n  .union([...])\n  .describe(...)`).
+    const builderMatch = initText.match(/^z\s*\.\s*([A-Za-z_$][A-Za-z0-9_$]*)/);
+    if (builderMatch && SchemaDetector.ZOD_SCHEMA_BUILDERS.has(builderMatch[1])) {
+      return true;
     }
 
     // Check if it's a method chain on another schema variable
@@ -191,6 +183,8 @@ export class SchemaDetector {
       ".array(",
       ".brand(",
       ".deepPartial(",
+      ".describe(",
+      ".meta(",
     ];
 
     for (const method of zodMethods) {

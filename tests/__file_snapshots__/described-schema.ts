@@ -31,35 +31,13 @@ export type AddressOutput = {
 };
 
 export type ProfileInput = {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: "admin" | "user" | "guest";
-    age?: number | undefined;
-  };
+  user: UserInput;
   tags: string[];
-  address?: {
-    street: string;
-    city: string;
-    country: string;
-    zipCode?: string | undefined;
-  } | undefined;
+  address?: AddressInput;
 };
 
 export type ProfileOutput = {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: "admin" | "user" | "guest";
-    age?: number | undefined;
-  };
+  user: UserOutput;
   tags: string[];
-  address?: {
-    street: string;
-    city: string;
-    country: string;
-    zipCode?: string | undefined;
-  } | undefined;
+  address?: AddressOutput;
 };
