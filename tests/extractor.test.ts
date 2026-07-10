@@ -160,6 +160,11 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "described-ref-schema",
     "should keep named schema references when .describe() wraps them",
   );
+  createSchemaTest(
+    extractor,
+    "mixed-union-reference-schema",
+    "should preserve named references through mixed and non-exported union members",
+  );
 
   describe("described-schema.ts", () => {
     it("should generate TypeScript declarations without TSDoc comments by default", async () => {
@@ -249,6 +254,48 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       await expect(output).toMatchFileSnapshot(
         "__file_snapshots__/union-nonexport-member-schema.ts",
       );
+    });
+  });
+
+  describe("mixed-union-reference-schema.ts", () => {
+    it("preserves named references through mixed and non-exported union members", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "mixed-union-reference-schema.ts"));
+      const mixedValue = results.find((result) => result.schemaName === "MixedValueSchema");
+      const referencedValue = results.find(
+        (result) => result.schemaName === "ReferencedValueSchema",
+      );
+      const spreadOverride = results.find((result) => result.schemaName === "SpreadOverrideSchema");
+      const satisfiedSpreadOverride = results.find(
+        (result) => result.schemaName === "SatisfiedSpreadOverrideSchema",
+      );
+      const recursiveUnion = results.find((result) => result.schemaName === "RecursiveUnionSchema");
+      const mixedPlainUnion = results.find(
+        (result) => result.schemaName === "MixedPlainUnionSchema",
+      );
+      const inlineImportedUnion = results.find(
+        (result) => result.schemaName === "InlineImportedUnionSchema",
+      );
+
+      expect(mixedValue?.input).toBe("JsonValueSchemaInput | Function");
+      expect(mixedValue?.output).toBe("JsonValueSchemaOutput | Function");
+      expect(referencedValue?.input).not.toContain("any");
+      expect(referencedValue?.output).not.toContain("any");
+      expect(referencedValue?.input.match(/value\?: MixedValueSchemaInput/g)).toHaveLength(2);
+      expect(referencedValue?.output.match(/value\?: MixedValueSchemaOutput/g)).toHaveLength(2);
+      expect(spreadOverride?.input).toBe("{ value?: { [x: string]: unknown; } | undefined; }");
+      expect(spreadOverride?.output).toBe("{ value?: { [x: string]: unknown; } | undefined; }");
+      expect(satisfiedSpreadOverride?.input).toBe(
+        "{ value?: { [x: string]: unknown; } | undefined; }",
+      );
+      expect(satisfiedSpreadOverride?.output).toBe(
+        "{ value?: { [x: string]: unknown; } | undefined; }",
+      );
+      expect(recursiveUnion?.input).not.toContain("InternalNodeSchemaInput");
+      expect(recursiveUnion?.output).not.toContain("InternalNodeSchemaOutput");
+      expect(mixedPlainUnion?.input).not.toContain("PublicPlainSchemaInput");
+      expect(mixedPlainUnion?.output).not.toContain("PublicPlainSchemaOutput");
+      expect(inlineImportedUnion?.input).toContain("string");
+      expect(inlineImportedUnion?.output).toContain("string");
     });
   });
 
