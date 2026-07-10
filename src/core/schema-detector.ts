@@ -156,9 +156,9 @@ export class SchemaDetector {
     const initText = initializer.getText();
 
     // Check if it starts with z. followed by a known Zod schema builder.
-    // Formatters like prettier may break the chain across lines
-    // (e.g. "z\n  .union([...])"), so allow whitespace around the dot.
-    const builderMatch = initText.match(/^z\s*\.\s*([A-Za-z_$][\w$]*)/);
+    // Whitespace is allowed around the dot: formatters break long chains
+    // into multiple lines (e.g. `z\n  .union([...])\n  .describe(...)`).
+    const builderMatch = initText.match(/^z\s*\.\s*([A-Za-z_$][A-Za-z0-9_$]*)/);
     if (builderMatch && SchemaDetector.ZOD_SCHEMA_BUILDERS.has(builderMatch[1])) {
       return true;
     }
@@ -183,6 +183,8 @@ export class SchemaDetector {
       ".array(",
       ".brand(",
       ".deepPartial(",
+      ".describe(",
+      ".meta(",
     ];
 
     for (const method of zodMethods) {

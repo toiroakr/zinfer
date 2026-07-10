@@ -53,40 +53,18 @@ export type AddressOutput = {
 
 export type ProfileInput = {
   /** User information */
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: "admin" | "user" | "guest";
-    age?: number | undefined;
-  };
+  user: UserInput;
   /** User tags for categorization */
   tags: string[];
   /** User's primary address */
-  address?: {
-    street: string;
-    city: string;
-    country: string;
-    zipCode?: string | undefined;
-  } | undefined;
+  address?: AddressInput;
 };
 
 export type ProfileOutput = {
   /** User information */
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: "admin" | "user" | "guest";
-    age?: number | undefined;
-  };
+  user: UserOutput;
   /** User tags for categorization */
   tags: string[];
   /** User's primary address */
-  address?: {
-    street: string;
-    city: string;
-    country: string;
-    zipCode?: string | undefined;
-  } | undefined;
+  address?: AddressOutput;
 };

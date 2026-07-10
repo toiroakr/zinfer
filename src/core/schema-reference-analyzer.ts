@@ -44,6 +44,17 @@ export type UnionReferenceMap = Map<string, UnionReferenceInfo>;
 export class SchemaReferenceAnalyzer {
   private static readonly OBJECT_BUILDERS = new Set(["object", "strictObject", "looseObject"]);
   /**
+   * Zod methods that return `this` without changing the schema's input/output
+   * types. References wrapped in these calls are still references to the same
+   * schema, so they are unwrapped transparently during analysis.
+   */
+  private static readonly TYPE_PRESERVING_METHODS = new Set([
+    "describe",
+    "meta",
+    "superRefine",
+    "check",
+  ]);
+  /**
    * Analyzes a source file to find all schema references and union references in a single pass.
    */
   analyzeAllReferences(
@@ -85,12 +96,25 @@ export class SchemaReferenceAnalyzer {
     schemaNames: Set<string>,
     currentSchema: string,
   ): UnionReferenceInfo | undefined {
+    // Unwrap type-preserving wrappers like z.union([...]).describe("...")
+    let current = node;
+    while (Node.isCallExpression(current)) {
+      const callee = current.getExpression();
+      if (
+        !Node.isPropertyAccessExpression(callee) ||
+        !SchemaReferenceAnalyzer.TYPE_PRESERVING_METHODS.has(callee.getName())
+      ) {
+        break;
+      }
+      current = callee.getExpression();
+    }
+
     // Check if this is a z.discriminatedUnion() or z.union() call
-    if (!Node.isCallExpression(node)) {
+    if (!Node.isCallExpression(current)) {
       return undefined;
     }
 
-    const expr = node.getExpression();
+    const expr = current.getExpression();
     if (!Node.isPropertyAccessExpression(expr)) {
       return undefined;
     }
@@ -103,11 +127,11 @@ export class SchemaReferenceAnalyzer {
     }
 
     if (method === "discriminatedUnion") {
-      return this.parseDiscriminatedUnion(node, schemaNames, currentSchema);
+      return this.parseDiscriminatedUnion(current, schemaNames, currentSchema);
     }
 
     if (method === "union") {
-      return this.parseUnion(node, schemaNames, currentSchema);
+      return this.parseUnion(current, schemaNames, currentSchema);
     }
 
     return undefined;
@@ -298,6 +322,11 @@ export class SchemaReferenceAnalyzer {
 
         if (method === "optional" || method === "nullable") {
           isOptional = true;
+          current = base;
+          continue;
+        }
+
+        if (SchemaReferenceAnalyzer.TYPE_PRESERVING_METHODS.has(method)) {
           current = base;
           continue;
         }
