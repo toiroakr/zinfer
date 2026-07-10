@@ -263,6 +263,97 @@ export class ZodTypeExtractor {
     // Clean up __Normalize from the main source file after all schemas are processed
     this.cleanupNormalizeType(sourceFile);
 
+    const schemasByName = new Map(schemas.map((schema) => [schema.name, schema]));
+    const resolvedTypes = new Map<string, { input: string; output: string }>();
+    const resolvingSchemas = new Set<string>();
+
+    const resolveSchemaTypes = (
+      schemaName: string,
+    ): { input: string; output: string } | undefined => {
+      const cached = resolvedTypes.get(schemaName);
+      if (cached) return cached;
+
+      const raw = rawTypes.get(schemaName);
+      if (!raw) return undefined;
+
+      if (resolvingSchemas.has(schemaName)) {
+        return { input: raw.input, output: raw.output };
+      }
+      resolvingSchemas.add(schemaName);
+
+      let { input, output } = raw;
+      const unionRef = unionReferenceMap.get(schemaName);
+
+      const shouldComposeUnion =
+        unionRef &&
+        unionRef.memberSchemas.length > 0 &&
+        (unionRef.memberSchemas.every((member) => rawTypes.get(member)?.isExported) ||
+          (!unionRef.hasInlineMembers &&
+            (unionRef.memberSchemas.some((member) => importedSchemas.has(member)) ||
+              unionRef.memberSchemas.some((member) => {
+                if (rawTypes.get(member)?.isExported) return false;
+                return (referenceMap.get(member) ?? []).some(
+                  (ref) => rawTypes.get(ref.refSchema)?.isExported,
+                );
+              }))));
+
+      if (unionRef && shouldComposeUnion) {
+        const inputMembers: string[] = [];
+        const outputMembers: string[] = [];
+        let canComposeUnion = true;
+
+        for (const member of unionRef.memberSchemas) {
+          const memberRaw = rawTypes.get(member);
+          if (!memberRaw) continue;
+
+          if (memberRaw.isExported) {
+            inputMembers.push(`${member}Input`);
+            outputMembers.push(`${member}Output`);
+            continue;
+          }
+
+          const resolvedMember = resolveSchemaTypes(member);
+          if (!resolvedMember) continue;
+          if (
+            resolvedMember.input.includes(`${member}Input`) ||
+            resolvedMember.output.includes(`${member}Output`)
+          ) {
+            canComposeUnion = false;
+            break;
+          }
+          inputMembers.push(resolvedMember.input);
+          outputMembers.push(resolvedMember.output);
+        }
+
+        if (canComposeUnion && inputMembers.length === unionRef.memberSchemas.length) {
+          input = inputMembers.join(" | ");
+          output = outputMembers.join(" | ");
+        }
+      }
+
+      const refs = referenceMap.get(schemaName) || [];
+      for (const ref of refs) {
+        const refRaw = rawTypes.get(ref.refSchema);
+        if (!refRaw?.isExported) continue;
+
+        input = this.replaceSchemaReference(input, ref, refRaw.input, `${ref.refSchema}Input`);
+        output = this.replaceSchemaReference(output, ref, refRaw.output, `${ref.refSchema}Output`);
+      }
+
+      const explicitType = schemasByName.get(schemaName)?.explicitType;
+      if (explicitType && this.isValidIdentifier(explicitType)) {
+        const escapedTypeName = this.escapeRegExp(explicitType);
+        const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
+        input = input.replace(typeNamePattern, `${schemaName}Input`);
+        output = output.replace(typeNamePattern, `${schemaName}Output`);
+      }
+
+      resolvingSchemas.delete(schemaName);
+      const resolved = { input, output };
+      resolvedTypes.set(schemaName, resolved);
+      return resolved;
+    };
+
     // Add imported schemas to results first (so they're defined before use)
     for (const [localName] of importedSchemas) {
       const raw = rawTypes.get(localName);
@@ -284,72 +375,13 @@ export class ZodTypeExtractor {
 
       // Get brand information for this schema
       const brands = brandMap.get(schemaName);
-
-      // Check if this schema is a union with member references
-      const unionRef = unionReferenceMap.get(schemaName);
-      if (unionRef && unionRef.memberSchemas.length > 0) {
-        // Only use named references for exported members; inline non-exported ones
-        const exportedMembers = unionRef.memberSchemas.filter((member) => {
-          const memberRaw = rawTypes.get(member);
-          return memberRaw?.isExported;
-        });
-
-        if (exportedMembers.length === unionRef.memberSchemas.length) {
-          // All members are exported, use named references
-          const inputMembers = unionRef.memberSchemas.map((member) => `${member}Input`).join(" | ");
-          const outputMembers = unionRef.memberSchemas
-            .map((member) => `${member}Output`)
-            .join(" | ");
-
-          results.push({
-            schemaName,
-            input: inputMembers,
-            output: outputMembers,
-            isExported: raw.isExported,
-            brands,
-          });
-          continue;
-        }
-
-        // Some members are non-exported; fall through to inline extraction
-      }
-
-      let { input, output } = raw;
-      const refs = referenceMap.get(schemaName) || [];
-
-      // Replace references to other schemas with type names
-      // Only replace references to exported schemas
-      for (const ref of refs) {
-        const refRaw = rawTypes.get(ref.refSchema);
-        if (!refRaw) continue;
-
-        // Skip replacement if the referenced schema is not exported
-        // Non-exported schemas should remain inlined
-        if (!refRaw.isExported) continue;
-
-        input = this.replaceSchemaReference(input, ref, refRaw.input, `${ref.refSchema}Input`);
-        output = this.replaceSchemaReference(output, ref, refRaw.output, `${ref.refSchema}Output`);
-      }
-
-      // For explicit types, replace self-references with typed names
-      if (schema.explicitType) {
-        // schema.explicitType already contains just the type name (e.g., "JsonValue")
-        const typeName = schema.explicitType;
-        // Only replace if the type name is a valid identifier (not a complex type)
-        if (this.isValidIdentifier(typeName)) {
-          // Escape special regex characters in the type name
-          const escapedTypeName = this.escapeRegExp(typeName);
-          // Replace type name with self-referencing Input/Output types
-          const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
-          input = input.replace(typeNamePattern, `${schemaName}Input`);
-          output = output.replace(typeNamePattern, `${schemaName}Output`);
-        }
-      }
+      const resolved = resolveSchemaTypes(schemaName);
+      if (!resolved) continue;
 
       results.push({
         schemaName,
-        input,
-        output,
+        input: resolved.input,
+        output: resolved.output,
         isExported: raw.isExported,
         brands,
       });

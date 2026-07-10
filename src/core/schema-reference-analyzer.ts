@@ -22,6 +22,8 @@ export interface SchemaReferenceInfo {
 export interface UnionReferenceInfo {
   /** The referenced schema names (members of the union) */
   memberSchemas: string[];
+  /** Whether the union also contains members that are not named schema references */
+  hasInlineMembers: boolean;
   /** Whether this is a discriminated union */
   isDiscriminated: boolean;
   /** The discriminator key for discriminated unions */
@@ -159,7 +161,11 @@ export class SchemaReferenceAnalyzer {
 
     // Second arg is the array of schemas
     const schemasArg = args[1];
-    const memberSchemas = this.extractSchemaArrayMembers(schemasArg, schemaNames, currentSchema);
+    const { memberSchemas, hasInlineMembers } = this.extractSchemaArrayMembers(
+      schemasArg,
+      schemaNames,
+      currentSchema,
+    );
 
     if (memberSchemas.length === 0) {
       return undefined;
@@ -167,6 +173,7 @@ export class SchemaReferenceAnalyzer {
 
     return {
       memberSchemas,
+      hasInlineMembers,
       isDiscriminated: true,
       discriminatorKey,
     };
@@ -187,7 +194,11 @@ export class SchemaReferenceAnalyzer {
 
     // First arg is the array of schemas
     const schemasArg = args[0];
-    const memberSchemas = this.extractSchemaArrayMembers(schemasArg, schemaNames, currentSchema);
+    const { memberSchemas, hasInlineMembers } = this.extractSchemaArrayMembers(
+      schemasArg,
+      schemaNames,
+      currentSchema,
+    );
 
     if (memberSchemas.length === 0) {
       return undefined;
@@ -195,6 +206,7 @@ export class SchemaReferenceAnalyzer {
 
     return {
       memberSchemas,
+      hasInlineMembers,
       isDiscriminated: false,
     };
   }
@@ -206,22 +218,25 @@ export class SchemaReferenceAnalyzer {
     node: Node,
     schemaNames: Set<string>,
     currentSchema: string,
-  ): string[] {
+  ): { memberSchemas: string[]; hasInlineMembers: boolean } {
     if (!Node.isArrayLiteralExpression(node)) {
-      return [];
+      return { memberSchemas: [], hasInlineMembers: true };
     }
 
     const members: string[] = [];
+    let hasInlineMembers = false;
     for (const element of node.getElements()) {
       if (Node.isIdentifier(element)) {
         const name = element.getText();
         if (schemaNames.has(name) && name !== currentSchema) {
           members.push(name);
+          continue;
         }
       }
+      hasInlineMembers = true;
     }
 
-    return members;
+    return { memberSchemas: members, hasInlineMembers };
   }
 
   /**
@@ -244,27 +259,87 @@ export class SchemaReferenceAnalyzer {
       const objectLiteral = args[0];
       if (!Node.isObjectLiteralExpression(objectLiteral)) continue;
 
-      // Analyze each property
-      for (const prop of objectLiteral.getProperties()) {
-        if (Node.isPropertyAssignment(prop)) {
-          const fieldName = prop.getName();
-          const initializer = prop.getInitializer();
-          if (!initializer) continue;
-
-          const refInfo = this.analyzeFieldValue(
-            initializer,
-            fieldName,
-            schemaNames,
-            currentSchema,
-          );
-          if (refInfo) {
-            refs.push(refInfo);
-          }
-        }
-      }
+      const fields = this.findObjectLiteralReferences(
+        objectLiteral,
+        schemaNames,
+        currentSchema,
+        new Set(),
+      );
+      refs.push(...[...fields.values()].filter((ref): ref is SchemaReferenceInfo => ref !== null));
     }
 
     return refs;
+  }
+
+  /**
+   * Finds schema references in an object shape, including same-file object-literal spreads.
+   * Later properties override earlier spread entries, matching JavaScript object semantics.
+   */
+  private findObjectLiteralReferences(
+    objectLiteral: Node,
+    schemaNames: Set<string>,
+    currentSchema: string,
+    visitedShapes: Set<string>,
+  ): Map<string, SchemaReferenceInfo | null> {
+    if (!Node.isObjectLiteralExpression(objectLiteral)) {
+      return new Map();
+    }
+
+    const refsByField = new Map<string, SchemaReferenceInfo | null>();
+
+    for (const prop of objectLiteral.getProperties()) {
+      if (Node.isSpreadAssignment(prop)) {
+        const expression = prop.getExpression();
+        if (!Node.isIdentifier(expression)) {
+          refsByField.clear();
+          continue;
+        }
+
+        const declaration = objectLiteral
+          .getSourceFile()
+          .getVariableDeclaration(expression.getText());
+        let initializer = declaration?.getInitializer();
+        while (
+          initializer &&
+          (Node.isAsExpression(initializer) ||
+            Node.isSatisfiesExpression(initializer) ||
+            Node.isParenthesizedExpression(initializer) ||
+            Node.isTypeAssertion(initializer))
+        ) {
+          initializer = initializer.getExpression();
+        }
+        if (!declaration || !initializer || !Node.isObjectLiteralExpression(initializer)) {
+          refsByField.clear();
+          continue;
+        }
+
+        const shapeId = `${declaration.getSourceFile().getFilePath()}:${declaration.getStart()}`;
+        if (visitedShapes.has(shapeId)) continue;
+
+        const nextVisitedShapes = new Set(visitedShapes);
+        nextVisitedShapes.add(shapeId);
+        for (const [fieldName, ref] of this.findObjectLiteralReferences(
+          initializer,
+          schemaNames,
+          currentSchema,
+          nextVisitedShapes,
+        )) {
+          refsByField.set(fieldName, ref);
+        }
+        continue;
+      }
+
+      if (!Node.isPropertyAssignment(prop)) continue;
+
+      const fieldName = prop.getName();
+      const initializer = prop.getInitializer();
+      if (!initializer) continue;
+
+      const refInfo = this.analyzeFieldValue(initializer, fieldName, schemaNames, currentSchema);
+      refsByField.set(fieldName, refInfo);
+    }
+
+    return refsByField;
   }
 
   /**
