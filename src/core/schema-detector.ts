@@ -193,8 +193,9 @@ export class SchemaDetector {
       }
     }
 
-    // Check for z.lazy() pattern (recursive schemas)
-    if (initText.includes("z.lazy(")) {
+    // Check for z.lazy() pattern (recursive schemas), tolerating
+    // formatter-inserted whitespace around the dot
+    if (/\bz\s*\.\s*lazy\s*\(/.test(initText)) {
       return true;
     }
 

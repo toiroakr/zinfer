@@ -43,6 +43,34 @@ describe("SchemaDetector", () => {
       const schemas = detector.detectExportedSchemas(sourceFile);
       expect(schemas).toMatchSnapshot();
     });
+
+    it("should detect schemas whose builder chain is formatted across multiple lines", () => {
+      // Inline source keeps the line breaks that formatters like prettier
+      // insert between "z" and the builder method, which fixtures on disk
+      // would lose to this repository's own formatter.
+      const project = new Project();
+      const sourceFile = project.createSourceFile(
+        "multiline-schema.ts",
+        [
+          'import { z } from "zod";',
+          "export const MultilineUnionSchema = z",
+          '  .union([z.literal("active"), z.literal("inactive")])',
+          '  .describe("status of the entity");',
+          "export const MultilineStringSchema = z",
+          "  .string()",
+          "  .min(1)",
+          '  .describe("non-empty string");',
+          "export const MultilineLazySchema = z",
+          "  .lazy(() => z.object({ name: z.string() }));",
+        ].join("\n"),
+      );
+      const names = detector.detectExportedSchemas(sourceFile).map((s) => s.name);
+      expect(names).toEqual([
+        "MultilineUnionSchema",
+        "MultilineStringSchema",
+        "MultilineLazySchema",
+      ]);
+    });
   });
 
   describe("getSchemaNames", () => {
