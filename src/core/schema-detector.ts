@@ -155,20 +155,12 @@ export class SchemaDetector {
 
     const initText = initializer.getText();
 
-    // Check if it starts with z. followed by a known Zod schema builder
-    if (initText.startsWith("z.")) {
-      // Extract the method name after "z."
-      const afterZ = initText.substring(2);
-      // Find where the method name ends (at '(' or '.')
-      const endIdx = Math.min(
-        afterZ.indexOf("(") !== -1 ? afterZ.indexOf("(") : afterZ.length,
-        afterZ.indexOf(".") !== -1 ? afterZ.indexOf(".") : afterZ.length,
-      );
-      const methodName = afterZ.substring(0, endIdx);
-
-      if (SchemaDetector.ZOD_SCHEMA_BUILDERS.has(methodName)) {
-        return true;
-      }
+    // Check if it starts with z. followed by a known Zod schema builder.
+    // Formatters like prettier may break the chain across lines
+    // (e.g. "z\n  .union([...])"), so allow whitespace around the dot.
+    const builderMatch = initText.match(/^z\s*\.\s*([A-Za-z_$][\w$]*)/);
+    if (builderMatch && SchemaDetector.ZOD_SCHEMA_BUILDERS.has(builderMatch[1])) {
+      return true;
     }
 
     // Check if it's a method chain on another schema variable
@@ -199,8 +191,9 @@ export class SchemaDetector {
       }
     }
 
-    // Check for z.lazy() pattern (recursive schemas)
-    if (initText.includes("z.lazy(")) {
+    // Check for z.lazy() pattern (recursive schemas), tolerating
+    // formatter-inserted whitespace around the dot
+    if (/\bz\s*\.\s*lazy\s*\(/.test(initText)) {
       return true;
     }
 
