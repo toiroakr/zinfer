@@ -113,7 +113,20 @@ interface ParserState {
   stringChar: string;
   currentFieldName: string;
   capturingFieldName: boolean;
-  pathStack: string[];
+  /**
+   * Last field name seen at each depth (keyed by depth). Recording per-depth
+   * (rather than a single shared value) keeps a parent field's name intact
+   * while its children are parsed, so sibling object braces at the same
+   * depth (e.g. union members `{ a } | { b }`) still resolve to the parent
+   * field's own path instead of inheriting the first sibling's last field.
+   */
+  lastFieldByDepth: Record<number, string>;
+  /**
+   * One entry per open "{", holding the field name that owns that brace ("" if
+   * none, e.g. the root object or a union member sibling). Pushed/popped in
+   * lockstep with braces so it always reflects the true nesting depth.
+   */
+  fieldNameStack: string[];
 }
 
 /**
@@ -127,7 +140,8 @@ function createParserState(): ParserState {
     stringChar: "",
     currentFieldName: "",
     capturingFieldName: false,
-    pathStack: [],
+    lastFieldByDepth: {},
+    fieldNameStack: [],
   };
 }
 
@@ -156,23 +170,25 @@ function updateStringState(
  * Handles opening brace character.
  */
 function handleOpenBrace(state: ParserState, indent: string): void {
+  // The field owning this brace is whatever was last seen at the *parent*
+  // depth - not overwritten by a sibling brace's own inner fields.
+  const ownerField = state.lastFieldByDepth[state.depth] ?? "";
   state.depth++;
   state.result += "{\n" + indent.repeat(state.depth);
+  state.fieldNameStack.push(ownerField);
   state.capturingFieldName = true;
   state.currentFieldName = "";
-  if (state.depth > 1 && state.currentFieldName) {
-    state.pathStack.push(state.currentFieldName);
-  }
 }
 
 /**
  * Handles closing brace character.
  */
 function handleCloseBrace(state: ParserState, indent: string): void {
+  // Clear this depth's last-seen field so it can't leak into a sibling
+  // brace opened afterward at the parent depth.
+  delete state.lastFieldByDepth[state.depth];
   state.depth--;
-  if (state.pathStack.length > 0 && state.depth >= 1) {
-    state.pathStack.pop();
-  }
+  state.fieldNameStack.pop();
   state.result += "\n" + indent.repeat(state.depth) + "}";
 }
 
@@ -187,7 +203,8 @@ function handleColon(
 ): void {
   if (state.capturingFieldName && state.currentFieldName) {
     const cleanFieldName = state.currentFieldName.replace(/\?$/, "").trim();
-    const currentPath = [...state.pathStack, prefix].filter(Boolean).join(".");
+    const scopePath = state.fieldNameStack.filter(Boolean).join(".");
+    const currentPath = [prefix, scopePath].filter(Boolean).join(".");
     const desc = getFieldDescription(cleanFieldName, currentPath, descriptions);
 
     if (desc) {
@@ -196,6 +213,7 @@ function handleColon(
       const fieldPart = state.result.substring(lastNewlinePos + 1);
       state.result = beforeField + createTsDocComment(desc, indent.repeat(state.depth)) + fieldPart;
     }
+    state.lastFieldByDepth[state.depth] = cleanFieldName;
   }
   state.result += ":";
   state.capturingFieldName = false;

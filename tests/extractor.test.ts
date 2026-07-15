@@ -229,6 +229,40 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("nested-inline-description-schema.ts", () => {
+    it("should not leak an unrelated same-named field's description into an inlined nested schema (#340)", async () => {
+      const filePath = resolve(fixturesDir, "nested-inline-description-schema.ts");
+      const results = extractor.extractAll(filePath);
+      const descriptionExtractor = new DescriptionExtractor();
+
+      const schemaNames = results.map((r) => r.schemaName);
+      const descriptions = await descriptionExtractor.extractDescriptions(filePath, schemaNames);
+
+      const resultsWithDescriptions = results.map((result) => {
+        const desc = descriptions.get(result.schemaName);
+        if (!desc) {
+          return result;
+        }
+        return {
+          ...result,
+          description: desc.description,
+          fieldDescriptions: desc.fields,
+        };
+      });
+
+      const output = generateDeclarationFile(resultsWithDescriptions, mapName);
+      expect(output).toContain("/** Item description, distinct from container description */");
+      expect(output).not.toMatch(/flag: boolean;\s*\/\*\* Container-level description \*\//);
+      // Sibling union members must each keep their own field description,
+      // not inherit the other member's last-parsed field name.
+      expect(output).toContain("/** A description */");
+      expect(output).toContain("/** B description */");
+      await expect(output).toMatchFileSnapshot(
+        "__file_snapshots__/nested-inline-description-schema.ts",
+      );
+    });
+  });
+
   describe("array-readonly-schema.ts", () => {
     it("should not add readonly modifier to regular arrays", async () => {
       const results = extractor.extractAll(resolve(fixturesDir, "array-readonly-schema.ts"));

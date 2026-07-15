@@ -242,6 +242,10 @@ export class DescriptionExtractor {
 
   /**
    * Recursively extracts field descriptions from a Zod schema.
+   *
+   * Arrays and unions are printed inline (no index/branch segment), so their
+   * element/member schemas are recursed into at the *same* path as the field
+   * that holds them - only ZodObject keys ever extend the path.
    */
   private extractFieldDescriptions(
     schema: unknown,
@@ -265,12 +269,28 @@ export class DescriptionExtractor {
             fields.push({ path, description: desc });
           }
 
-          // Recurse into nested schemas
-          const innerSchema = this.unwrapSchema(fieldSchema);
-          if (this.isZodObject(innerSchema)) {
-            this.extractFieldDescriptions(innerSchema, path, fields);
-          }
+          // Recurse into nested schemas (objects, and objects reachable
+          // through arrays/unions, which print inline at the same path)
+          this.extractFieldDescriptions(this.unwrapSchema(fieldSchema), path, fields);
         }
+      }
+      return;
+    }
+
+    // Array element types print inline without an index segment, so their
+    // fields are scoped to the array field's own path.
+    const elementSchema = this.getArrayElement(schema);
+    if (elementSchema) {
+      this.extractFieldDescriptions(this.unwrapSchema(elementSchema), prefix, fields);
+      return;
+    }
+
+    // Union members print inline too; only object-shaped members contribute
+    // fields, scoped to the same path as the union itself.
+    const unionOptions = this.getUnionOptions(schema);
+    if (unionOptions) {
+      for (const option of unionOptions) {
+        this.extractFieldDescriptions(this.unwrapSchema(option), prefix, fields);
       }
     }
   }
@@ -405,7 +425,7 @@ export class DescriptionExtractor {
     const type = zodSchema.type as string | undefined;
     const def = zodSchema.def as Record<string, unknown> | undefined;
 
-    if (type === "optional" || type === "nullable" || type === "default") {
+    if (type === "optional" || type === "nullable" || type === "default" || type === "readonly") {
       if (def?.innerType) {
         return this.unwrapSchema(def.innerType);
       }
@@ -422,7 +442,8 @@ export class DescriptionExtractor {
       if (
         _def.typeName === "ZodOptional" ||
         _def.typeName === "ZodNullable" ||
-        _def.typeName === "ZodDefault"
+        _def.typeName === "ZodDefault" ||
+        _def.typeName === "ZodReadonly"
       ) {
         if (_def.innerType) {
           return this.unwrapSchema(_def.innerType);
@@ -458,6 +479,61 @@ export class DescriptionExtractor {
     // Direct shape property
     if (zodSchema.shape && typeof zodSchema.shape === "object") {
       return zodSchema.shape as Record<string, unknown>;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Gets the element schema from a ZodArray schema.
+   * Supports both Zod v3 and v4.
+   */
+  private getArrayElement(schema: unknown): unknown {
+    if (!schema || typeof schema !== "object") {
+      return undefined;
+    }
+
+    const zodSchema = schema as Record<string, unknown>;
+
+    // Zod v4: type property and def.element
+    if (zodSchema.type === "array") {
+      const def = zodSchema.def as Record<string, unknown> | undefined;
+      if (def?.element) return def.element;
+    }
+
+    // Zod v3 fallback: _def.typeName and _def.type
+    const _def = zodSchema._def as Record<string, unknown> | undefined;
+    if (_def?.typeName === "ZodArray" && _def.type) {
+      return _def.type;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Gets the member schemas from a ZodUnion (or discriminated union) schema.
+   * Supports both Zod v3 and v4.
+   */
+  private getUnionOptions(schema: unknown): unknown[] | undefined {
+    if (!schema || typeof schema !== "object") {
+      return undefined;
+    }
+
+    const zodSchema = schema as Record<string, unknown>;
+
+    // Zod v4: type property and def.options
+    if (zodSchema.type === "union") {
+      const def = zodSchema.def as Record<string, unknown> | undefined;
+      if (Array.isArray(def?.options)) return def.options as unknown[];
+    }
+
+    // Zod v3 fallback: _def.typeName and _def.options
+    const _def = zodSchema._def as Record<string, unknown> | undefined;
+    if (
+      (_def?.typeName === "ZodUnion" || _def?.typeName === "ZodDiscriminatedUnion") &&
+      Array.isArray(_def.options)
+    ) {
+      return _def.options as unknown[];
     }
 
     return undefined;
