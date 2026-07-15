@@ -1,11 +1,11 @@
-import type { SourceFile } from "ts-morph";
+import type { SourceFile } from "@typescript/native-preview/unstable/ast";
 import { createTempTypeAlias } from "./normalizer.js";
 import { SchemaDetector } from "./schema-detector.js";
 import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver } from "./import-resolver.js";
 import { BrandDetector } from "./brand-detector.js";
-import { TsMorphHost } from "./ts-morph-host.js";
+import { TsgoHost } from "./tsgo-host.js";
 import { logDebugError } from "./logger.js";
 import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
 
@@ -25,10 +25,11 @@ export interface ExtractOptions {
 }
 
 /**
- * Extracts input and output types from Zod schemas using TypeScript Compiler API.
+ * Extracts input and output types from Zod schemas using TypeScript's native
+ * tsgo/Corsa API (`@typescript/native-preview`). See issue #200.
  */
 export class ZodTypeExtractor {
-  private host: TsMorphHost;
+  private host: TsgoHost;
   private schemaDetector: SchemaDetector;
   private getterResolver: GetterResolver;
   private referenceAnalyzer: SchemaReferenceAnalyzer;
@@ -43,7 +44,7 @@ export class ZodTypeExtractor {
    *                       default compiler options will be used.
    */
   constructor(tsconfigPath?: string) {
-    this.host = new TsMorphHost(tsconfigPath);
+    this.host = new TsgoHost(tsconfigPath);
     this.schemaDetector = new SchemaDetector();
     this.getterResolver = new GetterResolver();
     this.referenceAnalyzer = new SchemaReferenceAnalyzer();

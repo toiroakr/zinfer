@@ -6,17 +6,11 @@
  *
  * This exists so the trickiest, most compiler-API-specific piece of the
  * extraction pipeline - injecting throwaway type aliases and asking the
- * checker to expand them - has a single, narrow seam. Today the only
- * implementation is `TsMorphHost`. A future `TsgoHost` (built on
- * `@typescript/native-preview`'s Corsa API, once its public surface
- * stabilizes around TypeScript 7.1) can implement the same contract by
- * building a virtual-FS overlay per call instead of mutating a live
- * `SourceFile`, without ZodTypeExtractor's orchestration logic changing.
- *
- * Other core modules (SchemaDetector, GetterResolver, ImportResolver,
- * BrandDetector, SchemaReferenceAnalyzer) still work directly against
- * ts-morph's `SourceFile`/`Node` types and are out of scope for this
- * abstraction.
+ * checker to expand them - has a single, narrow seam. The implementation,
+ * `TsgoHost`, is built on `@typescript/native-preview`'s Corsa API and
+ * implements this contract by building a virtual-FS overlay per call instead
+ * of mutating a live `SourceFile` (the Corsa API is read-only at the AST
+ * level). See issue #200.
  */
 export interface TsHost<TSourceFile = unknown> {
   /** Loads (if necessary) and returns the source file at `filePath`. */

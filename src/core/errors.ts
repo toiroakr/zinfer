@@ -80,40 +80,8 @@ export function formatError(error: unknown): string {
   }
 
   if (error instanceof Error) {
-    // Clean up common ts-morph errors
-    const message = error.message;
-
-    if (message.includes("Manipulation error")) {
-      return formatTsMorphError(message);
-    }
-
-    return `Error: ${message}`;
+    return `Error: ${error.message}`;
   }
 
   return `Error: ${String(error)}`;
-}
-
-/**
- * Formats ts-morph manipulation errors.
- */
-function formatTsMorphError(message: string): string {
-  const lines: string[] = [];
-
-  // Extract the first line (main error)
-  const firstLine = message.split("\n")[0];
-  if (firstLine.includes("syntax error")) {
-    lines.push("Error: Syntax error in source file");
-  } else {
-    lines.push("Error: Failed to process TypeScript file");
-  }
-
-  // Extract TypeScript error codes (TS1005, etc.)
-  const tsErrors = message.match(/TS\d+/g);
-  if (tsErrors?.length) {
-    lines.push("");
-    lines.push("TypeScript reported errors in the file.");
-    lines.push("Please fix any syntax errors before running zinfer.");
-  }
-
-  return lines.join("\n");
 }

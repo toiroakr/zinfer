@@ -1,67 +1,69 @@
-import { SourceFile, VariableDeclaration } from "ts-morph";
+import { ModifierFlags, SyntaxKind } from "@typescript/native-preview/unstable/ast";
+import type {
+  ExportDeclaration,
+  SourceFile,
+  VariableDeclaration,
+  VariableStatement,
+} from "@typescript/native-preview/unstable/ast";
 import type { DetectedSchema } from "./types.js";
 
 /**
- * Detects Zod schemas in TypeScript source files.
+ * SchemaDetector, implemented against the tsgo/Corsa `ast` API instead of
+ * ts-morph. Purely syntactic (never touches the checker), so it operates
+ * directly on a Corsa `SourceFile` node tree. See issue #200.
  */
 export class SchemaDetector {
-  private cache = new Map<string, DetectedSchema[]>();
-
   /**
    * Detects all Zod schemas in a source file.
    *
-   * @param sourceFile - The ts-morph SourceFile to analyze
+   * @param sourceFile - The tsgo SourceFile to analyze
    * @returns Array of detected schema information (including non-exported schemas)
    */
   detectExportedSchemas(sourceFile: SourceFile): DetectedSchema[] {
-    const filePath = sourceFile.getFilePath();
-    const cached = this.cache.get(filePath);
-    if (cached) return cached;
-
     const schemas: DetectedSchema[] = [];
 
-    // Find all variable declarations
-    const variableStatements = sourceFile.getVariableStatements();
+    for (const statement of sourceFile.statements) {
+      if (statement.kind !== SyntaxKind.VariableStatement) continue;
+      const variableStatement = statement as VariableStatement;
+      const isExported = (variableStatement.modifierFlags & ModifierFlags.Export) !== 0;
 
-    for (const statement of variableStatements) {
-      const isExported = statement.isExported();
-
-      for (const declaration of statement.getDeclarations()) {
-        if (this.isZodSchema(declaration)) {
+      for (const declaration of variableStatement.declarationList.declarations) {
+        if (this.isZodSchema(declaration, sourceFile)) {
           schemas.push({
-            name: declaration.getName(),
+            name: declaration.name.getText(sourceFile),
             isExported,
-            line: declaration.getStartLineNumber(),
-            explicitType: this.extractExplicitType(declaration),
+            line: this.getStartLine(declaration, sourceFile),
+            explicitType: this.extractExplicitType(declaration, sourceFile),
           });
         }
       }
     }
 
     // Also check for re-exports: export { X as Y }
-    const exportDeclarations = sourceFile.getExportDeclarations();
-    for (const exportDecl of exportDeclarations) {
-      const namedExports = exportDecl.getNamedExports();
-      for (const namedExport of namedExports) {
-        const aliasNode = namedExport.getAliasNode();
-        const exportedName = aliasNode ? aliasNode.getText() : namedExport.getName();
+    for (const statement of sourceFile.statements) {
+      if (statement.kind !== SyntaxKind.ExportDeclaration) continue;
+      const exportDecl = statement as ExportDeclaration;
+      if (!exportDecl.exportClause || exportDecl.exportClause.kind !== SyntaxKind.NamedExports)
+        continue;
 
-        // Check if the original variable is a Zod schema
-        const originalName = namedExport.getName();
-        const originalDecl = sourceFile.getVariableDeclaration(originalName);
+      for (const namedExport of exportDecl.exportClause.elements) {
+        const exportedName = namedExport.name.getText(sourceFile);
+        const originalName = namedExport.propertyName
+          ? namedExport.propertyName.getText(sourceFile)
+          : exportedName;
 
-        if (originalDecl && this.isZodSchema(originalDecl)) {
-          // If the exported name is different from original (alias), add new entry
+        const originalDecl = this.findVariableDeclaration(sourceFile, originalName);
+
+        if (originalDecl && this.isZodSchema(originalDecl, sourceFile)) {
           if (exportedName !== originalName) {
             if (!schemas.some((s) => s.name === exportedName)) {
               schemas.push({
                 name: exportedName,
                 isExported: true,
-                line: namedExport.getStartLineNumber(),
+                line: this.getStartLine(namedExport, sourceFile),
               });
             }
           } else {
-            // Same name re-export: update existing schema to mark as exported
             const existing = schemas.find((s) => s.name === originalName);
             if (existing) {
               existing.isExported = true;
@@ -69,7 +71,7 @@ export class SchemaDetector {
               schemas.push({
                 name: exportedName,
                 isExported: true,
-                line: namedExport.getStartLineNumber(),
+                line: this.getStartLine(namedExport, sourceFile),
               });
             }
           }
@@ -77,10 +79,39 @@ export class SchemaDetector {
       }
     }
 
-    // Return all schemas (both exported and non-exported)
-    // The isExported flag is used by the type printer to control export keyword
-    this.cache.set(filePath, schemas);
     return schemas;
+  }
+
+  /**
+   * Gets all schema names from a source file.
+   */
+  getSchemaNames(sourceFile: SourceFile): string[] {
+    return this.detectExportedSchemas(sourceFile).map((s) => s.name);
+  }
+
+  private getStartLine(
+    node: { getStart(sourceFile?: SourceFile): number },
+    sourceFile: SourceFile,
+  ): number {
+    return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
+  }
+
+  private findVariableDeclaration(
+    sourceFile: SourceFile,
+    name: string,
+  ): VariableDeclaration | undefined {
+    for (const statement of sourceFile.statements) {
+      if (statement.kind !== SyntaxKind.VariableStatement) continue;
+      for (const declaration of (statement as VariableStatement).declarationList.declarations) {
+        if (
+          declaration.name.kind === SyntaxKind.Identifier &&
+          declaration.name.getText(sourceFile) === name
+        ) {
+          return declaration;
+        }
+      }
+    }
+    return undefined;
   }
 
   /**
@@ -128,17 +159,10 @@ export class SchemaDetector {
     "looseObject",
   ]);
 
-  /**
-   * Checks if a variable declaration is a Zod schema.
-   *
-   * @param declaration - The variable declaration to check
-   * @returns true if the declaration is a Zod schema
-   */
-  private isZodSchema(declaration: VariableDeclaration): boolean {
-    // Check for explicit Zod type annotation (z.ZodType<T>, z.ZodSchema<T>, etc.)
-    const typeNode = declaration.getTypeNode();
+  private isZodSchema(declaration: VariableDeclaration, sourceFile: SourceFile): boolean {
+    const typeNode = declaration.type;
     if (typeNode) {
-      const typeText = typeNode.getText();
+      const typeText = typeNode.getText(sourceFile);
       if (
         typeText.includes("ZodType") ||
         typeText.includes("ZodSchema") ||
@@ -148,23 +172,18 @@ export class SchemaDetector {
       }
     }
 
-    const initializer = declaration.getInitializer();
+    const initializer = declaration.initializer;
     if (!initializer) {
       return false;
     }
 
-    const initText = initializer.getText();
+    const initText = initializer.getText(sourceFile);
 
-    // Check if it starts with z. followed by a known Zod schema builder.
-    // Whitespace is allowed around the dot: formatters break long chains
-    // into multiple lines (e.g. `z\n  .union([...])\n  .describe(...)`).
     const builderMatch = initText.match(/^z\s*\.\s*([A-Za-z_$][A-Za-z0-9_$]*)/);
     if (builderMatch && SchemaDetector.ZOD_SCHEMA_BUILDERS.has(builderMatch[1])) {
       return true;
     }
 
-    // Check if it's a method chain on another schema variable
-    // e.g., SomeSchema.pick({...}), SomeSchema.merge(...)
     const zodMethods = [
       ".pick(",
       ".omit(",
@@ -193,8 +212,6 @@ export class SchemaDetector {
       }
     }
 
-    // Check for z.lazy() pattern (recursive schemas), tolerating
-    // formatter-inserted whitespace around the dot
     if (/\bz\s*\.\s*lazy\s*\(/.test(initText)) {
       return true;
     }
@@ -202,31 +219,17 @@ export class SchemaDetector {
     return false;
   }
 
-  /**
-   * Gets all schema names from a source file.
-   *
-   * @param sourceFile - The ts-morph SourceFile to analyze
-   * @returns Array of schema names
-   */
-  getSchemaNames(sourceFile: SourceFile): string[] {
-    return this.detectExportedSchemas(sourceFile).map((s) => s.name);
-  }
-
-  /**
-   * Extracts explicit type annotation from z.ZodType<T> or z.ZodSchema<T>.
-   *
-   * @param declaration - The variable declaration to check
-   * @returns The explicit type string if found, undefined otherwise
-   */
-  private extractExplicitType(declaration: VariableDeclaration): string | undefined {
-    const typeNode = declaration.getTypeNode();
+  private extractExplicitType(
+    declaration: VariableDeclaration,
+    sourceFile: SourceFile,
+  ): string | undefined {
+    const typeNode = declaration.type;
     if (!typeNode) {
       return undefined;
     }
 
-    const typeText = typeNode.getText();
+    const typeText = typeNode.getText(sourceFile);
 
-    // Check if it matches Zod type patterns
     const zodTypePatterns = [
       "z.ZodType<",
       "z.ZodSchema<",
@@ -248,19 +251,10 @@ export class SchemaDetector {
       return undefined;
     }
 
-    // Extract the first type parameter using bracket counting
     const startIdx = matchedPattern.length;
     return this.extractFirstTypeParameter(typeText, startIdx);
   }
 
-  /**
-   * Extracts the first type parameter from a generic type string.
-   * Handles nested brackets properly.
-   *
-   * @param typeText - The full type text (e.g., "ZodType<{ a: string }, ZodTypeDef>")
-   * @param startIdx - The index after the opening "<"
-   * @returns The first type parameter, or undefined if parsing fails
-   */
   private extractFirstTypeParameter(typeText: string, startIdx: number): string | undefined {
     let depth = 1;
     let endIdx = startIdx;
@@ -271,7 +265,6 @@ export class SchemaDetector {
       const char = typeText[endIdx];
       const prevChar = typeText[endIdx - 1];
 
-      // Track string literals
       if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
         if (!inString) {
           inString = true;
@@ -289,7 +282,6 @@ export class SchemaDetector {
           depth--;
           if (depth === 0) break;
         } else if (char === "," && depth === 1) {
-          // Found the comma separating type parameters at depth 1
           break;
         }
       }

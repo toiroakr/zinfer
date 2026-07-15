@@ -1,49 +1,46 @@
-import { SourceFile, SyntaxKind, Node, CallExpression, PropertyAccessExpression } from "ts-morph";
+import {
+  SyntaxKind,
+  isCallExpression,
+  isIdentifier,
+  isPropertyAccessExpression,
+} from "@typescript/native-preview/unstable/ast";
+import type {
+  CallExpression,
+  Expression,
+  GetAccessorDeclaration,
+  Node,
+  SourceFile,
+  VariableStatement,
+} from "@typescript/native-preview/unstable/ast";
+import { findFirstDescendantByKind, getDescendantsOfKind } from "./tsgo-ast-utils.js";
 
 /**
- * Information about a getter field in a z.object schema.
+ * GetterResolver, implemented against the tsgo/Corsa `ast` API. See issue #200.
  */
 export interface GetterFieldInfo {
-  /** Referenced schema name */
   refSchema: string;
-  /** Whether the reference is wrapped in z.array() */
   isArray: boolean;
-  /** Whether the reference is wrapped in z.record() */
   isRecord: boolean;
-  /** Whether the field is optional (.optional() or .nullable()) */
   isOptional: boolean;
-  /** Whether this is a self-reference */
   isSelfRef: boolean;
 }
 
-/**
- * Mapping of schema name to its getter field information.
- */
 export type GetterFieldMap = Map<string, Map<string, GetterFieldInfo>>;
 
-/**
- * Detects and resolves getter-based recursive patterns in Zod schemas.
- */
 export class GetterResolver {
-  /**
-   * Analyzes a source file to find getter field mappings.
-   *
-   * @param sourceFile - The ts-morph SourceFile to analyze
-   * @returns Map of schema name to field info
-   */
   analyzeGetterFields(sourceFile: SourceFile, schemaNames?: Set<string>): GetterFieldMap {
     const result: GetterFieldMap = new Map();
 
-    const statements = sourceFile.getVariableStatements();
-    for (const stmt of statements) {
-      for (const decl of stmt.getDeclarations()) {
-        const schemaName = decl.getName();
+    for (const statement of sourceFile.statements) {
+      if (statement.kind !== SyntaxKind.VariableStatement) continue;
+      for (const decl of (statement as VariableStatement).declarationList.declarations) {
+        const schemaName = decl.name.getText(sourceFile);
         if (schemaNames && !schemaNames.has(schemaName)) continue;
 
-        const init = decl.getInitializer();
+        const init = decl.initializer;
         if (!init) continue;
 
-        const fieldMap = this.extractGetterFieldsFromAST(init, schemaName);
+        const fieldMap = this.extractGetterFieldsFromAST(init, schemaName, sourceFile);
 
         if (fieldMap.size > 0) {
           result.set(schemaName, fieldMap);
@@ -54,28 +51,29 @@ export class GetterResolver {
     return result;
   }
 
-  /**
-   * Extracts getter field info from AST nodes.
-   */
-  private extractGetterFieldsFromAST(node: Node, schemaName: string): Map<string, GetterFieldInfo> {
+  private extractGetterFieldsFromAST(
+    node: Node,
+    schemaName: string,
+    sourceFile: SourceFile,
+  ): Map<string, GetterFieldInfo> {
     const fieldMap = new Map<string, GetterFieldInfo>();
 
-    // Find all getter declarations within the node
-    const getters = node.getDescendantsOfKind(SyntaxKind.GetAccessor);
+    const getters = getDescendantsOfKind(node, SyntaxKind.GetAccessor) as GetAccessorDeclaration[];
 
     for (const getter of getters) {
-      const fieldName = getter.getName();
-      const body = getter.getBody();
+      const fieldName = getter.name.getText(sourceFile);
+      const body = getter.body;
       if (!body) continue;
 
-      // Find return statement
-      const returnStmt = body.getFirstDescendantByKind(SyntaxKind.ReturnStatement);
+      const returnStmt = findFirstDescendantByKind(body, SyntaxKind.ReturnStatement) as
+        | { expression?: Expression }
+        | undefined;
       if (!returnStmt) continue;
 
-      const returnExpr = returnStmt.getExpression();
+      const returnExpr = returnStmt.expression;
       if (!returnExpr) continue;
 
-      const info = this.parseReturnExpressionAST(returnExpr, schemaName);
+      const info = this.parseReturnExpressionAST(returnExpr, schemaName, sourceFile);
       if (info) {
         fieldMap.set(fieldName, info);
       }
@@ -84,36 +82,33 @@ export class GetterResolver {
     return fieldMap;
   }
 
-  /**
-   * Parses the return expression AST to extract schema reference info.
-   */
-  private parseReturnExpressionAST(expr: Node, schemaName: string): GetterFieldInfo | null {
+  private parseReturnExpressionAST(
+    expr: Node,
+    schemaName: string,
+    sourceFile: SourceFile,
+  ): GetterFieldInfo | null {
     let isArray = false;
     let isRecord = false;
     let isOptional = false;
     let refSchema: string | null = null;
 
-    // Unwrap method chains like .optional(), .nullable(), .array()
     let currentExpr = expr;
-    while (Node.isCallExpression(currentExpr)) {
+    while (isCallExpression(currentExpr)) {
       const callExpr = currentExpr as CallExpression;
-      const exprNode = callExpr.getExpression();
+      const exprNode = callExpr.expression;
 
-      if (Node.isPropertyAccessExpression(exprNode)) {
-        const propAccess = exprNode as PropertyAccessExpression;
-        const methodName = propAccess.getName();
-        const baseExpr = propAccess.getExpression();
+      if (isPropertyAccessExpression(exprNode)) {
+        const methodName = exprNode.name.getText(sourceFile);
+        const baseExpr = exprNode.expression;
 
-        // Check for .optional() or .nullable() on a schema
         if (methodName === "optional" || methodName === "nullable") {
           isOptional = true;
           currentExpr = baseExpr;
           continue;
         }
 
-        // Check for SchemaName.array() pattern
-        if (methodName === "array" && Node.isIdentifier(baseExpr)) {
-          const baseName = baseExpr.getText();
+        if (methodName === "array" && isIdentifier(baseExpr)) {
+          const baseName = baseExpr.getText(sourceFile);
           if (baseName !== "z") {
             isArray = true;
             refSchema = baseName;
@@ -121,19 +116,18 @@ export class GetterResolver {
           }
         }
 
-        // Check for z.array(SchemaName) or z.record(key, SchemaName)
-        if (Node.isIdentifier(baseExpr) && baseExpr.getText() === "z") {
-          const args = callExpr.getArguments();
+        if (isIdentifier(baseExpr) && baseExpr.getText(sourceFile) === "z") {
+          const args = callExpr.arguments;
 
           if (methodName === "array" && args.length > 0) {
             isArray = true;
-            refSchema = this.extractSchemaRef(args[0]);
+            refSchema = this.extractSchemaRef(args[0], sourceFile);
             break;
           }
 
           if (methodName === "record" && args.length >= 2) {
             isRecord = true;
-            refSchema = this.extractSchemaRef(args[1]);
+            refSchema = this.extractSchemaRef(args[1], sourceFile);
             break;
           }
         }
@@ -142,9 +136,8 @@ export class GetterResolver {
       break;
     }
 
-    // If we haven't found a ref yet, check if currentExpr is an identifier
-    if (!refSchema && Node.isIdentifier(currentExpr)) {
-      refSchema = currentExpr.getText();
+    if (!refSchema && isIdentifier(currentExpr)) {
+      refSchema = currentExpr.getText(sourceFile);
     }
 
     if (!refSchema) {
@@ -160,25 +153,13 @@ export class GetterResolver {
     };
   }
 
-  /**
-   * Extracts schema reference from an argument node.
-   */
-  private extractSchemaRef(node: Node): string | null {
-    if (Node.isIdentifier(node)) {
-      return node.getText();
+  private extractSchemaRef(node: Node, sourceFile: SourceFile): string | null {
+    if (isIdentifier(node)) {
+      return node.getText(sourceFile);
     }
     return null;
   }
 
-  /**
-   * Resolves `any` types in extracted type string by replacing with self-references.
-   * Uses structured parsing instead of regex.
-   *
-   * @param typeStr - The extracted type string with `any` placeholders
-   * @param getterFields - Map of field name to getter field info
-   * @param typeName - The generated type name to use for self-references
-   * @returns The resolved type string with proper self-references
-   */
   resolveAnyTypes(
     typeStr: string,
     getterFields: Map<string, GetterFieldInfo>,
@@ -191,36 +172,28 @@ export class GetterResolver {
         continue;
       }
 
-      // For z.record pattern: { [x: string]: any } -> { [x: string]: TypeName }
       if (info.isRecord) {
         result = this.replaceRecordAny(result, fieldName, typeName);
       }
 
-      // Handle any field (array or single reference)
       result = this.replaceFieldAny(result, fieldName, typeName, info.isArray);
     }
 
     return result;
   }
 
-  /**
-   * Replaces any type in a record field.
-   */
   private replaceRecordAny(typeStr: string, fieldName: string, typeName: string): string {
-    // Find "fieldName: { [x: string]: any" or "fieldName?: { [x: string]: any"
     const fieldPatterns = [`${fieldName}: {`, `${fieldName}?: {`];
     const indexSigPattern = "[x: string]:";
 
     for (const pattern of fieldPatterns) {
       let idx = typeStr.indexOf(pattern);
       while (idx !== -1) {
-        // Find the index signature pattern
         const afterBrace = idx + pattern.length;
         const indexSigStart = typeStr.indexOf(indexSigPattern, afterBrace);
 
         if (indexSigStart !== -1 && indexSigStart < afterBrace + 20) {
           const colonPos = indexSigStart + indexSigPattern.length;
-          // Find "any" after the colon - count whitespace explicitly
           let scanPos = colonPos;
           while (scanPos < typeStr.length && /\s/.test(typeStr[scanPos])) {
             scanPos++;
@@ -240,16 +213,12 @@ export class GetterResolver {
     return typeStr;
   }
 
-  /**
-   * Replaces any type in a regular field.
-   */
   private replaceFieldAny(
     typeStr: string,
     fieldName: string,
     typeName: string,
     isArray: boolean,
   ): string {
-    // Find "fieldName: any" or "fieldName?: any" patterns
     const fieldPatterns = [`${fieldName}: `, `${fieldName}?: `];
 
     for (const pattern of fieldPatterns) {
@@ -258,7 +227,6 @@ export class GetterResolver {
         const valueStart = idx + pattern.length;
         const restOfType = typeStr.substring(valueStart);
 
-        // Check for "readonly any" or just "any"
         let anyIdx = -1;
         let prefixLen = 0;
 
@@ -272,17 +240,14 @@ export class GetterResolver {
         }
 
         if (anyIdx !== -1) {
-          // Check what comes after "any"
           const afterAny = typeStr.substring(anyIdx + 3);
           const hasArrayBrackets = afterAny.startsWith("[]");
 
-          // Build replacement
           let replacement = typeName;
           if (isArray || hasArrayBrackets) {
             replacement = `${typeName}[]`;
           }
 
-          // Calculate end position (include [] if present)
           let endPos = anyIdx + 3;
           if (hasArrayBrackets) {
             endPos += 2;
@@ -298,9 +263,6 @@ export class GetterResolver {
     return typeStr;
   }
 
-  /**
-   * Checks if a schema has getter-based self-references.
-   */
   hasSelfReferences(getterFields: Map<string, GetterFieldInfo>): boolean {
     return Array.from(getterFields.values()).some((info) => info.isSelfRef);
   }
