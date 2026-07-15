@@ -4,5 +4,7 @@
   "initialVersions": {
     "zinfer": "0.2.5"
   },
-  "changesets": []
+  "changesets": [
+    "quiet-plums-relax"
+  ]
 }
