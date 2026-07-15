@@ -1,5 +1,5 @@
 ---
-"zinfer": minor
+"zinfer": major
 ---
 
 Replace `ts-morph` with TypeScript's native `tsgo`/Corsa API (`@typescript/native-preview`) as the type-resolution engine (see #200). `ts-morph` is dropped entirely; `@typescript/native-preview` moves from a dev-only dependency (used just for the `tsgo` typecheck script) to a runtime dependency.
