@@ -22,3 +22,13 @@ export const ContainerSchema = z.object({
   description: z.string().optional().describe("Container-level description"),
   group: GroupSchema.optional(),
 });
+
+// Sibling object members of the same union, inlined side by side. Each
+// member's own field description must stay scoped to that member and not
+// leak into (or be overwritten by) the sibling parsed just before/after it.
+export const SiblingUnionSchema = z.object({
+  choice: z.union([
+    z.object({ a: z.string().describe("A description") }),
+    z.object({ b: z.string().describe("B description") }),
+  ]),
+});

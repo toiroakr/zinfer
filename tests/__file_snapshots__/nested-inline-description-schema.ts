@@ -28,3 +28,23 @@ export type ContainerOutput = {
     description?: string | undefined;
   }[] | undefined;
 };
+
+export type SiblingUnionInput = {
+  choice: {
+    /** A description */
+    a: string;
+  } | {
+    /** B description */
+    b: string;
+  };
+};
+
+export type SiblingUnionOutput = {
+  choice: {
+    /** A description */
+    a: string;
+  } | {
+    /** B description */
+    b: string;
+  };
+};

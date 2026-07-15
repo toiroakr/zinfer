@@ -253,6 +253,10 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       const output = generateDeclarationFile(resultsWithDescriptions, mapName);
       expect(output).toContain("/** Item description, distinct from container description */");
       expect(output).not.toMatch(/flag: boolean;\s*\/\*\* Container-level description \*\//);
+      // Sibling union members must each keep their own field description,
+      // not inherit the other member's last-parsed field name.
+      expect(output).toContain("/** A description */");
+      expect(output).toContain("/** B description */");
       await expect(output).toMatchFileSnapshot(
         "__file_snapshots__/nested-inline-description-schema.ts",
       );
