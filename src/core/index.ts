@@ -13,8 +13,6 @@ export {
   type PrintOptions,
 } from "./type-printer.js";
 
-export { SchemaDetector } from "./schema-detector.js";
-
 export { NameMapper, createNameMapper } from "./name-mapper.js";
 
 export { FileResolver } from "./file-resolver.js";
@@ -37,8 +35,6 @@ export {
   type ZinferConfig,
   type ConfigLoadResult,
 } from "./config-loader.js";
-
-export { BrandDetector, type SchemaBrandMap } from "./brand-detector.js";
 
 export {
   TestGenerator,

@@ -5,7 +5,7 @@ A tool to extract TypeScript input/output types from Zod schemas.
 ## Features
 
 - Extract `z.input<T>` / `z.output<T>` types as text from Zod schemas
-- Accurate type analysis using TypeScript Compiler API (ts-morph)
+- Accurate type analysis using TypeScript's native compiler API (tsgo)
 - Non-invasive: does not modify original source files
 - Supports both CLI and library API
 - Handles circular references (`z.lazy`, getter patterns)

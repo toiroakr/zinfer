@@ -9,7 +9,6 @@ export {
   formatMultipleAsDeclarations,
   generateDeclarationFile,
   type PrintOptions,
-  SchemaDetector,
   NameMapper,
   createNameMapper,
   FileResolver,
