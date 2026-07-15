@@ -1,8 +1,0 @@
-{
-  "mode": "pre",
-  "tag": "next",
-  "initialVersions": {
-    "zinfer": "0.2.5"
-  },
-  "changesets": []
-}
