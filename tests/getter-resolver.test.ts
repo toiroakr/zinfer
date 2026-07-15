@@ -1,16 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { resolve } from "path";
-import { Project } from "ts-morph";
+import { TsgoHost } from "../src/core/tsgo-host.js";
 import { GetterResolver } from "../src/core/getter-resolver.js";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
 
 describe("GetterResolver", () => {
   const resolver = new GetterResolver();
+  const host = new TsgoHost();
 
   function getSourceFile(filename: string) {
-    const project = new Project();
-    return project.addSourceFileAtPath(resolve(fixturesDir, filename));
+    return host.getSourceFile(resolve(fixturesDir, filename));
   }
 
   describe("analyzeGetterFields", () => {

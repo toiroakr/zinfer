@@ -1,10 +1,11 @@
-import { Project, SourceFile, TypeFormatFlags, ts } from "ts-morph";
-import { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias } from "./normalizer.js";
+import type { SourceFile } from "@typescript/native-preview/unstable/ast";
+import { createTempTypeAlias } from "./normalizer.js";
 import { SchemaDetector } from "./schema-detector.js";
 import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver } from "./import-resolver.js";
 import { BrandDetector } from "./brand-detector.js";
+import { TsgoHost } from "./tsgo-host.js";
 import { logDebugError } from "./logger.js";
 import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
 
@@ -24,10 +25,11 @@ export interface ExtractOptions {
 }
 
 /**
- * Extracts input and output types from Zod schemas using TypeScript Compiler API.
+ * Extracts input and output types from Zod schemas using TypeScript's native
+ * tsgo/Corsa API (`@typescript/native-preview`). See issue #200.
  */
 export class ZodTypeExtractor {
-  private project: Project;
+  private host: TsgoHost;
   private schemaDetector: SchemaDetector;
   private getterResolver: GetterResolver;
   private referenceAnalyzer: SchemaReferenceAnalyzer;
@@ -42,7 +44,7 @@ export class ZodTypeExtractor {
    *                       default compiler options will be used.
    */
   constructor(tsconfigPath?: string) {
-    this.project = this.createProject(tsconfigPath);
+    this.host = new TsgoHost(tsconfigPath);
     this.schemaDetector = new SchemaDetector();
     this.getterResolver = new GetterResolver();
     this.referenceAnalyzer = new SchemaReferenceAnalyzer();
@@ -127,7 +129,7 @@ export class ZodTypeExtractor {
    * Gets or adds a source file to the project.
    */
   private getOrAddSourceFile(filePath: string): SourceFile {
-    return this.project.getSourceFile(filePath) ?? this.project.addSourceFileAtPath(filePath);
+    return this.host.getSourceFile(filePath);
   }
 
   /**
@@ -140,7 +142,7 @@ export class ZodTypeExtractor {
     const results: ExtractResult[] = [];
 
     // Find and resolve imported schemas
-    const importedSchemas = this.importResolver.findImportedSchemas(sourceFile, this.project);
+    const importedSchemas = this.importResolver.findImportedSchemas(sourceFile, this.host.project);
 
     // Build schema names set including imports
     const schemaNames = new Set(schemas.map((s) => s.name));
@@ -162,7 +164,7 @@ export class ZodTypeExtractor {
     const rawTypes = new Map<string, { input: string; output: string; isExported: boolean }>();
 
     // Inject __Normalize once for the main source file
-    this.ensureNormalizeType(sourceFile);
+    this.host.ensureNormalizeType(sourceFile);
 
     // Extract types from imported schemas first
     for (const [localName, importInfo] of importedSchemas) {
@@ -180,14 +182,21 @@ export class ZodTypeExtractor {
         continue;
       }
 
-      const importedSourceFile = this.project.getSourceFile(importInfo.sourceFilePath);
+      const importedSourceFile = this.host.tryGetSourceFile(importInfo.sourceFilePath);
       if (!importedSourceFile) continue;
 
-      this.ensureNormalizeType(importedSourceFile);
+      this.host.ensureNormalizeType(importedSourceFile);
       try {
-        this.injectTemporaryTypes(importedSourceFile, importInfo.originalName);
-        const inputType = this.resolveType(importedSourceFile, "__TempInput");
-        const outputType = this.resolveType(importedSourceFile, "__TempOutput");
+        const resolved = this.host.resolveTypes(
+          importedSourceFile,
+          [
+            createTempTypeAlias(importInfo.originalName, "input"),
+            createTempTypeAlias(importInfo.originalName, "output"),
+          ],
+          ["__TempInput", "__TempOutput"],
+        );
+        const inputType = this.simplifyZodFunctionTypes(resolved.get("__TempInput") ?? "");
+        const outputType = this.simplifyZodFunctionTypes(resolved.get("__TempOutput") ?? "");
 
         // Cache the result
         this.importedSchemaCache.set(cacheKey, { input: inputType, output: outputType });
@@ -201,8 +210,7 @@ export class ZodTypeExtractor {
       } catch (error) {
         logDebugError(`Failed to extract imported schema "${localName}"`, error);
       } finally {
-        this.cleanupTemporaryTypes(importedSourceFile);
-        this.cleanupNormalizeType(importedSourceFile);
+        this.host.cleanupNormalizeType(importedSourceFile);
       }
     }
 
@@ -211,57 +219,57 @@ export class ZodTypeExtractor {
       const { name: schemaName, explicitType, isExported } = schema;
 
       if (explicitType) {
-        this.injectExplicitType(sourceFile, explicitType);
-        try {
-          const resolvedType = this.resolveType(sourceFile, "__TempExplicit");
-          rawTypes.set(schemaName, {
-            input: resolvedType,
-            output: resolvedType,
-            isExported,
-          });
-        } finally {
-          this.cleanupExplicitType(sourceFile);
-        }
+        const resolved = this.host.resolveTypes(
+          sourceFile,
+          [`type __TempExplicit = ${explicitType};`],
+          ["__TempExplicit"],
+        );
+        const resolvedType = this.simplifyZodFunctionTypes(resolved.get("__TempExplicit") ?? "");
+        rawTypes.set(schemaName, {
+          input: resolvedType,
+          output: resolvedType,
+          isExported,
+        });
         continue;
       }
 
-      this.injectTemporaryTypes(sourceFile, schemaName);
-      try {
-        let inputType = this.resolveType(sourceFile, "__TempInput");
-        let outputType = this.resolveType(sourceFile, "__TempOutput");
+      const resolved = this.host.resolveTypes(
+        sourceFile,
+        [createTempTypeAlias(schemaName, "input"), createTempTypeAlias(schemaName, "output")],
+        ["__TempInput", "__TempOutput"],
+      );
+      let inputType = this.simplifyZodFunctionTypes(resolved.get("__TempInput") ?? "");
+      let outputType = this.simplifyZodFunctionTypes(resolved.get("__TempOutput") ?? "");
 
-        // Resolve getter-based self-references
-        const getterFields = getterFieldMap.get(schemaName);
-        if (getterFields && this.getterResolver.hasSelfReferences(getterFields)) {
-          const inputTypeName = `${schemaName}Input`;
-          const outputTypeName = `${schemaName}Output`;
-          const originalInputType = inputType;
+      // Resolve getter-based self-references
+      const getterFields = getterFieldMap.get(schemaName);
+      if (getterFields && this.getterResolver.hasSelfReferences(getterFields)) {
+        const inputTypeName = `${schemaName}Input`;
+        const outputTypeName = `${schemaName}Output`;
+        const originalInputType = inputType;
 
-          inputType = this.getterResolver.resolveAnyTypes(inputType, getterFields, inputTypeName);
+        inputType = this.getterResolver.resolveAnyTypes(inputType, getterFields, inputTypeName);
 
-          if (outputType === "any") {
-            outputType = this.getterResolver.resolveAnyTypes(
-              originalInputType,
-              getterFields,
-              outputTypeName,
-            );
-          } else {
-            outputType = this.getterResolver.resolveAnyTypes(
-              outputType,
-              getterFields,
-              outputTypeName,
-            );
-          }
+        if (outputType === "any") {
+          outputType = this.getterResolver.resolveAnyTypes(
+            originalInputType,
+            getterFields,
+            outputTypeName,
+          );
+        } else {
+          outputType = this.getterResolver.resolveAnyTypes(
+            outputType,
+            getterFields,
+            outputTypeName,
+          );
         }
-
-        rawTypes.set(schemaName, { input: inputType, output: outputType, isExported });
-      } finally {
-        this.cleanupTemporaryTypes(sourceFile);
       }
+
+      rawTypes.set(schemaName, { input: inputType, output: outputType, isExported });
     }
 
     // Clean up __Normalize from the main source file after all schemas are processed
-    this.cleanupNormalizeType(sourceFile);
+    this.host.cleanupNormalizeType(sourceFile);
 
     const schemasByName = new Map(schemas.map((schema) => [schema.name, schema]));
     const resolvedTypes = new Map<string, { input: string; output: string }>();
@@ -472,136 +480,6 @@ export class ZodTypeExtractor {
   }
 
   /**
-   * Injects temporary type for explicit type (without normalization for circular refs).
-   */
-  private injectExplicitType(sourceFile: SourceFile, explicitType: string): void {
-    // Don't normalize - use the type directly to preserve circular references
-    sourceFile.addStatements([`type __TempExplicit = ${explicitType};`]);
-  }
-
-  /**
-   * Cleans up explicit type temporaries.
-   */
-  private cleanupExplicitType(sourceFile: SourceFile): void {
-    const typeAlias = sourceFile.getTypeAlias("__TempExplicit");
-    if (typeAlias) {
-      typeAlias.remove();
-    }
-  }
-
-  /**
-   * Creates a ts-morph Project with appropriate compiler options.
-   */
-  private createProject(tsconfigPath?: string): Project {
-    if (tsconfigPath) {
-      return new Project({
-        tsConfigFilePath: tsconfigPath,
-        skipAddingFilesFromTsConfig: true,
-        skipFileDependencyResolution: true,
-      });
-    }
-
-    return new Project({
-      skipFileDependencyResolution: true,
-      compilerOptions: {
-        strict: true,
-        target: ts.ScriptTarget.ESNext,
-        module: ts.ModuleKind.ESNext,
-        moduleResolution: ts.ModuleResolutionKind.Bundler,
-        esModuleInterop: true,
-        skipLibCheck: true,
-      },
-    });
-  }
-
-  /**
-   * Injects the __Normalize type definition into a source file if not already present.
-   */
-  private ensureNormalizeType(sourceFile: SourceFile): void {
-    if (!sourceFile.getTypeAlias("__Normalize")) {
-      sourceFile.addStatements([NORMALIZE_TYPE_DEFINITION]);
-    }
-  }
-
-  /**
-   * Removes the __Normalize type definition from a source file.
-   */
-  private cleanupNormalizeType(sourceFile: SourceFile): void {
-    const typeAlias = sourceFile.getTypeAlias("__Normalize");
-    if (typeAlias) {
-      typeAlias.remove();
-    }
-  }
-
-  /**
-   * Injects temporary type aliases into the source file.
-   * The __Normalize type must already be present (via ensureNormalizeType).
-   * These are added in-memory only and never saved to disk.
-   */
-  private injectTemporaryTypes(sourceFile: SourceFile, schemaName: string): void {
-    sourceFile.addStatements([
-      createTempTypeAlias(schemaName, "input"),
-      createTempTypeAlias(schemaName, "output"),
-    ]);
-  }
-
-  /**
-   * Resolves a type alias and returns its fully expanded string representation.
-   */
-  private resolveType(sourceFile: SourceFile, typeName: string): string {
-    const typeAlias = sourceFile.getTypeAlias(typeName);
-    if (!typeAlias) {
-      throw new Error(`Failed to find type alias: ${typeName}`);
-    }
-
-    const type = typeAlias.getType();
-
-    // Use TypeFormatFlags to get the fully expanded type without truncation
-    // Don't use UseAliasDefinedOutsideCurrentScope to expand enum types
-    const formatFlags = TypeFormatFlags.NoTruncation | TypeFormatFlags.InTypeAlias;
-
-    let rawType = type.getText(typeAlias, formatFlags);
-
-    // Remove trailing spaces from each line (ts-morph 27+ may add them)
-    // Skip split/map/join for single-line types (most common case)
-    if (rawType.includes("\n")) {
-      rawType = rawType
-        .split("\n")
-        .map((line) => line.trimEnd())
-        .join("\n");
-    } else {
-      rawType = rawType.trimEnd();
-    }
-
-    // Expand enum types: if the type is a single identifier, check if it's an enum
-    if (/^[A-Z][a-zA-Z0-9]*$/.test(rawType)) {
-      const enumDecl = sourceFile.getEnum(rawType);
-      if (enumDecl) {
-        // Extract enum values
-        const members = enumDecl.getMembers();
-        const values = members
-          .map((member) => {
-            const value = member.getValue();
-            if (typeof value === "string") {
-              return `"${value}"`;
-            } else if (typeof value === "number") {
-              return value.toString();
-            }
-            return null;
-          })
-          .filter(Boolean);
-
-        if (values.length > 0) {
-          rawType = values.join(" | ");
-        }
-      }
-    }
-
-    // Post-process to simplify Zod internal function types
-    return this.simplifyZodFunctionTypes(rawType);
-  }
-
-  /**
    * Simplifies Zod internal function types to Function.
    * Replaces patterns like z.core.$InferInnerFunctionType<...> with Function.
    * Handles nested type parameters properly.
@@ -653,19 +531,6 @@ export class ZodTypeExtractor {
     }
 
     return result;
-  }
-
-  /**
-   * Removes the temporary input/output types that were injected during extraction.
-   * Does not remove __Normalize (managed separately via ensureNormalizeType/cleanupNormalizeType).
-   */
-  private cleanupTemporaryTypes(sourceFile: SourceFile): void {
-    for (const name of ["__TempInput", "__TempOutput"] as const) {
-      const typeAlias = sourceFile.getTypeAlias(name);
-      if (typeAlias) {
-        typeAlias.remove();
-      }
-    }
   }
 
   /**

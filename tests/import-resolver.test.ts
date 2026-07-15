@@ -1,27 +1,25 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { resolve } from "path";
-import { Project } from "ts-morph";
+import { TsgoHost } from "../src/core/tsgo-host.js";
 import { ImportResolver } from "../src/core/import-resolver.js";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
 
 describe("ImportResolver", () => {
   let resolver: ImportResolver;
-  let project: Project;
+  let host: TsgoHost;
 
   beforeEach(() => {
     resolver = new ImportResolver();
-    project = new Project({
-      tsConfigFilePath: resolve(import.meta.dirname, "..", "tsconfig.json"),
-    });
+    host = new TsgoHost();
   });
 
   describe("findImportedSchemas", () => {
     it("should find imported schemas from local files", () => {
       const consumerPath = resolve(fixturesDir, "import-test/consumer.ts");
-      const sourceFile = project.addSourceFileAtPath(consumerPath);
+      const sourceFile = host.getSourceFile(consumerPath);
 
-      const importedSchemas = resolver.findImportedSchemas(sourceFile, project);
+      const importedSchemas = resolver.findImportedSchemas(sourceFile, host.project);
 
       expect(importedSchemas.size).toBe(2);
       expect(importedSchemas.has("SharedSchema")).toBe(true);
@@ -34,33 +32,27 @@ describe("ImportResolver", () => {
       expect(sharedInfo.sourceFilePath).toContain("shared.ts");
     });
 
-    it("should handle re-exports from index files", () => {
+    it("should resolve re-exports through an index file", () => {
       const reExportConsumerPath = resolve(fixturesDir, "import-test/re-export-consumer.ts");
-      const sourceFile = project.addSourceFileAtPath(reExportConsumerPath);
+      const sourceFile = host.getSourceFile(reExportConsumerPath);
 
-      const importedSchemas = resolver.findImportedSchemas(sourceFile, project);
+      const importedSchemas = resolver.findImportedSchemas(sourceFile, host.project);
 
-      // Re-export resolution depends on ts-morph's module resolution
-      // Current implementation may not resolve all re-export patterns
-      // This test documents the current behavior
-      if (importedSchemas.size > 0) {
-        expect(importedSchemas.has("SharedSchema")).toBe(true);
-        const sharedInfo = importedSchemas.get("SharedSchema")!;
-        expect(sharedInfo.resolved).toBe(true);
-        // Should resolve to the original source file
-        expect(sharedInfo.sourceFilePath).toContain("shared.ts");
-      } else {
-        // If re-exports are not resolved, the map will be empty
-        // This is a known limitation with certain module resolution configurations
-        expect(importedSchemas.size).toBe(0);
-      }
+      // Unlike ts-morph's getModuleSpecifierSourceFile (which has a known
+      // limitation resolving named imports through an intermediate
+      // re-export index file), this resolves correctly because
+      // Checker.getSymbolAtLocation performs real module resolution.
+      expect(importedSchemas.has("SharedSchema")).toBe(true);
+      const sharedInfo = importedSchemas.get("SharedSchema")!;
+      expect(sharedInfo.resolved).toBe(true);
+      expect(sharedInfo.sourceFilePath).toContain("shared.ts");
     });
 
     it("should ignore node_modules imports", () => {
       const consumerPath = resolve(fixturesDir, "import-test/consumer.ts");
-      const sourceFile = project.addSourceFileAtPath(consumerPath);
+      const sourceFile = host.getSourceFile(consumerPath);
 
-      const importedSchemas = resolver.findImportedSchemas(sourceFile, project);
+      const importedSchemas = resolver.findImportedSchemas(sourceFile, host.project);
 
       // Should not include 'z' from zod
       expect(importedSchemas.has("z")).toBe(false);
@@ -68,18 +60,18 @@ describe("ImportResolver", () => {
 
     it("should return empty map for files with no local imports", () => {
       const sharedPath = resolve(fixturesDir, "import-test/shared.ts");
-      const sourceFile = project.addSourceFileAtPath(sharedPath);
+      const sourceFile = host.getSourceFile(sharedPath);
 
-      const importedSchemas = resolver.findImportedSchemas(sourceFile, project);
+      const importedSchemas = resolver.findImportedSchemas(sourceFile, host.project);
 
       expect(importedSchemas.size).toBe(0);
     });
 
     it("should resolve subpath imports with a wildcard pattern (#/*)", () => {
       const consumerPath = resolve(fixturesDir, "subpath-import/consumer.ts");
-      const sourceFile = project.addSourceFileAtPath(consumerPath);
+      const sourceFile = host.getSourceFile(consumerPath);
 
-      const importedSchemas = resolver.findImportedSchemas(sourceFile, project);
+      const importedSchemas = resolver.findImportedSchemas(sourceFile, host.project);
 
       expect(importedSchemas.size).toBe(2);
       expect(importedSchemas.has("SharedSchema")).toBe(true);
@@ -94,9 +86,9 @@ describe("ImportResolver", () => {
 
     it("should resolve exact (non-wildcard) subpath imports", () => {
       const consumerPath = resolve(fixturesDir, "subpath-import/exact-consumer.ts");
-      const sourceFile = project.addSourceFileAtPath(consumerPath);
+      const sourceFile = host.getSourceFile(consumerPath);
 
-      const importedSchemas = resolver.findImportedSchemas(sourceFile, project);
+      const importedSchemas = resolver.findImportedSchemas(sourceFile, host.project);
 
       expect(importedSchemas.has("SharedSchema")).toBe(true);
       const sharedInfo = importedSchemas.get("SharedSchema")!;

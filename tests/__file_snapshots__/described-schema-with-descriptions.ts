@@ -10,10 +10,10 @@ export type UserInput = {
   name: string;
   /** User's email address */
   email: string;
-  /** User's role in the system */
-  role: "admin" | "user" | "guest";
   /** User's age in years */
   age?: number | undefined;
+  /** User's role in the system */
+  role: "admin" | "guest" | "user";
 };
 
 export type UserOutput = {
@@ -23,10 +23,10 @@ export type UserOutput = {
   name: string;
   /** User's email address */
   email: string;
-  /** User's role in the system */
-  role: "admin" | "user" | "guest";
   /** User's age in years */
   age?: number | undefined;
+  /** User's role in the system */
+  role: "admin" | "guest" | "user";
 };
 
 export type AddressInput = {
@@ -54,17 +54,17 @@ export type AddressOutput = {
 export type ProfileInput = {
   /** User information */
   user: UserInput;
-  /** User tags for categorization */
-  tags: string[];
   /** User's primary address */
   address?: AddressInput;
+  /** User tags for categorization */
+  tags: string[];
 };
 
 export type ProfileOutput = {
   /** User information */
   user: UserOutput;
-  /** User tags for categorization */
-  tags: string[];
   /** User's primary address */
   address?: AddressOutput;
+  /** User tags for categorization */
+  tags: string[];
 };
