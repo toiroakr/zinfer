@@ -113,7 +113,14 @@ interface ParserState {
   stringChar: string;
   currentFieldName: string;
   capturingFieldName: boolean;
-  pathStack: string[];
+  /** Name of the field whose value is about to open a "{" (consumed by handleOpenBrace). */
+  lastFieldName: string;
+  /**
+   * One entry per open "{", holding the field name that owns that brace ("" if
+   * none, e.g. the root object or a union member sibling). Pushed/popped in
+   * lockstep with braces so it always reflects the true nesting depth.
+   */
+  fieldNameStack: string[];
 }
 
 /**
@@ -127,7 +134,8 @@ function createParserState(): ParserState {
     stringChar: "",
     currentFieldName: "",
     capturingFieldName: false,
-    pathStack: [],
+    lastFieldName: "",
+    fieldNameStack: [],
   };
 }
 
@@ -158,11 +166,10 @@ function updateStringState(
 function handleOpenBrace(state: ParserState, indent: string): void {
   state.depth++;
   state.result += "{\n" + indent.repeat(state.depth);
+  state.fieldNameStack.push(state.lastFieldName);
+  state.lastFieldName = "";
   state.capturingFieldName = true;
   state.currentFieldName = "";
-  if (state.depth > 1 && state.currentFieldName) {
-    state.pathStack.push(state.currentFieldName);
-  }
 }
 
 /**
@@ -170,9 +177,7 @@ function handleOpenBrace(state: ParserState, indent: string): void {
  */
 function handleCloseBrace(state: ParserState, indent: string): void {
   state.depth--;
-  if (state.pathStack.length > 0 && state.depth >= 1) {
-    state.pathStack.pop();
-  }
+  state.fieldNameStack.pop();
   state.result += "\n" + indent.repeat(state.depth) + "}";
 }
 
@@ -187,7 +192,8 @@ function handleColon(
 ): void {
   if (state.capturingFieldName && state.currentFieldName) {
     const cleanFieldName = state.currentFieldName.replace(/\?$/, "").trim();
-    const currentPath = [...state.pathStack, prefix].filter(Boolean).join(".");
+    const scopePath = state.fieldNameStack.filter(Boolean).join(".");
+    const currentPath = [scopePath, prefix].filter(Boolean).join(".");
     const desc = getFieldDescription(cleanFieldName, currentPath, descriptions);
 
     if (desc) {
@@ -196,6 +202,7 @@ function handleColon(
       const fieldPart = state.result.substring(lastNewlinePos + 1);
       state.result = beforeField + createTsDocComment(desc, indent.repeat(state.depth)) + fieldPart;
     }
+    state.lastFieldName = cleanFieldName;
   }
   state.result += ":";
   state.capturingFieldName = false;
