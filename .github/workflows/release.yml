@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+      # Temporary: lets the ts-morph -> tsgo migration branch (#200) publish
+      # `next`-tagged prereleases via changesets pre-release mode
+      # (.changeset/pre.json) without needing a separate npm Trusted
+      # Publisher entry (npm's OIDC trusted publishing is scoped to this
+      # workflow file by name). Remove once ts7 is merged into main.
+      - ts7
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
