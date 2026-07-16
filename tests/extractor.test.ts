@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { resolve } from "pathe";
 import { ZodTypeExtractor } from "../src/core/extractor.js";
 import { generateDeclarationFile } from "../src/core/type-printer.js";
@@ -263,6 +263,41 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("recursive-inline-description-schema.ts", () => {
+    it("should not stack-overflow on a self-recursive schema and must not blank out other schemas' descriptions (#340)", async () => {
+      const filePath = resolve(fixturesDir, "recursive-inline-description-schema.ts");
+      const results = extractor.extractAll(filePath);
+      const descriptionExtractor = new DescriptionExtractor();
+
+      const schemaNames = results.map((r) => r.schemaName);
+      const descriptions = await descriptionExtractor.extractDescriptions(filePath, schemaNames);
+
+      const resultsWithDescriptions = results.map((result) => {
+        const desc = descriptions.get(result.schemaName);
+        if (!desc) {
+          return result;
+        }
+        return {
+          ...result,
+          description: desc.description,
+          fieldDescriptions: desc.fields,
+        };
+      });
+
+      const output = generateDeclarationFile(resultsWithDescriptions, mapName);
+      // The self-recursive schema's own fields must be described...
+      expect(output).toContain("/** Category name */");
+      expect(output).toContain("/** Nested subcategories */");
+      // ...and extracting it must not blow the stack and wipe out
+      // descriptions for the unrelated schema that wraps it several
+      // object layers deep.
+      expect(output).toContain("/** Catalog title */");
+      await expect(output).toMatchFileSnapshot(
+        "__file_snapshots__/recursive-inline-description-schema.ts",
+      );
+    });
+  });
+
   describe("array-readonly-schema.ts", () => {
     it("should not add readonly modifier to regular arrays", async () => {
       const results = extractor.extractAll(resolve(fixturesDir, "array-readonly-schema.ts"));
@@ -423,6 +458,36 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       const desc = descriptions.get("SuffixConsumerSchema");
       const nameField = desc?.fields.find((f) => f.path === "name");
       expect(nameField?.description).toBe("The user's name");
+    });
+  });
+
+  describe("description extraction sweep", () => {
+    it("should extract descriptions from every top-level fixture without warning (#340)", async () => {
+      // Guards against the class of bug in #340: recursion tests
+      // (lazy-schema.ts, getter-schema.ts) and description tests
+      // (described-schema.ts, etc.) previously never ran through the same
+      // extractor, so a schema that was both self-recursive AND described
+      // slipped through CI untested. Running DescriptionExtractor over every
+      // fixture - regardless of whether it has any .describe() calls - would
+      // have caught the stack overflow immediately, since it happens even
+      // without a single description present.
+      const fixtureFiles = readdirSync(fixturesDir).filter((f) => f.endsWith(".ts"));
+      const descriptionExtractor = new DescriptionExtractor();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      // Assert before mockRestore(): restoring a spy also clears its
+      // recorded calls, which would make a post-restore assertion pass
+      // unconditionally regardless of what actually happened in the loop.
+      try {
+        for (const file of fixtureFiles) {
+          const filePath = resolve(fixturesDir, file);
+          const schemaNames = extractor.extractAll(filePath).map((r) => r.schemaName);
+          await descriptionExtractor.extractDescriptions(filePath, schemaNames);
+        }
+        expect(warnSpy).not.toHaveBeenCalled();
+      } finally {
+        warnSpy.mockRestore();
+      }
     });
   });
 });
