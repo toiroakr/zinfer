@@ -206,8 +206,18 @@ export class DescriptionExtractor {
           continue;
         }
 
-        const descriptions = this.extractFromSchema(schema, schemaName);
-        result.set(schemaName, descriptions);
+        try {
+          const descriptions = this.extractFromSchema(schema, schemaName);
+          result.set(schemaName, descriptions);
+        } catch (error) {
+          // A single schema's extraction (e.g. one hitting runaway recursion)
+          // must not blank out descriptions already collected for other
+          // schemas in the same file.
+          console.warn(
+            `Warning: Could not extract descriptions for schema "${schemaName}" in ${filePath}:`,
+            (error as Error).message,
+          );
+        }
       }
     } catch (error) {
       // If import fails, return empty descriptions (non-blocking)
@@ -231,7 +241,7 @@ export class DescriptionExtractor {
 
     // Extract field descriptions recursively (unwrap through effects/transforms first)
     const innerSchema = this.unwrapToInnerSchema(schema);
-    this.extractFieldDescriptions(innerSchema, "", fields);
+    this.extractFieldDescriptions(innerSchema, "", fields, new Set());
 
     return {
       schemaName,
@@ -246,11 +256,20 @@ export class DescriptionExtractor {
    * Arrays and unions are printed inline (no index/branch segment), so their
    * element/member schemas are recursed into at the *same* path as the field
    * that holds them - only ZodObject keys ever extend the path.
+   *
+   * `ancestors` tracks the ZodObject instances currently on the recursion
+   * stack (e.g. a self-referential schema built with a `get` accessor).
+   * Re-entering one of them would otherwise recurse forever since the field
+   * path keeps growing without ever revisiting the same schema/path pair.
+   * Objects are added on the way down and removed on the way back up, so the
+   * same schema referenced twice in unrelated (non-cyclic) places is still
+   * fully extracted both times.
    */
   private extractFieldDescriptions(
     schema: unknown,
     prefix: string,
     fields: FieldDescription[],
+    ancestors: Set<unknown>,
   ): void {
     if (!schema || typeof schema !== "object") {
       return;
@@ -258,21 +277,29 @@ export class DescriptionExtractor {
 
     // Handle ZodObject - extract from shape
     if (this.isZodObject(schema)) {
-      const shape = this.getShape(schema);
-      if (shape && typeof shape === "object") {
-        for (const [key, fieldSchema] of Object.entries(shape)) {
-          const path = prefix ? `${prefix}.${key}` : key;
+      if (ancestors.has(schema)) {
+        return;
+      }
+      ancestors.add(schema);
+      try {
+        const shape = this.getShape(schema);
+        if (shape && typeof shape === "object") {
+          for (const [key, fieldSchema] of Object.entries(shape)) {
+            const path = prefix ? `${prefix}.${key}` : key;
 
-          // Get description for this field (check through effects/transforms)
-          const desc = this.getDescriptionDeep(fieldSchema);
-          if (desc) {
-            fields.push({ path, description: desc });
+            // Get description for this field (check through effects/transforms)
+            const desc = this.getDescriptionDeep(fieldSchema);
+            if (desc) {
+              fields.push({ path, description: desc });
+            }
+
+            // Recurse into nested schemas (objects, and objects reachable
+            // through arrays/unions, which print inline at the same path)
+            this.extractFieldDescriptions(this.unwrapSchema(fieldSchema), path, fields, ancestors);
           }
-
-          // Recurse into nested schemas (objects, and objects reachable
-          // through arrays/unions, which print inline at the same path)
-          this.extractFieldDescriptions(this.unwrapSchema(fieldSchema), path, fields);
         }
+      } finally {
+        ancestors.delete(schema);
       }
       return;
     }
@@ -281,7 +308,7 @@ export class DescriptionExtractor {
     // fields are scoped to the array field's own path.
     const elementSchema = this.getArrayElement(schema);
     if (elementSchema) {
-      this.extractFieldDescriptions(this.unwrapSchema(elementSchema), prefix, fields);
+      this.extractFieldDescriptions(this.unwrapSchema(elementSchema), prefix, fields, ancestors);
       return;
     }
 
@@ -290,7 +317,7 @@ export class DescriptionExtractor {
     const unionOptions = this.getUnionOptions(schema);
     if (unionOptions) {
       for (const option of unionOptions) {
-        this.extractFieldDescriptions(this.unwrapSchema(option), prefix, fields);
+        this.extractFieldDescriptions(this.unwrapSchema(option), prefix, fields, ancestors);
       }
     }
   }

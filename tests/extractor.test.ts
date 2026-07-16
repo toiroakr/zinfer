@@ -263,6 +263,41 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("recursive-inline-description-schema.ts", () => {
+    it("should not stack-overflow on a self-recursive schema and must not blank out other schemas' descriptions (#340)", async () => {
+      const filePath = resolve(fixturesDir, "recursive-inline-description-schema.ts");
+      const results = extractor.extractAll(filePath);
+      const descriptionExtractor = new DescriptionExtractor();
+
+      const schemaNames = results.map((r) => r.schemaName);
+      const descriptions = await descriptionExtractor.extractDescriptions(filePath, schemaNames);
+
+      const resultsWithDescriptions = results.map((result) => {
+        const desc = descriptions.get(result.schemaName);
+        if (!desc) {
+          return result;
+        }
+        return {
+          ...result,
+          description: desc.description,
+          fieldDescriptions: desc.fields,
+        };
+      });
+
+      const output = generateDeclarationFile(resultsWithDescriptions, mapName);
+      // The self-recursive schema's own fields must be described...
+      expect(output).toContain("/** Category name */");
+      expect(output).toContain("/** Nested subcategories */");
+      // ...and extracting it must not blow the stack and wipe out
+      // descriptions for the unrelated schema that wraps it several
+      // object layers deep.
+      expect(output).toContain("/** Catalog title */");
+      await expect(output).toMatchFileSnapshot(
+        "__file_snapshots__/recursive-inline-description-schema.ts",
+      );
+    });
+  });
+
   describe("array-readonly-schema.ts", () => {
     it("should not add readonly modifier to regular arrays", async () => {
       const results = extractor.extractAll(resolve(fixturesDir, "array-readonly-schema.ts"));
