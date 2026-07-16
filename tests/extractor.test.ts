@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { resolve } from "pathe";
 import { ZodTypeExtractor } from "../src/core/extractor.js";
 import { generateDeclarationFile } from "../src/core/type-printer.js";
@@ -458,6 +458,36 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       const desc = descriptions.get("SuffixConsumerSchema");
       const nameField = desc?.fields.find((f) => f.path === "name");
       expect(nameField?.description).toBe("The user's name");
+    });
+  });
+
+  describe("description extraction sweep", () => {
+    it("should extract descriptions from every top-level fixture without warning (#340)", async () => {
+      // Guards against the class of bug in #340: recursion tests
+      // (lazy-schema.ts, getter-schema.ts) and description tests
+      // (described-schema.ts, etc.) previously never ran through the same
+      // extractor, so a schema that was both self-recursive AND described
+      // slipped through CI untested. Running DescriptionExtractor over every
+      // fixture - regardless of whether it has any .describe() calls - would
+      // have caught the stack overflow immediately, since it happens even
+      // without a single description present.
+      const fixtureFiles = readdirSync(fixturesDir).filter((f) => f.endsWith(".ts"));
+      const descriptionExtractor = new DescriptionExtractor();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      // Assert before mockRestore(): restoring a spy also clears its
+      // recorded calls, which would make a post-restore assertion pass
+      // unconditionally regardless of what actually happened in the loop.
+      try {
+        for (const file of fixtureFiles) {
+          const filePath = resolve(fixturesDir, file);
+          const schemaNames = extractor.extractAll(filePath).map((r) => r.schemaName);
+          await descriptionExtractor.extractDescriptions(filePath, schemaNames);
+        }
+        expect(warnSpy).not.toHaveBeenCalled();
+      } finally {
+        warnSpy.mockRestore();
+      }
     });
   });
 });
