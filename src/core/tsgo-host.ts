@@ -1,9 +1,11 @@
 import os from "node:os";
 import path from "node:path";
-import { API, ModuleKind } from "@typescript/native-preview/unstable/sync";
+import { readFileSync } from "node:fs";
+import { API } from "@typescript/native-preview/unstable/sync";
 import type { Project } from "@typescript/native-preview/unstable/sync";
-import { ScriptTarget, SyntaxKind } from "@typescript/native-preview/unstable/ast";
+import { SyntaxKind } from "@typescript/native-preview/unstable/ast";
 import type { EnumDeclaration, SourceFile } from "@typescript/native-preview/unstable/ast";
+import { parse as parseJsonc } from "jsonc-parser";
 import { NORMALIZE_TYPE_DEFINITION } from "./normalizer.js";
 import type { TsHost } from "./ts-host.js";
 
@@ -15,78 +17,6 @@ const DEFAULT_COMPILER_OPTIONS: Record<string, unknown> = {
   esModuleInterop: true,
   skipLibCheck: true,
 };
-
-// TS's ModuleResolutionKind isn't re-exported from the public unstable/*
-// surface; these numeric values are stable across TS versions.
-const MODULE_RESOLUTION_KIND_NAMES: Record<number, string> = {
-  1: "classic",
-  2: "node10",
-  3: "node16",
-  99: "nodenext",
-  100: "bundler",
-};
-
-/**
- * `Checker`/`parseConfigFile` return fully-resolved CompilerOptions: enum
- * fields as raw numbers, `lib` as resolved lib filenames (e.g.
- * `"lib.es2022.d.ts"` instead of the `"es2022"` tsconfig.json expects), and
- * paths (rootDir/outDir/...) absolutized against the *original* project.
- * Naively re-embedding that into our own from-scratch virtual tsconfig.json
- * would fail to parse (invalid `--lib` values, numeric enum fields) and
- * inherit rootDir/outDir constraints from a project zinfer isn't actually
- * building. Only carry over the handful of fields that affect type-checking
- * of the target file, normalized back to valid tsconfig.json string form.
- *
- * `types`/`typeRoots` are resolved relative to the tsconfig's own directory,
- * which for our virtual tsconfig is an unrelated temp directory - so an
- * explicit `types: ["node"]` from the original project would otherwise fail
- * to resolve `@types/node` at all (breaking even ambient globals like
- * `Object`/`Function`). `typeRoots` is pointed at the original project's
- * `node_modules/@types` so `types` keeps resolving correctly.
- */
-function sanitizeCompilerOptions(
-  options: Record<string, unknown>,
-  originalTsconfigDir: string,
-): Record<string, unknown> {
-  const KEEP_KEYS = [
-    "strict",
-    "esModuleInterop",
-    "skipLibCheck",
-    "resolveJsonModule",
-    "isolatedModules",
-    "forceConsistentCasingInFileNames",
-    "allowJs",
-    "checkJs",
-    "types",
-  ] as const;
-
-  const result: Record<string, unknown> = {};
-  for (const key of KEEP_KEYS) {
-    if (key in options) result[key] = options[key];
-  }
-
-  if (Array.isArray(options.lib)) {
-    result.lib = options.lib.map((lib) =>
-      typeof lib === "string" ? lib.replace(/^lib\./, "").replace(/\.d\.ts$/, "") : lib,
-    );
-  }
-  if (typeof options.target === "number") {
-    result.target = ScriptTarget[options.target] ?? DEFAULT_COMPILER_OPTIONS.target;
-  }
-  if (typeof options.module === "number") {
-    result.module = ModuleKind[options.module] ?? DEFAULT_COMPILER_OPTIONS.module;
-  }
-  if (typeof options.moduleResolution === "number") {
-    result.moduleResolution =
-      MODULE_RESOLUTION_KIND_NAMES[options.moduleResolution] ??
-      DEFAULT_COMPILER_OPTIONS.moduleResolution;
-  }
-  if ("types" in options) {
-    result.typeRoots = [path.join(originalTsconfigDir, "node_modules", "@types")];
-  }
-
-  return result;
-}
 
 const NO_TRUNCATION = 1;
 const IN_TYPE_ALIAS = 8388608;
@@ -108,28 +38,43 @@ const FORMAT_FLAGS = NO_TRUNCATION | IN_TYPE_ALIAS;
  * union/object types depend on incidental cross-file caching, producing
  * non-deterministic output depending on what else had been processed
  * earlier in the same run.
+ *
+ * When a real tsconfig.json is supplied, we serve a patched copy of it at
+ * its *own* path (only `files` gets an extra entry appended) rather than
+ * extracting `compilerOptions` into a from-scratch config elsewhere:
+ * `Checker`/`parseConfigFile` return fully-resolved options (enum fields as
+ * raw numbers, `lib` as resolved filenames), which isn't valid to re-embed
+ * as tsconfig.json text, and moving the served config to a different
+ * directory would break relative `extends`/`typeRoots` resolution. Keeping
+ * the same path means `extends` and comments are simply passed through
+ * unread - the tsgo server resolves them itself when it loads our patched
+ * text - and every other relative path in the config keeps working exactly
+ * as it would for the real project.
  */
 export class TsgoHost implements TsHost<SourceFile> {
   private readonly api: API;
-  private readonly virtualTsconfigPath: string;
-  private readonly compilerOptions: Record<string, unknown>;
+  private readonly projectConfigPath: string;
+  private readonly realTsconfigPath: string | undefined;
   private readonly overlays = new Map<string, string>();
   private readonly virtualFiles = new Map<string, string>();
   private readonly normalizeFlags = new Set<string>();
   private currentRootFiles: string[] = [];
 
   constructor(tsconfigPath?: string) {
-    this.virtualTsconfigPath = path.join(
-      os.tmpdir(),
-      `zinfer-tsgo-${process.pid}-${Math.random().toString(36).slice(2)}.tsconfig.json`,
-    );
+    this.realTsconfigPath = tsconfigPath ? path.resolve(tsconfigPath) : undefined;
+    this.projectConfigPath =
+      this.realTsconfigPath ??
+      path.join(
+        os.tmpdir(),
+        `zinfer-tsgo-${process.pid}-${Math.random().toString(36).slice(2)}.tsconfig.json`,
+      );
 
     this.api = new API({
       fs: {
         readFile: (fileName) => {
           const resolved = path.resolve(fileName);
-          if (resolved === this.virtualTsconfigPath) {
-            return this.buildVirtualTsconfig();
+          if (resolved === this.projectConfigPath) {
+            return this.buildProjectConfig();
           }
           if (this.overlays.has(resolved)) {
             return this.overlays.get(resolved);
@@ -141,42 +86,53 @@ export class TsgoHost implements TsHost<SourceFile> {
         },
         fileExists: (fileName) => {
           const resolved = path.resolve(fileName);
-          if (resolved === this.virtualTsconfigPath) return true;
+          if (resolved === this.projectConfigPath) return true;
           if (this.virtualFiles.has(resolved)) return true;
           return undefined;
         },
       },
     });
-
-    this.compilerOptions = tsconfigPath
-      ? sanitizeCompilerOptions(
-          this.api.parseConfigFile(path.resolve(tsconfigPath)).options as Record<string, unknown>,
-          path.dirname(path.resolve(tsconfigPath)),
-        )
-      : DEFAULT_COMPILER_OPTIONS;
   }
 
-  private buildVirtualTsconfig(): string {
+  /**
+   * Builds the text served for `projectConfigPath`. With a real tsconfig,
+   * this is the original text - `extends`, comments, everything - with only
+   * `files` appended to; `extends` is never read or resolved here, only
+   * passed through for the server to handle.
+   */
+  private buildProjectConfig(): string {
+    if (!this.realTsconfigPath) {
+      return JSON.stringify({
+        compilerOptions: DEFAULT_COMPILER_OPTIONS,
+        files: this.currentRootFiles,
+      });
+    }
+
+    const original = parseJsonc(readFileSync(this.realTsconfigPath, "utf8")) as Record<
+      string,
+      unknown
+    >;
+    const existingFiles = Array.isArray(original.files) ? original.files : [];
     return JSON.stringify({
-      compilerOptions: this.compilerOptions,
-      files: this.currentRootFiles,
+      ...original,
+      files: [...existingFiles, ...this.currentRootFiles],
     });
   }
 
   /**
    * Opens the virtual project scoped to exactly `rootFiles` for this call.
-   * Always marks every root file (not just the tsconfig) as changed: since
-   * the same real path is repeatedly reused as a root across calls with
+   * Always marks every root file (not just the config) as changed: since
+   * the same path is repeatedly reused as a root across calls with
    * different virtual-FS overlay content (or none), the server must never
    * assume a cached parse of it is still valid.
    */
   private openProject(rootFiles: string[]): Project {
     this.currentRootFiles = rootFiles;
     const snapshot = this.api.updateSnapshot({
-      openProject: this.virtualTsconfigPath,
-      fileChanges: { changed: [this.virtualTsconfigPath, ...rootFiles] },
+      openProject: this.projectConfigPath,
+      fileChanges: { changed: [this.projectConfigPath, ...rootFiles] },
     });
-    const project = snapshot.getProject(this.virtualTsconfigPath);
+    const project = snapshot.getProject(this.projectConfigPath);
     if (!project) {
       throw new Error("tsgo: failed to open virtual project");
     }

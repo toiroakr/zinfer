@@ -47,6 +47,7 @@
     "commander": "^15.0.0",
     "glob": "^13.0.0",
     "jiti": "^2.6.1",
+    "jsonc-parser": "^3.3.1",
     "pathe": "^2.0.3"
   },
   "devDependencies": {
