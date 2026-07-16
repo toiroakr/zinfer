@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "fs";
 import { dirname, join, resolve } from "pathe";
 import { createJiti, type Jiti } from "jiti";
-import { logDebugError, logVerbose } from "./logger.js";
+import { getErrorMessage, logDebugError, logVerbose } from "./logger.js";
 import type { FieldDescription } from "./types.js";
 
 /**
@@ -215,7 +215,7 @@ export class DescriptionExtractor {
           // schemas in the same file.
           console.warn(
             `Warning: Could not extract descriptions for schema "${schemaName}" in ${filePath}:`,
-            (error as Error).message,
+            getErrorMessage(error),
           );
         }
       }
@@ -223,7 +223,7 @@ export class DescriptionExtractor {
       // If import fails, return empty descriptions (non-blocking)
       console.warn(
         `Warning: Could not import ${filePath} for description extraction:`,
-        (error as Error).message,
+        getErrorMessage(error),
       );
     }
 

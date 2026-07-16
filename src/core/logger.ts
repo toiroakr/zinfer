@@ -21,12 +21,20 @@ export function logVerbose(message: string, ...args: unknown[]): void {
 }
 
 /**
+ * Safely extracts a message from a caught value of unknown shape.
+ * `throw` can raise anything (a string, null, a plain object, ...), not just
+ * an `Error`, so callers must not assume `.message` exists.
+ */
+export function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
  * Logs a debug message about a non-critical error (only when verbose mode is enabled).
  */
 export function logDebugError(context: string, error: unknown): void {
   if (verboseEnabled) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.log(`[verbose] ${context}: ${errorMessage}`);
+    console.log(`[verbose] ${context}: ${getErrorMessage(error)}`);
   }
 }
 
