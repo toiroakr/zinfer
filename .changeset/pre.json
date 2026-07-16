@@ -5,6 +5,7 @@
     "zinfer": "0.2.5"
   },
   "changesets": [
-    "quiet-plums-relax"
+    "quiet-plums-relax",
+    "soft-otters-behave"
   ]
 }
