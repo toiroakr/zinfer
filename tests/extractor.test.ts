@@ -166,6 +166,16 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "should preserve named references through mixed and non-exported union members",
   );
 
+  describe("mixed-union-reference-common.ts", () => {
+    it("should not rewrite an explicit annotation naming a global type into a self-reference", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "mixed-union-reference-common.ts"));
+      const functionResult = results.find((r) => r.schemaName === "functionSchema");
+
+      expect(functionResult?.input).toBe("Function");
+      expect(functionResult?.output).toBe("Function");
+    });
+  });
+
   describe("described-schema.ts", () => {
     it("should generate TypeScript declarations without TSDoc comments by default", async () => {
       const results = extractor.extractAll(resolve(fixturesDir, "described-schema.ts"));

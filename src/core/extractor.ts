@@ -341,7 +341,7 @@ export class ZodTypeExtractor {
       }
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
-      if (explicitType && this.isValidIdentifier(explicitType)) {
+      if (explicitType && this.isLocallyDeclaredType(sourceFile, explicitType)) {
         const escapedTypeName = this.escapeRegExp(explicitType);
         const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
         input = input.replace(typeNamePattern, `${schemaName}Input`);
@@ -681,5 +681,20 @@ export class ZodTypeExtractor {
    */
   private isValidIdentifier(str: string): boolean {
     return /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(str);
+  }
+
+  /**
+   * Checks if a type name is declared in the given source file (as opposed to
+   * a global type). Rewriting an explicit annotation's type name to the
+   * generated `<schema>Input`/`<schema>Output` alias is only safe for
+   * locally declared types - rewriting a global name like `Function`
+   * produces a self-referential alias.
+   */
+  private isLocallyDeclaredType(sourceFile: SourceFile, typeName: string): boolean {
+    if (!this.isValidIdentifier(typeName)) return false;
+    return (
+      sourceFile.getTypeAlias(typeName) !== undefined ||
+      sourceFile.getInterface(typeName) !== undefined
+    );
   }
 }
