@@ -15,5 +15,5 @@ Fix a batch of recently reported issues:
 - `.brand()` applied inside `z.array()`/`z.record()` now brands the element/value instead of the whole collection; a whole-object `.brand()` continues to work. The generated `import type { BRAND } from "zod"` is also now added only when a brand actually appears in an emitted (exported, and `inputOnly`/`outputOnly`-respecting) declaration, instead of whenever any schema in the file happens to have one (#385)
 - `pnpm generate:type-tests` no longer overwrites the `--with-descriptions` snapshot fixtures (#393)
 - `runCLI` is now exported (via a new `cli-runner` module) so the CLI can be covered end to end (#392)
-- `-c`/`--config <path>` now loads the specified config file instead of being silently ignored, and `exclude` patterns are now honored (#389)
+- `-c`/`--config <path>` now loads the specified config file instead of being silently ignored, and `exclude` patterns are now honored; an explicit `--config <path>` pointing at an unreadable or unparseable `package.json` now rejects instead of silently falling back to an empty config (#389)
 - Generated `--generate-tests` files are now type-checked as part of the test suite, catching mismatches that `expectTypeOf().toEqualTypeOf()` alone cannot (a runtime no-op) (#391)
