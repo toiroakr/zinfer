@@ -1,5 +1,12 @@
 # zinfer
 
+## 0.2.8
+
+### Patch Changes
+
+- 5036207: fix(deps): update dependency glob to ^13.0.6
+- 98a1f2d: fix(deps): update dependency jiti to ^2.7.0
+
 ## 0.2.7
 
 ### Patch Changes
