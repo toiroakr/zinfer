@@ -323,10 +323,14 @@ export class DescriptionExtractor {
   }
 
   /**
-   * Gets the description from a Zod schema, looking through effects/transforms.
-   * First checks the outer schema, then unwraps through ZodEffects to find descriptions.
+   * Gets the description from a Zod schema, looking through effects/transforms
+   * and wrappers (optional/nullable/default/readonly). Checks the outer schema
+   * first so a description on the wrapper itself takes precedence over one on
+   * the wrapped schema.
    */
-  private getDescriptionDeep(schema: unknown): string | undefined {
+  private getDescriptionDeep(schema: unknown, depth = 0): string | undefined {
+    if (depth > 50) return undefined;
+
     // First try direct description
     const directDesc = this.getDescription(schema);
     if (directDesc) return directDesc;
@@ -339,14 +343,22 @@ export class DescriptionExtractor {
 
     // Zod v3: ZodEffects wraps the inner schema in _def.schema
     if (_def?.typeName === "ZodEffects" && _def.schema) {
-      return this.getDescriptionDeep(_def.schema);
+      return this.getDescriptionDeep(_def.schema, depth + 1);
     }
 
     // Zod v4: effects/pipe type
     const type = zodSchema.type as string | undefined;
     const def = zodSchema.def as Record<string, unknown> | undefined;
     if ((type === "effects" || type === "pipe") && def?.in) {
-      return this.getDescriptionDeep(def.in);
+      return this.getDescriptionDeep(def.in, depth + 1);
+    }
+
+    // Fall back to the wrapped schema (optional/nullable/default/readonly),
+    // so a description set before the wrapper (e.g. `.describe().optional()`)
+    // is still found.
+    const unwrapped = this.unwrapSchema(schema);
+    if (unwrapped !== schema) {
+      return this.getDescriptionDeep(unwrapped, depth + 1);
     }
 
     return undefined;

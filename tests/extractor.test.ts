@@ -201,6 +201,21 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("describe-order-schema.ts", () => {
+    it("should keep the description when .describe() is called before .optional()", async () => {
+      const filePath = resolve(fixturesDir, "describe-order-schema.ts");
+      const descriptionExtractor = new DescriptionExtractor();
+      const descriptions = await descriptionExtractor.extractDescriptions(filePath, [
+        "OrderSchema",
+      ]);
+
+      const fields = descriptions.get("OrderSchema")?.fields ?? [];
+      const fieldA = fields.find((f) => f.path === "a");
+
+      expect(fieldA?.description).toBe("described then optional");
+    });
+  });
+
   describe("multiline-description-schema.ts", () => {
     it("should generate TSDoc comments with multiline descriptions", async () => {
       const filePath = resolve(fixturesDir, "multiline-description-schema.ts");
