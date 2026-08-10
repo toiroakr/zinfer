@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { readFile } from "fs/promises";
-import { resolve } from "pathe";
+import { resolve, basename } from "pathe";
 import { pathToFileURL } from "url";
 
 /**
@@ -67,6 +67,27 @@ const CONFIG_FILES = [
  * Loads zinfer configuration from config file or package.json.
  */
 export class ConfigLoader {
+  /**
+   * Loads configuration from an explicit file path.
+   *
+   * @param configPath - Path to a config file, or a package.json to read the "zinfer" field from
+   * @returns Configuration and config file path
+   * @throws Error if the path does not exist
+   */
+  async loadFrom(configPath: string): Promise<ConfigLoadResult> {
+    if (!existsSync(configPath)) {
+      throw new Error(`Config file not found: ${configPath}`);
+    }
+
+    if (basename(configPath) === "package.json") {
+      const config = await this.loadFromPackageJson(configPath);
+      return { config: config ?? {}, configPath };
+    }
+
+    const config = await this.loadConfigFile(configPath);
+    return { config, configPath };
+  }
+
   /**
    * Loads configuration from the specified directory.
    *

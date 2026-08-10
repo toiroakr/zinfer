@@ -61,7 +61,9 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
   // Load config file
   logVerbose("Loading configuration...");
   const configLoader = new ConfigLoader();
-  const { config: fileConfig } = await configLoader.load(cwd);
+  const { config: fileConfig } = options.config
+    ? await configLoader.loadFrom(resolve(cwd, options.config))
+    : await configLoader.load(cwd);
 
   // Merge CLI options with config file (CLI takes precedence)
   const config = mergeCliWithConfig(options, fileConfig);
@@ -80,7 +82,7 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
   // Resolve file paths (support glob patterns)
   logVerbose("Resolving input files...");
   const fileResolver = new FileResolver();
-  const resolvedFiles = await fileResolver.resolveInputFiles(inputFiles, cwd);
+  const resolvedFiles = await fileResolver.resolveInputFiles(inputFiles, cwd, config.exclude);
 
   if (resolvedFiles.length === 0) {
     throw new NoFilesMatchedError(inputFiles);

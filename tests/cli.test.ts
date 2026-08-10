@@ -48,4 +48,57 @@ describe("runCLI", () => {
     expect(output).toContain("export type UserInput");
     expect(output).toContain("id: string");
   });
+
+  it("loads config from an explicit --config path, not just well-known filenames", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(resolve(import.meta.dirname, "../node_modules"), join(workDir, "node_modules"));
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      'import { z } from "zod";\n\nexport const UserSchema = z.object({ id: z.string() });\n',
+    );
+    writeFileSync(
+      join(workDir, "custom.config.mjs"),
+      'export default { include: ["schema.ts"], suffix: "Schema" };\n',
+    );
+    process.chdir(workDir);
+
+    await runCLI([], { config: "custom.config.mjs", outDir: workDir });
+
+    const output = readFileSync(join(workDir, "schema.types.ts"), "utf-8");
+    expect(output).toContain("export type UserInput");
+  });
+
+  it("excludes files matching the config's exclude patterns", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(resolve(import.meta.dirname, "../node_modules"), join(workDir, "node_modules"));
+    writeFileSync(
+      join(workDir, "included.ts"),
+      'import { z } from "zod";\n\nexport const IncludedSchema = z.object({ id: z.string() });\n',
+    );
+    writeFileSync(
+      join(workDir, "excluded.ts"),
+      'import { z } from "zod";\n\nexport const ExcludedSchema = z.object({ id: z.string() });\n',
+    );
+    process.chdir(workDir);
+
+    await runCLI(["*.ts"], {
+      outFile: join(workDir, "out.ts"),
+      suffix: "Schema",
+    });
+    // Sanity check: without exclude, both schemas are picked up.
+    const withoutExclude = readFileSync(join(workDir, "out.ts"), "utf-8");
+    expect(withoutExclude).toContain("IncludedInput");
+    expect(withoutExclude).toContain("ExcludedInput");
+
+    writeFileSync(
+      join(workDir, "zinfer.config.mjs"),
+      'export default { include: ["*.ts"], exclude: ["excluded.ts"], suffix: "Schema" };\n',
+    );
+
+    await runCLI([], { outFile: join(workDir, "out2.ts") });
+
+    const withExclude = readFileSync(join(workDir, "out2.ts"), "utf-8");
+    expect(withExclude).toContain("IncludedInput");
+    expect(withExclude).not.toContain("ExcludedInput");
+  });
 });
