@@ -266,6 +266,16 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("alias-getter-schema.ts", () => {
+    it("should resolve a getter-based self-reference on a schema exported through an alias", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "alias-getter-schema.ts"));
+      const aliased = results.find((r) => r.schemaName === "AliasedCategorySchema");
+
+      expect(aliased?.output).toContain("subcategories: AliasedCategorySchemaOutput[]");
+      expect(aliased?.output).not.toContain("any");
+    });
+  });
+
   describe("described-schema.ts", () => {
     it("should generate TypeScript declarations without TSDoc comments by default", async () => {
       const results = extractor.extractAll(resolve(fixturesDir, "described-schema.ts"));

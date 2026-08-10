@@ -143,8 +143,11 @@ export class ZodTypeExtractor {
     // Find and resolve imported schemas
     const importedSchemas = this.importResolver.findImportedSchemas(sourceFile, this.project);
 
-    // Build schema names set including imports
-    const schemaNames = new Set(schemas.map((s) => s.name));
+    // Build schema names set including imports. Uses the declared (local
+    // variable) name, not the exported name, since analyzeGetterFields and
+    // analyzeAllReferences walk actual variable declarations - for an aliased
+    // re-export (`export { X as Y }`) those only carry the declared name X.
+    const schemaNames = new Set(schemas.map((s) => s.localName ?? s.name));
     for (const localName of importedSchemas.keys()) {
       schemaNames.add(localName);
     }
@@ -229,8 +232,9 @@ export class ZodTypeExtractor {
         let inputType = this.resolveType(sourceFile, "__TempInput");
         let outputType = this.resolveType(sourceFile, "__TempOutput");
 
-        // Resolve getter-based self-references
-        const getterFields = getterFieldMap.get(schemaName);
+        // Resolve getter-based self-references. getterFieldMap is keyed by
+        // declared (local variable) name, not the exported name.
+        const getterFields = getterFieldMap.get(declaredName);
         if (getterFields && this.getterResolver.hasSelfReferences(getterFields)) {
           const inputTypeName = `${schemaName}Input`;
           const outputTypeName = `${schemaName}Output`;
@@ -280,8 +284,13 @@ export class ZodTypeExtractor {
       }
       resolvingSchemas.add(schemaName);
 
+      // referenceMap/unionReferenceMap are keyed by declared (local variable)
+      // name; schemaName here may be the exported name of an aliased
+      // re-export, so re-derive the declared name to look them up.
+      const declaredName = schemasByName.get(schemaName)?.localName ?? schemaName;
+
       let { input, output } = raw;
-      const unionRef = unionReferenceMap.get(schemaName);
+      const unionRef = unionReferenceMap.get(declaredName);
 
       const shouldComposeUnion =
         unionRef &&
@@ -330,7 +339,7 @@ export class ZodTypeExtractor {
         }
       }
 
-      const refs = referenceMap.get(schemaName) || [];
+      const refs = referenceMap.get(declaredName) || [];
       for (const ref of refs) {
         const refRaw = rawTypes.get(ref.refSchema);
         if (!refRaw?.isExported) continue;
