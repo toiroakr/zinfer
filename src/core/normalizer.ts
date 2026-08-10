@@ -15,9 +15,13 @@ type __Normalize<T> =
       ? (...args: __Normalize<A>) => __Normalize<R>
       : T extends readonly any[]
         ? number extends T['length']
-          ? T extends (infer U)[]
-            ? __Normalize<U>[]
-            : readonly __Normalize<T[number]>[]
+          ? T extends readonly [any, ...any[]]
+            ? T extends [any, ...any[]]
+              ? __NormalizeTuple<T>
+              : Readonly<__NormalizeTuple<T>>
+            : T extends (infer U)[]
+              ? __Normalize<U>[]
+              : readonly __Normalize<T[number]>[]
           : { [K in keyof T]: __Normalize<T[K]> }
         : T extends string
             ? T extends object ? string : T
@@ -32,6 +36,13 @@ type __Normalize<T> =
                       ? { [K in keyof O as K extends symbol ? never : K]: __Normalize<O[K]> }
                       : never
                     : T;
+
+type __NormalizeTuple<T> =
+  T extends readonly [infer H, ...infer R]
+    ? [__Normalize<H>, ...__NormalizeTuple<R>]
+    : T extends readonly (infer U)[]
+      ? __Normalize<U>[]
+      : [];
 `;
 
 /**

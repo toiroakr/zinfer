@@ -176,6 +176,15 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("rest-tuple-schema.ts", () => {
+    it("should preserve the fixed leading elements of a variadic tuple instead of widening to an array", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "rest-tuple-schema.ts"));
+      const result = results.find((r) => r.schemaName === "RestTupleSchema");
+
+      expect(result?.input).toContain("[string, ...number[]]");
+    });
+  });
+
   describe("multi-schema.ts", () => {
     it("should resolve types through an aliased re-export instead of falling back to any", () => {
       const results = extractor.extractAll(resolve(fixturesDir, "multi-schema.ts"));

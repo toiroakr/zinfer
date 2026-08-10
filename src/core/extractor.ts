@@ -528,9 +528,11 @@ export class ZodTypeExtractor {
    * Removes the __Normalize type definition from a source file.
    */
   private cleanupNormalizeType(sourceFile: SourceFile): void {
-    const typeAlias = sourceFile.getTypeAlias("__Normalize");
-    if (typeAlias) {
-      typeAlias.remove();
+    for (const name of ["__Normalize", "__NormalizeTuple"]) {
+      const typeAlias = sourceFile.getTypeAlias(name);
+      if (typeAlias) {
+        typeAlias.remove();
+      }
     }
   }
 
