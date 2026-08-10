@@ -5,10 +5,19 @@ import { generateDeclarationFile } from "../src/core/type-printer.js";
 import { createNameMapper } from "../src/core/name-mapper.js";
 import { DescriptionExtractor } from "../src/core/description-extractor.js";
 import { execFileSync } from "child_process";
+import { execPath } from "process";
 import { readdirSync } from "fs";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
 const snapshotsDir = resolve(import.meta.dirname, "__file_snapshots__");
+// tsgo's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
+// Windows) that execFileSync cannot run directly without a shell; run its
+// real JS entry point through the Node executable instead, matching how
+// tests/cli.test.ts invokes jiti.
+const tsgoPath = resolve(
+  import.meta.dirname,
+  "../node_modules/@typescript/native-preview/bin/tsgo",
+);
 const mapName = createNameMapper({ removeSuffix: "Schema" });
 
 /**
@@ -58,15 +67,11 @@ afterAll(() => {
 
   let output = "";
   try {
-    execFileSync("npx", ["tsgo", "--noEmit", "-p", tsconfigPath], {
+    execFileSync(execPath, [tsgoPath, "--noEmit", "-p", tsconfigPath], {
       stdio: "pipe",
       encoding: "utf-8",
     });
   } catch (error: any) {
-    if (error.code === "ENOENT") {
-      console.log("Snapshots directory not found, skipping type-check");
-      return;
-    }
     output = error.stdout || error.stderr || "";
   }
 
@@ -77,7 +82,7 @@ afterAll(() => {
   // Fixture errors must only be the intentionally-unannotated recursive
   // getter fixtures' TS7022/TS7023 ("implicitly has type any" on a
   // self-referential getter) - anything else is a real regression.
-  const fixtureErrors = errorLines.filter((line: string) => line.includes("/fixtures/"));
+  const fixtureErrors = errorLines.filter((line: string) => /[\\/]fixtures[\\/]/.test(line));
   const unexpectedFixtureErrors = fixtureErrors.filter(
     (line: string) => !line.includes("TS7022") && !line.includes("TS7023"),
   );
@@ -114,7 +119,7 @@ afterAll(() => {
   // Generated *type* files (.ts, not .test.ts) must never have type errors -
   // that's the actual output this tool promises to compile.
   const typeFileErrors = errorLines.filter(
-    (line: string) => !line.includes("/fixtures/") && !/\.test\.ts\(/.test(line),
+    (line: string) => !/[\\/]fixtures[\\/]/.test(line) && !/\.test\.ts\(/.test(line),
   );
   if (typeFileErrors.length > 0) {
     throw new Error(`Type error(s) in generated type files:\n${typeFileErrors.join("\n")}`);
