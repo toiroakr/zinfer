@@ -219,6 +219,13 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
       expect(result?.output).toContain('[x: string]: string & BRAND<"Tag">');
     });
+
+    it("should not add an unused BRAND import when generating input-only declarations without a branded input", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "array-brand-schema.ts"));
+      const output = generateDeclarationFile(results, mapName, { inputOnly: true });
+
+      expect(output).not.toContain('import type { BRAND } from "zod"');
+    });
   });
 
   describe("object-brand-schema.ts", () => {

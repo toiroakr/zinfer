@@ -552,10 +552,19 @@ export function formatMultipleAsDeclarations(
 }
 
 /**
- * Checks if any result's output type contains a printed brand marker.
+ * Checks if any result's *emitted* type(s) contain a printed brand marker.
+ * Only checks the input/output side(s) that generateDeclarationFile will
+ * actually print, so an inputOnly/outputOnly run doesn't add a BRAND import
+ * for a brand that only appears on the side being omitted.
  */
-function hasBrands(results: ExtractResult[]): boolean {
-  return results.some((r) => /\bBRAND</.test(r.output));
+function hasBrands(results: ExtractResult[], options: DeclarationOptions = {}): boolean {
+  const { inputOnly, outputOnly, mergeSame } = options;
+  return results.some((r) => {
+    if (mergeSame && r.input === r.output) return /\bBRAND</.test(r.input);
+    if (outputOnly) return /\bBRAND</.test(r.output);
+    if (inputOnly) return /\bBRAND</.test(r.input);
+    return /\bBRAND</.test(r.input) || /\bBRAND</.test(r.output);
+  });
 }
 
 /**
@@ -578,7 +587,7 @@ export function generateDeclarationFile(
   lines.push("");
 
   // Add BRAND import if any result has brands
-  if (hasBrands(results)) {
+  if (hasBrands(results, options)) {
     lines.push('import type { BRAND } from "zod";');
     lines.push("");
   }
