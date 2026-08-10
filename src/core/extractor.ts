@@ -208,7 +208,8 @@ export class ZodTypeExtractor {
 
     // Extract types from local schemas
     for (const schema of schemas) {
-      const { name: schemaName, explicitType, isExported } = schema;
+      const { name: schemaName, explicitType, isExported, localName } = schema;
+      const declaredName = localName ?? schemaName;
 
       if (explicitType) {
         this.injectExplicitType(sourceFile, explicitType);
@@ -225,7 +226,7 @@ export class ZodTypeExtractor {
         continue;
       }
 
-      this.injectTemporaryTypes(sourceFile, schemaName);
+      this.injectTemporaryTypes(sourceFile, declaredName);
       try {
         let inputType = this.resolveType(sourceFile, "__TempInput");
         let outputType = this.resolveType(sourceFile, "__TempOutput");

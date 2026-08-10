@@ -16,6 +16,8 @@ export interface DetectedSchema {
   explicitType?: string;
   /** JSDoc comment if present */
   jsDoc?: string;
+  /** Identifier the schema is declared under; differs from `name` for aliased re-exports (`export { X as Y }`). */
+  localName?: string;
 }
 
 /**

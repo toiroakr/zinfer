@@ -52,6 +52,10 @@ export type DateStringOutput = {
   date: Date;
 };
 
-export type AliasedInput = any;
+export type AliasedInput = {
+  internal: boolean;
+};
 
-export type AliasedOutput = any;
+export type AliasedOutput = {
+  internal: boolean;
+};

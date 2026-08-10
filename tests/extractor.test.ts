@@ -176,6 +176,16 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("multi-schema.ts", () => {
+    it("should resolve types through an aliased re-export instead of falling back to any", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "multi-schema.ts"));
+      const aliased = results.find((r) => r.schemaName === "AliasedSchema");
+
+      expect(aliased?.input).not.toBe("any");
+      expect(aliased?.input).toContain("internal: boolean");
+    });
+  });
+
   describe("described-schema.ts", () => {
     it("should generate TypeScript declarations without TSDoc comments by default", async () => {
       const results = extractor.extractAll(resolve(fixturesDir, "described-schema.ts"));
