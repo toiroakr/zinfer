@@ -66,18 +66,28 @@ afterAll(() => {
   const tsconfigPath = resolve(snapshotsDir, "tsconfig.json");
 
   let output = "";
+  let execError: unknown;
   try {
     execFileSync(execPath, [tsgoPath, "--noEmit", "-p", tsconfigPath], {
       stdio: "pipe",
       encoding: "utf-8",
     });
   } catch (error: any) {
+    execError = error;
     output = error.stdout || error.stderr || "";
   }
 
   const errorLines = output
     .split("\n")
     .filter((line: string) => /error TS\d+/.test(line) && !line.includes("locales"));
+
+  // tsgo exited non-zero but produced no `error TSxxxx` lines - it failed to
+  // run at all (bad path, missing tsconfig, etc.) rather than reporting type
+  // errors. Surface the real failure instead of letting the checks below
+  // report a misleading "KNOWN_TYPE_DIFFERENCES entries no longer reproduce".
+  if (execError && errorLines.length === 0) {
+    throw execError;
+  }
 
   // Fixture errors must only be the intentionally-unannotated recursive
   // getter fixtures' TS7022/TS7023 ("implicitly has type any" on a
