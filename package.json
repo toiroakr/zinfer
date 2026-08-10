@@ -62,7 +62,7 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "typescript": ">=5.0.0",
+    "typescript": ">=5.9.3",
     "zod": ">=3.0.0"
   },
   "packageManager": "pnpm@11.19.0"
