@@ -23,19 +23,15 @@ type __Normalize<T> =
               ? __Normalize<U>[]
               : readonly __Normalize<T[number]>[]
           : { [K in keyof T]: __Normalize<T[K]> }
-        : T extends string
-            ? T extends object ? string : T
-            : T extends number
-              ? T extends object ? number : T
-              : T extends boolean
-                ? T extends object ? boolean : T
-                : T extends bigint
-                  ? T extends object ? bigint : T
-                  : T extends object
-                    ? T extends infer O
-                      ? { [K in keyof O as K extends symbol ? never : K]: __Normalize<O[K]> }
-                      : never
-                    : T;
+        : T extends string | number | boolean | bigint | symbol
+          ? T
+          : T extends object
+            ? keyof T & symbol extends never
+              ? T extends infer O
+                ? { [K in keyof O as K extends symbol ? never : K]: __Normalize<O[K]> }
+                : never
+              : T
+            : T;
 
 type __NormalizeTuple<T> =
   T extends readonly [infer H, ...infer R]
@@ -55,4 +51,17 @@ type __NormalizeTuple<T> =
 export function createTempTypeAlias(schemaName: string, typeKind: "input" | "output"): string {
   const typeName = typeKind === "input" ? "__TempInput" : "__TempOutput";
   return `type ${typeName} = __Normalize<z.${typeKind}<typeof ${schemaName}>>;`;
+}
+
+/**
+ * Canonicalizes a printed brand qualifier to the bare `BRAND<...>` form.
+ *
+ * Once branded primitives are no longer stripped by `__Normalize`, TypeScript
+ * prints Zod's internal brand marker qualified by however the analyzed file
+ * imported Zod - e.g. `z.core.$brand<"Tag">`, `z.BRAND<"Tag">`, or
+ * `import("zod").BRAND<"Tag">` - rather than the bare `BRAND<"Tag">` that
+ * matches the `import type { BRAND } from "zod"` this tool emits.
+ */
+export function normalizeBrandQualifiers(typeStr: string): string {
+  return typeStr.replace(/(?:[\w$]+(?:\.[\w$]+)*\.|import\([^)]*\)\.)?\$?brand</gi, "BRAND<");
 }

@@ -1,10 +1,13 @@
 import { Project, SourceFile, TypeFormatFlags, ts } from "ts-morph";
-import { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias } from "./normalizer.js";
+import {
+  NORMALIZE_TYPE_DEFINITION,
+  createTempTypeAlias,
+  normalizeBrandQualifiers,
+} from "./normalizer.js";
 import { SchemaDetector } from "./schema-detector.js";
 import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver } from "./import-resolver.js";
-import { BrandDetector } from "./brand-detector.js";
 import { logDebugError } from "./logger.js";
 import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
 
@@ -32,7 +35,6 @@ export class ZodTypeExtractor {
   private getterResolver: GetterResolver;
   private referenceAnalyzer: SchemaReferenceAnalyzer;
   private importResolver: ImportResolver;
-  private brandDetector: BrandDetector;
   private importedSchemaCache = new Map<string, { input: string; output: string }>();
 
   /**
@@ -47,7 +49,6 @@ export class ZodTypeExtractor {
     this.getterResolver = new GetterResolver();
     this.referenceAnalyzer = new SchemaReferenceAnalyzer();
     this.importResolver = new ImportResolver(this.schemaDetector);
-    this.brandDetector = new BrandDetector();
   }
 
   /**
@@ -154,9 +155,6 @@ export class ZodTypeExtractor {
     // Analyze cross-schema references and union references in a single pass
     const { references: referenceMap, unionReferences: unionReferenceMap } =
       this.referenceAnalyzer.analyzeAllReferences(sourceFile, schemaNames);
-
-    // Detect branded types
-    const brandMap = this.brandDetector.detectBrands(sourceFile, schemaNames);
 
     // First pass: extract raw types for all schemas
     const rawTypes = new Map<string, { input: string; output: string; isExported: boolean }>();
@@ -374,8 +372,6 @@ export class ZodTypeExtractor {
       const raw = rawTypes.get(schemaName);
       if (!raw) continue;
 
-      // Get brand information for this schema
-      const brands = brandMap.get(schemaName);
       const resolved = resolveSchemaTypes(schemaName);
       if (!resolved) continue;
 
@@ -384,7 +380,6 @@ export class ZodTypeExtractor {
         input: resolved.input,
         output: resolved.output,
         isExported: raw.isExported,
-        brands,
       });
     }
 
@@ -600,8 +595,9 @@ export class ZodTypeExtractor {
       }
     }
 
-    // Post-process to simplify Zod internal function types
-    return this.simplifyZodFunctionTypes(rawType);
+    // Post-process to simplify Zod internal function types and canonicalize
+    // printed brand qualifiers
+    return normalizeBrandQualifiers(this.simplifyZodFunctionTypes(rawType));
   }
 
   /**

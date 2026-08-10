@@ -155,6 +155,34 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "brand-schema",
     "should generate TypeScript declarations with brand information",
   );
+
+  describe("array-brand-schema.ts", () => {
+    it("should brand the array element instead of the whole array", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "array-brand-schema.ts"));
+      const result = results.find((r) => r.schemaName === "TagsSchema");
+
+      expect(result?.output).toContain('tags: (string & BRAND<"Tag">)[]');
+      expect(result?.input).toBe("{ tags: string[]; lookup: { [x: string]: string; }; }");
+    });
+
+    it("should brand the record value instead of the whole record", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "array-brand-schema.ts"));
+      const result = results.find((r) => r.schemaName === "TagsSchema");
+
+      expect(result?.output).toContain('[x: string]: string & BRAND<"Tag">');
+    });
+  });
+
+  describe("object-brand-schema.ts", () => {
+    it("should keep a whole-object brand while still branding a nested array element", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "object-brand-schema.ts"));
+      const result = results.find((r) => r.schemaName === "WrapperSchema");
+
+      expect(result?.output).toBe('{ tags: (string & BRAND<"Tag">)[]; } & BRAND<"Wrapper">');
+      expect(result?.input).toBe("{ tags: string[]; }");
+    });
+  });
+
   createSchemaTest(
     extractor,
     "described-ref-schema",

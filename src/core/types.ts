@@ -31,16 +31,6 @@ export interface FieldDescription {
 }
 
 /**
- * Information about a branded type.
- */
-export interface BrandInfo {
-  /** The brand name (e.g., "UserId") */
-  brandName: string;
-  /** The field path where the brand is applied (empty string for root-level) */
-  fieldPath: string;
-}
-
-/**
  * Result of extracting types from a single schema.
  */
 export interface ExtractResult {
@@ -56,8 +46,6 @@ export interface ExtractResult {
   description?: string;
   /** Field descriptions from .describe() */
   fieldDescriptions?: FieldDescription[];
-  /** Brand information for output type */
-  brands?: BrandInfo[];
 }
 
 /**
