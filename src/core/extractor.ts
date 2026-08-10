@@ -1,4 +1,12 @@
-import { Project, SourceFile, TypeFormatFlags, ts } from "ts-morph";
+import {
+  Project,
+  SourceFile,
+  TypeFormatFlags,
+  ts,
+  type TypeAliasDeclaration,
+  type InterfaceDeclaration,
+  type ClassDeclaration,
+} from "ts-morph";
 import {
   NORMALIZE_TYPE_DEFINITION,
   createTempTypeAlias,
@@ -369,12 +377,18 @@ export class ZodTypeExtractor {
         const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
         // When the resolved type is exactly the explicit identifier (as
         // opposed to appearing inside a larger composite type, e.g. a
-        // recursive union member), rewriting it would produce a circular
-        // alias like `type FooInput = FooInput`. Leave it as-is instead.
-        if (input !== explicitType) {
+        // recursive union member), rewriting it to `<schema>Input`/`Output`
+        // would produce a circular alias like `type FooInput = FooInput`.
+        // Reference the declaration through its source file instead, so the
+        // generated output doesn't print a bare identifier it never imports.
+        if (input === explicitType) {
+          input = this.qualifyLocalTypeReference(sourceFile, explicitType) ?? input;
+        } else {
           input = input.replace(typeNamePattern, `${schemaName}Input`);
         }
-        if (output !== explicitType) {
+        if (output === explicitType) {
+          output = this.qualifyLocalTypeReference(sourceFile, explicitType) ?? output;
+        } else {
           output = output.replace(typeNamePattern, `${schemaName}Output`);
         }
       }
@@ -715,6 +729,23 @@ export class ZodTypeExtractor {
   }
 
   /**
+   * Returns the type alias, interface, or class declaration for `typeName`
+   * in `sourceFile`, or undefined if it isn't declared there (e.g. a global
+   * type like `Function`, or a type merely imported into the file).
+   */
+  private getLocalTypeDeclaration(
+    sourceFile: SourceFile,
+    typeName: string,
+  ): TypeAliasDeclaration | InterfaceDeclaration | ClassDeclaration | undefined {
+    if (!this.isValidIdentifier(typeName)) return undefined;
+    return (
+      sourceFile.getTypeAlias(typeName) ??
+      sourceFile.getInterface(typeName) ??
+      sourceFile.getClass(typeName)
+    );
+  }
+
+  /**
    * Checks if a type name is declared in the given source file (as opposed to
    * a global type). Rewriting an explicit annotation's type name to the
    * generated `<schema>Input`/`<schema>Output` alias is only safe for
@@ -722,11 +753,27 @@ export class ZodTypeExtractor {
    * produces a self-referential alias.
    */
   private isLocallyDeclaredType(sourceFile: SourceFile, typeName: string): boolean {
-    if (!this.isValidIdentifier(typeName)) return false;
-    return (
-      sourceFile.getTypeAlias(typeName) !== undefined ||
-      sourceFile.getInterface(typeName) !== undefined ||
-      sourceFile.getClass(typeName) !== undefined
-    );
+    return this.getLocalTypeDeclaration(sourceFile, typeName) !== undefined;
+  }
+
+  /**
+   * When an explicit annotation resolves to exactly a locally declared
+   * class/interface/type (not a composite type it merely appears inside),
+   * rewriting it to `<schema>Input`/`<schema>Output` would produce a
+   * circular alias like `type FooInput = FooInput`. Printing the bare
+   * identifier instead is also wrong, since the generated declaration file
+   * never imports it. Reference it via an inline `import("...")` type
+   * instead - this also sidesteps name collisions in `--outFile` mode,
+   * where multiple source files are combined into one output and a name
+   * like `LocalClass` could collide across files. Only possible when the
+   * declaration is exported; otherwise no module specifier can reach it, so
+   * the caller falls back to the (still broken) bare identifier.
+   */
+  private qualifyLocalTypeReference(sourceFile: SourceFile, typeName: string): string | null {
+    const declaration = this.getLocalTypeDeclaration(sourceFile, typeName);
+    if (!declaration?.isExported()) return null;
+
+    const modulePath = sourceFile.getFilePath().replace(/\.(ts|tsx|mts|cts)$/, "");
+    return `import("${modulePath}").${typeName}`;
   }
 }

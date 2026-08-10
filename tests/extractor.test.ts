@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { resolve, basename } from "pathe";
 import { ZodTypeExtractor } from "../src/core/extractor.js";
-import { generateDeclarationFile } from "../src/core/type-printer.js";
+import { generateDeclarationFile, relativizeImportPaths } from "../src/core/type-printer.js";
 import { createNameMapper } from "../src/core/name-mapper.js";
 import { DescriptionExtractor } from "../src/core/description-extractor.js";
 import { execFileSync } from "child_process";
@@ -31,7 +31,13 @@ function createSchemaTest(
   describe(`${schemaName}.ts`, () => {
     it(description, async () => {
       const results = extractor.extractAll(resolve(fixturesDir, `${schemaName}.ts`));
-      const output = generateDeclarationFile(results, mapName);
+      const snapshotPath = resolve(snapshotsDir, `${schemaName}.ts`);
+      // Matches the real CLI pipeline (cli-runner.ts), which always runs
+      // generated content through relativizeImportPaths before writing it -
+      // without this, an inline `import("...")` type (e.g. for the
+      // degenerate-explicit-type fixtures) would bake this machine's
+      // absolute path into the committed snapshot.
+      const output = relativizeImportPaths(generateDeclarationFile(results, mapName), snapshotPath);
       await expect(output).toMatchFileSnapshot(`__file_snapshots__/${schemaName}.ts`);
     });
   });
@@ -279,34 +285,59 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   });
 
   describe("degenerate-explicit-type fixtures", () => {
-    it("should leave an explicit annotation naming a locally declared class unrewritten when the resolved type is exactly that identifier", () => {
+    it("should qualify an explicit annotation naming a locally declared class through an inline import instead of a bare identifier", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "degenerate-explicit-type/class-explicit-type-schema.ts"),
       );
       const result = results.find((r) => r.schemaName === "FooSchema");
 
-      expect(result?.input).toBe("LocalClass");
-      expect(result?.output).toBe("LocalClass");
+      const expected = /^import\(".*class-explicit-type-schema"\)\.LocalClass$/;
+      expect(result?.input).toMatch(expected);
+      expect(result?.output).toMatch(expected);
 
       const output = generateDeclarationFile(results, mapName);
       expect(output).not.toMatch(/FooInput\s*=\s*FooInput/);
       expect(output).not.toMatch(/FooOutput\s*=\s*FooOutput/);
+      expect(output).not.toMatch(/=\s*LocalClass;/);
     });
 
-    it("should leave an explicit annotation naming a locally declared interface unrewritten when the resolved type is exactly that identifier", () => {
+    it("should qualify an explicit annotation naming a locally declared interface through an inline import instead of a bare identifier", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "degenerate-explicit-type/interface-explicit-type-schema.ts"),
       );
       const result = results.find((r) => r.schemaName === "BarSchema");
 
-      expect(result?.input).toBe("LocalInterface");
-      expect(result?.output).toBe("LocalInterface");
+      const expected = /^import\(".*interface-explicit-type-schema"\)\.LocalInterface$/;
+      expect(result?.input).toMatch(expected);
+      expect(result?.output).toMatch(expected);
 
       const output = generateDeclarationFile(results, mapName);
       expect(output).not.toMatch(/BarInput\s*=\s*BarInput/);
       expect(output).not.toMatch(/BarOutput\s*=\s*BarOutput/);
+      expect(output).not.toMatch(/=\s*LocalInterface;/);
+    });
+
+    it("should fall back to the bare identifier when the locally declared type isn't exported (no module specifier can reach it)", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type/nonexported-explicit-type-schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "BazSchema");
+
+      expect(result?.input).toBe("LocalNonExportedClass");
+      expect(result?.output).toBe("LocalNonExportedClass");
     });
   });
+
+  createSchemaTest(
+    extractor,
+    "degenerate-explicit-type/class-explicit-type-schema",
+    "should generate a type-checkable inline import for an explicit annotation naming a local class",
+  );
+  createSchemaTest(
+    extractor,
+    "degenerate-explicit-type/interface-explicit-type-schema",
+    "should generate a type-checkable inline import for an explicit annotation naming a local interface",
+  );
 
   describe("rest-tuple-schema.ts", () => {
     it("should preserve the fixed leading elements of a variadic tuple instead of widening to an array", () => {
