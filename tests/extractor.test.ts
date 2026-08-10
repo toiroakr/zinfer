@@ -278,6 +278,16 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("class-explicit-type-schema.ts", () => {
+    it("should rewrite an explicit annotation naming a locally declared class into a self-reference", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "class-explicit-type-schema.ts"));
+      const result = results.find((r) => r.schemaName === "FooSchema");
+
+      expect(result?.input).toBe("FooSchemaInput");
+      expect(result?.output).toBe("FooSchemaOutput");
+    });
+  });
+
   describe("rest-tuple-schema.ts", () => {
     it("should preserve the fixed leading elements of a variadic tuple instead of widening to an array", () => {
       const results = extractor.extractAll(resolve(fixturesDir, "rest-tuple-schema.ts"));

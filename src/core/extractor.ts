@@ -702,7 +702,8 @@ export class ZodTypeExtractor {
     if (!this.isValidIdentifier(typeName)) return false;
     return (
       sourceFile.getTypeAlias(typeName) !== undefined ||
-      sourceFile.getInterface(typeName) !== undefined
+      sourceFile.getInterface(typeName) !== undefined ||
+      sourceFile.getClass(typeName) !== undefined
     );
   }
 }
