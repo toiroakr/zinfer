@@ -456,7 +456,7 @@ export class ZodTypeExtractor {
       ) {
         // Handle record type
         if (isRecord) {
-          replacement = `{ [x: string]: ${refTypeName} }`;
+          replacement = `{ [x: string]: ${refTypeName}; }`;
         }
 
         // Preserve readonly prefix for arrays
