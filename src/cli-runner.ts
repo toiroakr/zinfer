@@ -93,11 +93,6 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
   const tsconfigPath = config.project ? resolve(cwd, config.project) : findTsConfig(cwd);
   logVerbose(`Using tsconfig: ${tsconfigPath || "(none)"}`);
 
-  // Validate --generate-tests requires file output
-  if (config.generateTests && !config.outDir && !config.outFile) {
-    throw new Error("--generate-tests requires --outDir or --outFile");
-  }
-
   // Create extractor and name mapper
   const extractor = new ZodTypeExtractor(tsconfigPath);
   const nameMapper = createNameMapper(config);
@@ -164,7 +159,7 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
       console.log(`Generated: ${outputPath} (${allResults.length} types)`);
     }
 
-    // Generate test file if requested
+    // Generate test file if requested (skip if no exported schema produced a test case)
     if (config.generateTests) {
       const testPath = outputPath.replace(/\.ts$/, ".test.ts");
       const testContent = generateTestFileForSingleOutput(
@@ -174,13 +169,15 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
         nameMapper,
       );
 
-      if (options.dryRun) {
-        console.log(`Would write to: ${testPath}`);
-        console.log("---");
-        console.log(testContent);
-      } else {
-        writeFile(testPath, testContent);
-        console.log(`Generated: ${testPath} (${allResults.length * 2} test cases)`);
+      if (testContent) {
+        if (options.dryRun) {
+          console.log(`Would write to: ${testPath}`);
+          console.log("---");
+          console.log(testContent);
+        } else {
+          writeFile(testPath, testContent);
+          console.log(`Generated: ${testPath} (${allResults.length * 2} test cases)`);
+        }
       }
     }
 
@@ -226,7 +223,7 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
         console.log(`Generated: ${outputPath} (${results.length} types)`);
       }
 
-      // Generate test file if requested
+      // Generate test file if requested (skip if no exported schema produced a test case)
       if (config.generateTests) {
         const testPath = outputPath.replace(/\.ts$/, ".test.ts");
         const testContent = generateTestFileForPerFile(
@@ -237,14 +234,16 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
           nameMapper,
         );
 
-        if (options.dryRun) {
-          console.log(`Would write to: ${testPath}`);
-          console.log("---");
-          console.log(testContent);
-          console.log("");
-        } else {
-          writeFile(testPath, testContent);
-          console.log(`Generated: ${testPath} (${results.length * 2} test cases)`);
+        if (testContent) {
+          if (options.dryRun) {
+            console.log(`Would write to: ${testPath}`);
+            console.log("---");
+            console.log(testContent);
+            console.log("");
+          } else {
+            writeFile(testPath, testContent);
+            console.log(`Generated: ${testPath} (${results.length * 2} test cases)`);
+          }
         }
       }
     } else {
@@ -373,6 +372,26 @@ function validateOptions(config: ZinferConfig): void {
       "--suffix",
       "Empty suffix is not allowed",
       "Provide a non-empty suffix value or omit the option",
+    );
+  }
+
+  // --generate-tests requires file output to place the companion test file next to
+  if (config.generateTests && !config.outDir && !config.outFile) {
+    throw new InvalidOptionError(
+      "--generate-tests",
+      "Requires file output",
+      "Add --outDir or --outFile",
+    );
+  }
+
+  // The generated test imports the schema as a runtime value, which .d.ts output
+  // cannot provide, and the test path derivation would also produce a malformed
+  // name (e.g. name.types.d.test.ts) since .d.ts has two extensions.
+  if (config.generateTests && config.declaration) {
+    throw new InvalidOptionError(
+      "--generate-tests",
+      "Cannot be used with --declaration",
+      "Generate tests without -d/--declaration, or generate .d.ts output without --generate-tests",
     );
   }
 }

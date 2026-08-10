@@ -63,5 +63,8 @@ export function createTempTypeAlias(schemaName: string, typeKind: "input" | "out
  * matches the `import type { BRAND } from "zod"` this tool emits.
  */
 export function normalizeBrandQualifiers(typeStr: string): string {
-  return typeStr.replace(/(?:[\w$]+(?:\.[\w$]+)*\.|import\([^)]*\)\.)?\$?brand</gi, "BRAND<");
+  return typeStr.replace(
+    /(?:[\w$]+(?:\.[\w$]+)*\.|import\([^)]*\)\.)?(?:\$brand|BRAND)</g,
+    "BRAND<",
+  );
 }

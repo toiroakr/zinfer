@@ -84,7 +84,7 @@ export class ConfigLoader {
       return { config: config ?? {}, configPath };
     }
 
-    const config = await this.loadConfigFile(configPath);
+    const config = await this.loadConfigFile(configPath, { throwOnError: true });
     return { config, configPath };
   }
 
@@ -119,13 +119,24 @@ export class ConfigLoader {
 
   /**
    * Loads configuration from a TypeScript/JavaScript config file.
+   *
+   * @param options.throwOnError - Rethrow load failures instead of warning and
+   * returning an empty config. Used for an explicitly requested path (`loadFrom`),
+   * where silently continuing with no configuration would produce wrong output;
+   * not used for auto-discovered well-known filenames, where a config file is optional.
    */
-  private async loadConfigFile(configPath: string): Promise<ZinferConfig> {
+  private async loadConfigFile(
+    configPath: string,
+    options?: { throwOnError?: boolean },
+  ): Promise<ZinferConfig> {
     try {
       const fileUrl = pathToFileURL(configPath).href;
       const module = await import(fileUrl);
       return module.default || module;
     } catch (error) {
+      if (options?.throwOnError) {
+        throw new Error(`Failed to load config from ${configPath}: ${(error as Error).message}`);
+      }
       console.warn(`Warning: Failed to load config from ${configPath}:`, (error as Error).message);
       return {};
     }

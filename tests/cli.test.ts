@@ -1,24 +1,29 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { execFileSync } from "child_process";
+import { execPath } from "process";
 import { resolve, join } from "pathe";
 import { readFileSync, mkdtempSync, symlinkSync, writeFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { runCLI } from "../src/cli-runner.js";
 
 const cliPath = resolve(import.meta.dirname, "../src/cli.ts");
-const jitiPath = resolve(import.meta.dirname, "../node_modules/.bin/jiti");
+// The .bin/jiti entry is a POSIX shell script (a .cmd shim on Windows) that
+// execFileSync cannot run directly without a shell; run its real JS entry
+// point through the Node executable instead, which works on every platform.
+const jitiCliPath = resolve(import.meta.dirname, "../node_modules/jiti/lib/jiti-cli.mjs");
 const packageJsonPath = resolve(import.meta.dirname, "../package.json");
 
 describe("cli --version", () => {
   it("should report the version from package.json instead of a hardcoded value", () => {
     const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
 
-    const output = execFileSync(jitiPath, [cliPath, "--version"], {
+    const output = execFileSync(execPath, [jitiCliPath, cliPath, "--version"], {
       encoding: "utf-8",
+      timeout: 60_000,
     }).trim();
 
     expect(output).toBe(packageJson.version);
-  });
+  }, 60_000);
 });
 
 describe("runCLI", () => {
@@ -35,7 +40,11 @@ describe("runCLI", () => {
 
   it("writes generated types to outDir when called programmatically", async () => {
     workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
-    symlinkSync(resolve(import.meta.dirname, "../node_modules"), join(workDir, "node_modules"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
     writeFileSync(
       join(workDir, "schema.ts"),
       'import { z } from "zod";\n\nexport const UserSchema = z.object({ id: z.string() });\n',
@@ -51,7 +60,11 @@ describe("runCLI", () => {
 
   it("loads config from an explicit --config path, not just well-known filenames", async () => {
     workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
-    symlinkSync(resolve(import.meta.dirname, "../node_modules"), join(workDir, "node_modules"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
     writeFileSync(
       join(workDir, "schema.ts"),
       'import { z } from "zod";\n\nexport const UserSchema = z.object({ id: z.string() });\n',
@@ -70,7 +83,11 @@ describe("runCLI", () => {
 
   it("excludes files matching the config's exclude patterns", async () => {
     workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
-    symlinkSync(resolve(import.meta.dirname, "../node_modules"), join(workDir, "node_modules"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
     writeFileSync(
       join(workDir, "included.ts"),
       'import { z } from "zod";\n\nexport const IncludedSchema = z.object({ id: z.string() });\n',
