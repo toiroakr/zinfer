@@ -248,6 +248,15 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("nonexported-brand-schema.ts", () => {
+    it("should not add an unused BRAND import when the only branded schema is not exported", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "nonexported-brand-schema.ts"));
+      const output = generateDeclarationFile(results, mapName);
+
+      expect(output).not.toContain('import type { BRAND } from "zod"');
+    });
+  });
+
   createSchemaTest(
     extractor,
     "described-ref-schema",

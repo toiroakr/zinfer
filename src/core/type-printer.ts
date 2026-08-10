@@ -553,13 +553,14 @@ export function formatMultipleAsDeclarations(
 
 /**
  * Checks if any result's *emitted* type(s) contain a printed brand marker.
- * Only checks the input/output side(s) that generateDeclarationFile will
- * actually print, so an inputOnly/outputOnly run doesn't add a BRAND import
- * for a brand that only appears on the side being omitted.
+ * Only scans exported results (generateDeclarationFile skips non-exported
+ * ones entirely) and, within those, only the input/output side(s) that will
+ * actually be printed for the given options.
  */
 function hasBrands(results: ExtractResult[], options: DeclarationOptions = {}): boolean {
   const { inputOnly, outputOnly, mergeSame } = options;
   return results.some((r) => {
+    if (!r.isExported) return false;
     if (mergeSame && r.input === r.output) return /\bBRAND</.test(r.input);
     if (outputOnly) return /\bBRAND</.test(r.output);
     if (inputOnly) return /\bBRAND</.test(r.input);
