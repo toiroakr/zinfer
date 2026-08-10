@@ -352,8 +352,16 @@ export class ZodTypeExtractor {
       if (explicitType && this.isLocallyDeclaredType(sourceFile, explicitType)) {
         const escapedTypeName = this.escapeRegExp(explicitType);
         const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
-        input = input.replace(typeNamePattern, `${schemaName}Input`);
-        output = output.replace(typeNamePattern, `${schemaName}Output`);
+        // When the resolved type is exactly the explicit identifier (as
+        // opposed to appearing inside a larger composite type, e.g. a
+        // recursive union member), rewriting it would produce a circular
+        // alias like `type FooInput = FooInput`. Leave it as-is instead.
+        if (input !== explicitType) {
+          input = input.replace(typeNamePattern, `${schemaName}Input`);
+        }
+        if (output !== explicitType) {
+          output = output.replace(typeNamePattern, `${schemaName}Output`);
+        }
       }
 
       resolvingSchemas.delete(schemaName);

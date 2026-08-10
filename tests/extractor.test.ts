@@ -278,13 +278,33 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
-  describe("class-explicit-type-schema.ts", () => {
-    it("should rewrite an explicit annotation naming a locally declared class into a self-reference", () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "class-explicit-type-schema.ts"));
+  describe("degenerate-explicit-type fixtures", () => {
+    it("should leave an explicit annotation naming a locally declared class unrewritten when the resolved type is exactly that identifier", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type/class-explicit-type-schema.ts"),
+      );
       const result = results.find((r) => r.schemaName === "FooSchema");
 
-      expect(result?.input).toBe("FooSchemaInput");
-      expect(result?.output).toBe("FooSchemaOutput");
+      expect(result?.input).toBe("LocalClass");
+      expect(result?.output).toBe("LocalClass");
+
+      const output = generateDeclarationFile(results, mapName);
+      expect(output).not.toMatch(/FooInput\s*=\s*FooInput/);
+      expect(output).not.toMatch(/FooOutput\s*=\s*FooOutput/);
+    });
+
+    it("should leave an explicit annotation naming a locally declared interface unrewritten when the resolved type is exactly that identifier", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type/interface-explicit-type-schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "BarSchema");
+
+      expect(result?.input).toBe("LocalInterface");
+      expect(result?.output).toBe("LocalInterface");
+
+      const output = generateDeclarationFile(results, mapName);
+      expect(output).not.toMatch(/BarInput\s*=\s*BarInput/);
+      expect(output).not.toMatch(/BarOutput\s*=\s*BarOutput/);
     });
   });
 
