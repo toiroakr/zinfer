@@ -337,6 +337,25 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("alias-cross-reference-schema.ts", () => {
+    it("should reference a schema exported through an alias by its exported name instead of inlining it", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "alias-cross-reference-schema.ts"));
+      const container = results.find((r) => r.schemaName === "ContainerSchema");
+
+      expect(container?.output).toContain("AliasedNodeOutput");
+      expect(container?.output).not.toContain("id: string");
+    });
+  });
+
+  describe("alias-union-member-schema.ts", () => {
+    it("should compose a union from an aliased member's exported name instead of inlining it", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "alias-union-member-schema.ts"));
+      const union = results.find((r) => r.schemaName === "UnionSchema");
+
+      expect(union?.output).toBe("AliasedAOutput | BSchemaOutput");
+    });
+  });
+
   describe("described-schema.ts", () => {
     it("should generate TypeScript declarations without TSDoc comments by default", async () => {
       const results = extractor.extractAll(resolve(fixturesDir, "described-schema.ts"));

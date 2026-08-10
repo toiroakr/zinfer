@@ -267,6 +267,17 @@ export class ZodTypeExtractor {
     this.cleanupNormalizeType(sourceFile);
 
     const schemasByName = new Map(schemas.map((schema) => [schema.name, schema]));
+    // referenceMap/unionReferenceMap entries carry the identifier as written
+    // in the source (the declared/local name), which for an aliased
+    // re-export (`export { X as Y }`) differs from the exported name `Y`
+    // that rawTypes is keyed by. Resolve local name -> exported name so
+    // references to `X` are looked up (and rewritten) as `Y`.
+    const exportNameByLocalName = new Map(
+      schemas
+        .filter((schema) => schema.localName)
+        .map((schema) => [schema.localName!, schema.name]),
+    );
+    const resolveExportName = (name: string): string => exportNameByLocalName.get(name) ?? name;
     const resolvedTypes = new Map<string, { input: string; output: string }>();
     const resolvingSchemas = new Set<string>();
 
@@ -295,13 +306,15 @@ export class ZodTypeExtractor {
       const shouldComposeUnion =
         unionRef &&
         unionRef.memberSchemas.length > 0 &&
-        (unionRef.memberSchemas.every((member) => rawTypes.get(member)?.isExported) ||
+        (unionRef.memberSchemas.every(
+          (member) => rawTypes.get(resolveExportName(member))?.isExported,
+        ) ||
           (!unionRef.hasInlineMembers &&
             (unionRef.memberSchemas.some((member) => importedSchemas.has(member)) ||
               unionRef.memberSchemas.some((member) => {
-                if (rawTypes.get(member)?.isExported) return false;
+                if (rawTypes.get(resolveExportName(member))?.isExported) return false;
                 return (referenceMap.get(member) ?? []).some(
-                  (ref) => rawTypes.get(ref.refSchema)?.isExported,
+                  (ref) => rawTypes.get(resolveExportName(ref.refSchema))?.isExported,
                 );
               }))));
 
@@ -311,20 +324,21 @@ export class ZodTypeExtractor {
         let canComposeUnion = true;
 
         for (const member of unionRef.memberSchemas) {
-          const memberRaw = rawTypes.get(member);
+          const memberExportName = resolveExportName(member);
+          const memberRaw = rawTypes.get(memberExportName);
           if (!memberRaw) continue;
 
           if (memberRaw.isExported) {
-            inputMembers.push(`${member}Input`);
-            outputMembers.push(`${member}Output`);
+            inputMembers.push(`${memberExportName}Input`);
+            outputMembers.push(`${memberExportName}Output`);
             continue;
           }
 
-          const resolvedMember = resolveSchemaTypes(member);
+          const resolvedMember = resolveSchemaTypes(memberExportName);
           if (!resolvedMember) continue;
           if (
-            resolvedMember.input.includes(`${member}Input`) ||
-            resolvedMember.output.includes(`${member}Output`)
+            resolvedMember.input.includes(`${memberExportName}Input`) ||
+            resolvedMember.output.includes(`${memberExportName}Output`)
           ) {
             canComposeUnion = false;
             break;
@@ -341,11 +355,12 @@ export class ZodTypeExtractor {
 
       const refs = referenceMap.get(declaredName) || [];
       for (const ref of refs) {
-        const refRaw = rawTypes.get(ref.refSchema);
+        const refExportName = resolveExportName(ref.refSchema);
+        const refRaw = rawTypes.get(refExportName);
         if (!refRaw?.isExported) continue;
 
-        input = this.replaceSchemaReference(input, ref, refRaw.input, `${ref.refSchema}Input`);
-        output = this.replaceSchemaReference(output, ref, refRaw.output, `${ref.refSchema}Output`);
+        input = this.replaceSchemaReference(input, ref, refRaw.input, `${refExportName}Input`);
+        output = this.replaceSchemaReference(output, ref, refRaw.output, `${refExportName}Output`);
       }
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
