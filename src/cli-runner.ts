@@ -375,7 +375,7 @@ function validateOptions(config: ZinferConfig): void {
     );
   }
 
-  // --generate-tests requires file output to place the companion test file next to
+  // --generate-tests requires file output to place the companion test file next to the generated type file
   if (config.generateTests && !config.outDir && !config.outFile) {
     throw new InvalidOptionError(
       "--generate-tests",
