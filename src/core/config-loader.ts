@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import { readFile } from "fs/promises";
-import { resolve } from "pathe";
+import { resolve, basename } from "pathe";
 import { pathToFileURL } from "url";
 
 /**
@@ -68,6 +68,27 @@ const CONFIG_FILES = [
  */
 export class ConfigLoader {
   /**
+   * Loads configuration from an explicit file path.
+   *
+   * @param configPath - Path to a config file, or a package.json to read the "zinfer" field from
+   * @returns Configuration and config file path
+   * @throws Error if the path does not exist
+   */
+  async loadFrom(configPath: string): Promise<ConfigLoadResult> {
+    if (!existsSync(configPath)) {
+      throw new Error(`Config file not found: ${configPath}`);
+    }
+
+    if (basename(configPath) === "package.json") {
+      const config = await this.loadFromPackageJson(configPath, { throwOnError: true });
+      return { config: config ?? {}, configPath };
+    }
+
+    const config = await this.loadConfigFile(configPath, { throwOnError: true });
+    return { config, configPath };
+  }
+
+  /**
    * Loads configuration from the specified directory.
    *
    * @param cwd - Directory to search for config files
@@ -98,13 +119,24 @@ export class ConfigLoader {
 
   /**
    * Loads configuration from a TypeScript/JavaScript config file.
+   *
+   * @param options.throwOnError - Rethrow load failures instead of warning and
+   * returning an empty config. Used for an explicitly requested path (`loadFrom`),
+   * where silently continuing with no configuration would produce wrong output;
+   * not used for auto-discovered well-known filenames, where a config file is optional.
    */
-  private async loadConfigFile(configPath: string): Promise<ZinferConfig> {
+  private async loadConfigFile(
+    configPath: string,
+    options?: { throwOnError?: boolean },
+  ): Promise<ZinferConfig> {
     try {
       const fileUrl = pathToFileURL(configPath).href;
       const module = await import(fileUrl);
       return module.default || module;
     } catch (error) {
+      if (options?.throwOnError) {
+        throw new Error(`Failed to load config from ${configPath}: ${(error as Error).message}`);
+      }
       console.warn(`Warning: Failed to load config from ${configPath}:`, (error as Error).message);
       return {};
     }
@@ -112,12 +144,25 @@ export class ConfigLoader {
 
   /**
    * Loads configuration from package.json's "zinfer" field.
+   *
+   * @param options.throwOnError - Rethrow read/parse failures instead of
+   * warning and returning null. Used for an explicitly requested path
+   * (`loadFrom`), matching `loadConfigFile`'s throwOnError; not used for
+   * auto-discovered package.json, where a config file is optional.
    */
-  private async loadFromPackageJson(packageJsonPath: string): Promise<ZinferConfig | null> {
+  private async loadFromPackageJson(
+    packageJsonPath: string,
+    options?: { throwOnError?: boolean },
+  ): Promise<ZinferConfig | null> {
     let content: string;
     try {
       content = await readFile(packageJsonPath, "utf-8");
     } catch (error) {
+      if (options?.throwOnError) {
+        throw new Error(
+          `Failed to load config from ${packageJsonPath}: ${(error as Error).message}`,
+        );
+      }
       // File read error (permissions, not found, etc.) - silently return null
       // since package.json config is optional
       return null;
@@ -132,6 +177,9 @@ export class ConfigLoader {
 
       return null;
     } catch (error) {
+      if (options?.throwOnError) {
+        throw new Error(`Failed to parse ${packageJsonPath}: ${(error as Error).message}`);
+      }
       // JSON parse error - warn the user since this is likely a syntax error
       console.warn(`Warning: Failed to parse ${packageJsonPath}: ${(error as Error).message}`);
       return null;

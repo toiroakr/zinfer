@@ -4,7 +4,6 @@ import type {
   MappedTypeName,
   DeclarationOptions,
   FieldDescription,
-  BrandInfo,
 } from "./types.js";
 
 /**
@@ -334,93 +333,6 @@ export function formatOutputOnly(result: ExtractResult, options: PrintOptions = 
 }
 
 /**
- * Applies brand information to a type string.
- *
- * @param typeStr - The type string to apply brands to
- * @param brands - Array of brand information
- * @returns The type string with brands applied
- */
-function applyBrands(typeStr: string, brands?: BrandInfo[]): string {
-  if (!brands || brands.length === 0) {
-    return typeStr;
-  }
-
-  let result = typeStr;
-
-  for (const brand of brands) {
-    if (brand.fieldPath === "") {
-      // Root-level brand: wrap the entire type
-      result = `${result} & BRAND<"${brand.brandName}">`;
-    } else {
-      // Field-level brand: find the field and apply brand to its type
-      result = applyBrandToField(result, brand.fieldPath, brand.brandName);
-    }
-  }
-
-  return result;
-}
-
-/**
- * Applies a brand to a specific field in an object type.
- */
-function applyBrandToField(typeStr: string, fieldPath: string, brandName: string): string {
-  // Handle nested field paths
-  const parts = fieldPath.split(".");
-  const fieldName = parts[parts.length - 1];
-
-  // Find the field pattern (fieldName: type or fieldName?: type)
-  const fieldPatterns = [`${fieldName}: `, `${fieldName}?: `];
-
-  for (const pattern of fieldPatterns) {
-    const idx = typeStr.indexOf(pattern);
-    if (idx === -1) continue;
-
-    const valueStart = idx + pattern.length;
-
-    // Find the end of the field type by tracking braces/brackets/parentheses
-    let depth = 0;
-    let endIdx = valueStart;
-    let inString = false;
-    let stringChar = "";
-
-    while (endIdx < typeStr.length) {
-      const char = typeStr[endIdx];
-      const prevChar = typeStr[endIdx - 1];
-
-      // Track string literals
-      if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
-        if (!inString) {
-          inString = true;
-          stringChar = char;
-        } else if (char === stringChar) {
-          inString = false;
-          stringChar = "";
-        }
-      }
-
-      if (!inString) {
-        if (char === "{" || char === "[" || char === "(" || char === "<") {
-          depth++;
-        } else if (char === "}" || char === "]" || char === ")" || char === ">") {
-          if (depth === 0) break;
-          depth--;
-        } else if (char === ";" && depth === 0) {
-          break;
-        }
-      }
-      endIdx++;
-    }
-
-    // Extract the current type
-    const fieldType = typeStr.substring(valueStart, endIdx).trim();
-    const brandedType = `${fieldType} & BRAND<"${brandName}">`;
-    return typeStr.substring(0, valueStart) + brandedType + typeStr.substring(endIdx);
-  }
-
-  return typeStr;
-}
-
-/**
  * Formats a single extraction result as TypeScript type declaration(s).
  *
  * @param result - The extraction result
@@ -438,10 +350,7 @@ export function formatAsDeclaration(
   const indent = "  ";
 
   const inputFormatted = prettifyType(result.input, indent, result.fieldDescriptions);
-
-  // Apply brands to output type only (brands are runtime-only, not for input)
-  const outputWithBrands = applyBrands(result.output, result.brands);
-  const outputFormatted = prettifyType(outputWithBrands, indent, result.fieldDescriptions);
+  const outputFormatted = prettifyType(result.output, indent, result.fieldDescriptions);
 
   // Schema-level TSDoc comment
   const schemaComment = result.description
@@ -454,8 +363,8 @@ export function formatAsDeclaration(
   // Only export if the original schema was exported
   const exportKeyword = result.isExported ? "export " : "";
 
-  // If mergeSame is enabled and types are identical (compare without brands for input)
-  if (mergeSame && result.input === result.output && !result.brands?.length) {
+  // If mergeSame is enabled and types are identical
+  if (mergeSame && result.input === result.output) {
     lines.push(`${schemaComment}${exportKeyword}type ${typeName.unifiedName} = ${inputFormatted};`);
     // Emit aliases for input/output names that differ from the unified name
     if (typeName.inputName !== typeName.unifiedName) {
@@ -616,7 +525,7 @@ export function formatMultipleAsDeclarations(
       resultMap.set(schemaName, { ...result, input, output });
 
       // Check if this schema is now mergeable
-      if (input === output && !(result.brands && result.brands.length > 0)) {
+      if (input === output) {
         const mapped = typeNameMap.get(schemaName);
         if (mapped && mapped.inputName !== mapped.unifiedName) {
           mergedSet.add(schemaName);
@@ -643,10 +552,20 @@ export function formatMultipleAsDeclarations(
 }
 
 /**
- * Checks if any results have brand information.
+ * Checks if any result's *emitted* type(s) contain a printed brand marker.
+ * Only scans exported results (generateDeclarationFile skips non-exported
+ * ones entirely) and, within those, only the input/output side(s) that will
+ * actually be printed for the given options.
  */
-function hasBrands(results: ExtractResult[]): boolean {
-  return results.some((r) => r.brands && r.brands.length > 0);
+function hasBrands(results: ExtractResult[], options: DeclarationOptions = {}): boolean {
+  const { inputOnly, outputOnly, mergeSame } = options;
+  return results.some((r) => {
+    if (!r.isExported) return false;
+    if (mergeSame && r.input === r.output) return /\bBRAND</.test(r.input);
+    if (outputOnly) return /\bBRAND</.test(r.output);
+    if (inputOnly) return /\bBRAND</.test(r.input);
+    return /\bBRAND</.test(r.input) || /\bBRAND</.test(r.output);
+  });
 }
 
 /**
@@ -669,7 +588,7 @@ export function generateDeclarationFile(
   lines.push("");
 
   // Add BRAND import if any result has brands
-  if (hasBrands(results)) {
+  if (hasBrands(results, options)) {
     lines.push('import type { BRAND } from "zod";');
     lines.push("");
   }

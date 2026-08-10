@@ -63,6 +63,7 @@ exports[`SchemaDetector > detectExportedSchemas > should detect schemas from mul
   {
     "isExported": true,
     "line": 45,
+    "localName": "InternalHelperSchema",
     "name": "AliasedSchema",
   },
 ]

@@ -1,10 +1,13 @@
 import { Project, SourceFile, TypeFormatFlags, ts } from "ts-morph";
-import { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias } from "./normalizer.js";
+import {
+  NORMALIZE_TYPE_DEFINITION,
+  createTempTypeAlias,
+  normalizeBrandQualifiers,
+} from "./normalizer.js";
 import { SchemaDetector } from "./schema-detector.js";
 import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver } from "./import-resolver.js";
-import { BrandDetector } from "./brand-detector.js";
 import { logDebugError } from "./logger.js";
 import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
 
@@ -32,7 +35,6 @@ export class ZodTypeExtractor {
   private getterResolver: GetterResolver;
   private referenceAnalyzer: SchemaReferenceAnalyzer;
   private importResolver: ImportResolver;
-  private brandDetector: BrandDetector;
   private importedSchemaCache = new Map<string, { input: string; output: string }>();
 
   /**
@@ -47,7 +49,6 @@ export class ZodTypeExtractor {
     this.getterResolver = new GetterResolver();
     this.referenceAnalyzer = new SchemaReferenceAnalyzer();
     this.importResolver = new ImportResolver(this.schemaDetector);
-    this.brandDetector = new BrandDetector();
   }
 
   /**
@@ -142,8 +143,11 @@ export class ZodTypeExtractor {
     // Find and resolve imported schemas
     const importedSchemas = this.importResolver.findImportedSchemas(sourceFile, this.project);
 
-    // Build schema names set including imports
-    const schemaNames = new Set(schemas.map((s) => s.name));
+    // Build schema names set including imports. Uses the declared (local
+    // variable) name, not the exported name, since analyzeGetterFields and
+    // analyzeAllReferences walk actual variable declarations - for an aliased
+    // re-export (`export { X as Y }`) those only carry the declared name X.
+    const schemaNames = new Set(schemas.map((s) => s.localName ?? s.name));
     for (const localName of importedSchemas.keys()) {
       schemaNames.add(localName);
     }
@@ -154,9 +158,6 @@ export class ZodTypeExtractor {
     // Analyze cross-schema references and union references in a single pass
     const { references: referenceMap, unionReferences: unionReferenceMap } =
       this.referenceAnalyzer.analyzeAllReferences(sourceFile, schemaNames);
-
-    // Detect branded types
-    const brandMap = this.brandDetector.detectBrands(sourceFile, schemaNames);
 
     // First pass: extract raw types for all schemas
     const rawTypes = new Map<string, { input: string; output: string; isExported: boolean }>();
@@ -208,7 +209,8 @@ export class ZodTypeExtractor {
 
     // Extract types from local schemas
     for (const schema of schemas) {
-      const { name: schemaName, explicitType, isExported } = schema;
+      const { name: schemaName, explicitType, isExported, localName } = schema;
+      const declaredName = localName ?? schemaName;
 
       if (explicitType) {
         this.injectExplicitType(sourceFile, explicitType);
@@ -225,13 +227,14 @@ export class ZodTypeExtractor {
         continue;
       }
 
-      this.injectTemporaryTypes(sourceFile, schemaName);
+      this.injectTemporaryTypes(sourceFile, declaredName);
       try {
         let inputType = this.resolveType(sourceFile, "__TempInput");
         let outputType = this.resolveType(sourceFile, "__TempOutput");
 
-        // Resolve getter-based self-references
-        const getterFields = getterFieldMap.get(schemaName);
+        // Resolve getter-based self-references. getterFieldMap is keyed by
+        // declared (local variable) name, not the exported name.
+        const getterFields = getterFieldMap.get(declaredName);
         if (getterFields && this.getterResolver.hasSelfReferences(getterFields)) {
           const inputTypeName = `${schemaName}Input`;
           const outputTypeName = `${schemaName}Output`;
@@ -264,6 +267,17 @@ export class ZodTypeExtractor {
     this.cleanupNormalizeType(sourceFile);
 
     const schemasByName = new Map(schemas.map((schema) => [schema.name, schema]));
+    // referenceMap/unionReferenceMap entries carry the identifier as written
+    // in the source (the declared/local name), which for an aliased
+    // re-export (`export { X as Y }`) differs from the exported name `Y`
+    // that rawTypes is keyed by. Resolve local name -> exported name so
+    // references to `X` are looked up (and rewritten) as `Y`.
+    const exportNameByLocalName = new Map(
+      schemas
+        .filter((schema) => schema.localName)
+        .map((schema) => [schema.localName!, schema.name]),
+    );
+    const resolveExportName = (name: string): string => exportNameByLocalName.get(name) ?? name;
     const resolvedTypes = new Map<string, { input: string; output: string }>();
     const resolvingSchemas = new Set<string>();
 
@@ -281,19 +295,26 @@ export class ZodTypeExtractor {
       }
       resolvingSchemas.add(schemaName);
 
+      // referenceMap/unionReferenceMap are keyed by declared (local variable)
+      // name; schemaName here may be the exported name of an aliased
+      // re-export, so re-derive the declared name to look them up.
+      const declaredName = schemasByName.get(schemaName)?.localName ?? schemaName;
+
       let { input, output } = raw;
-      const unionRef = unionReferenceMap.get(schemaName);
+      const unionRef = unionReferenceMap.get(declaredName);
 
       const shouldComposeUnion =
         unionRef &&
         unionRef.memberSchemas.length > 0 &&
-        (unionRef.memberSchemas.every((member) => rawTypes.get(member)?.isExported) ||
+        (unionRef.memberSchemas.every(
+          (member) => rawTypes.get(resolveExportName(member))?.isExported,
+        ) ||
           (!unionRef.hasInlineMembers &&
             (unionRef.memberSchemas.some((member) => importedSchemas.has(member)) ||
               unionRef.memberSchemas.some((member) => {
-                if (rawTypes.get(member)?.isExported) return false;
+                if (rawTypes.get(resolveExportName(member))?.isExported) return false;
                 return (referenceMap.get(member) ?? []).some(
-                  (ref) => rawTypes.get(ref.refSchema)?.isExported,
+                  (ref) => rawTypes.get(resolveExportName(ref.refSchema))?.isExported,
                 );
               }))));
 
@@ -303,20 +324,21 @@ export class ZodTypeExtractor {
         let canComposeUnion = true;
 
         for (const member of unionRef.memberSchemas) {
-          const memberRaw = rawTypes.get(member);
+          const memberExportName = resolveExportName(member);
+          const memberRaw = rawTypes.get(memberExportName);
           if (!memberRaw) continue;
 
           if (memberRaw.isExported) {
-            inputMembers.push(`${member}Input`);
-            outputMembers.push(`${member}Output`);
+            inputMembers.push(`${memberExportName}Input`);
+            outputMembers.push(`${memberExportName}Output`);
             continue;
           }
 
-          const resolvedMember = resolveSchemaTypes(member);
+          const resolvedMember = resolveSchemaTypes(memberExportName);
           if (!resolvedMember) continue;
           if (
-            resolvedMember.input.includes(`${member}Input`) ||
-            resolvedMember.output.includes(`${member}Output`)
+            resolvedMember.input.includes(`${memberExportName}Input`) ||
+            resolvedMember.output.includes(`${memberExportName}Output`)
           ) {
             canComposeUnion = false;
             break;
@@ -331,21 +353,30 @@ export class ZodTypeExtractor {
         }
       }
 
-      const refs = referenceMap.get(schemaName) || [];
+      const refs = referenceMap.get(declaredName) || [];
       for (const ref of refs) {
-        const refRaw = rawTypes.get(ref.refSchema);
+        const refExportName = resolveExportName(ref.refSchema);
+        const refRaw = rawTypes.get(refExportName);
         if (!refRaw?.isExported) continue;
 
-        input = this.replaceSchemaReference(input, ref, refRaw.input, `${ref.refSchema}Input`);
-        output = this.replaceSchemaReference(output, ref, refRaw.output, `${ref.refSchema}Output`);
+        input = this.replaceSchemaReference(input, ref, refRaw.input, `${refExportName}Input`);
+        output = this.replaceSchemaReference(output, ref, refRaw.output, `${refExportName}Output`);
       }
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
-      if (explicitType && this.isValidIdentifier(explicitType)) {
+      if (explicitType && this.isLocallyDeclaredType(sourceFile, explicitType)) {
         const escapedTypeName = this.escapeRegExp(explicitType);
         const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
-        input = input.replace(typeNamePattern, `${schemaName}Input`);
-        output = output.replace(typeNamePattern, `${schemaName}Output`);
+        // When the resolved type is exactly the explicit identifier (as
+        // opposed to appearing inside a larger composite type, e.g. a
+        // recursive union member), rewriting it would produce a circular
+        // alias like `type FooInput = FooInput`. Leave it as-is instead.
+        if (input !== explicitType) {
+          input = input.replace(typeNamePattern, `${schemaName}Input`);
+        }
+        if (output !== explicitType) {
+          output = output.replace(typeNamePattern, `${schemaName}Output`);
+        }
       }
 
       resolvingSchemas.delete(schemaName);
@@ -373,8 +404,6 @@ export class ZodTypeExtractor {
       const raw = rawTypes.get(schemaName);
       if (!raw) continue;
 
-      // Get brand information for this schema
-      const brands = brandMap.get(schemaName);
       const resolved = resolveSchemaTypes(schemaName);
       if (!resolved) continue;
 
@@ -383,7 +412,6 @@ export class ZodTypeExtractor {
         input: resolved.input,
         output: resolved.output,
         isExported: raw.isExported,
-        brands,
       });
     }
 
@@ -456,7 +484,7 @@ export class ZodTypeExtractor {
       ) {
         // Handle record type
         if (isRecord) {
-          replacement = `{ [x: string]: ${refTypeName} }`;
+          replacement = `{ [x: string]: ${refTypeName}; }`;
         }
 
         // Preserve readonly prefix for arrays
@@ -527,9 +555,11 @@ export class ZodTypeExtractor {
    * Removes the __Normalize type definition from a source file.
    */
   private cleanupNormalizeType(sourceFile: SourceFile): void {
-    const typeAlias = sourceFile.getTypeAlias("__Normalize");
-    if (typeAlias) {
-      typeAlias.remove();
+    for (const name of ["__Normalize", "__NormalizeTuple"]) {
+      const typeAlias = sourceFile.getTypeAlias(name);
+      if (typeAlias) {
+        typeAlias.remove();
+      }
     }
   }
 
@@ -597,8 +627,9 @@ export class ZodTypeExtractor {
       }
     }
 
-    // Post-process to simplify Zod internal function types
-    return this.simplifyZodFunctionTypes(rawType);
+    // Post-process to simplify Zod internal function types and canonicalize
+    // printed brand qualifiers
+    return normalizeBrandQualifiers(this.simplifyZodFunctionTypes(rawType));
   }
 
   /**
@@ -681,5 +712,21 @@ export class ZodTypeExtractor {
    */
   private isValidIdentifier(str: string): boolean {
     return /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(str);
+  }
+
+  /**
+   * Checks if a type name is declared in the given source file (as opposed to
+   * a global type). Rewriting an explicit annotation's type name to the
+   * generated `<schema>Input`/`<schema>Output` alias is only safe for
+   * locally declared types - rewriting a global name like `Function`
+   * produces a self-referential alias.
+   */
+  private isLocallyDeclaredType(sourceFile: SourceFile, typeName: string): boolean {
+    if (!this.isValidIdentifier(typeName)) return false;
+    return (
+      sourceFile.getTypeAlias(typeName) !== undefined ||
+      sourceFile.getInterface(typeName) !== undefined ||
+      sourceFile.getClass(typeName) !== undefined
+    );
   }
 }

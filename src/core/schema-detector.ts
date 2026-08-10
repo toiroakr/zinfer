@@ -58,6 +58,7 @@ export class SchemaDetector {
                 name: exportedName,
                 isExported: true,
                 line: namedExport.getStartLineNumber(),
+                localName: originalName,
               });
             }
           } else {

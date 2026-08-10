@@ -1,14 +1,23 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import { resolve } from "pathe";
+import { resolve, basename } from "pathe";
 import { ZodTypeExtractor } from "../src/core/extractor.js";
 import { generateDeclarationFile } from "../src/core/type-printer.js";
 import { createNameMapper } from "../src/core/name-mapper.js";
 import { DescriptionExtractor } from "../src/core/description-extractor.js";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
+import { execPath } from "process";
 import { readdirSync } from "fs";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
 const snapshotsDir = resolve(import.meta.dirname, "__file_snapshots__");
+// tsgo's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
+// Windows) that execFileSync cannot run directly without a shell; run its
+// real JS entry point through the Node executable instead, matching how
+// tests/cli.test.ts invokes jiti.
+const tsgoPath = resolve(
+  import.meta.dirname,
+  "../node_modules/@typescript/native-preview/bin/tsgo",
+);
 const mapName = createNameMapper({ removeSuffix: "Schema" });
 
 /**
@@ -28,53 +37,102 @@ function createSchemaTest(
   });
 }
 
-// After all tests, run tsgo on all generated snapshots (single invocation)
+/**
+ * Divergences between zinfer's generated types and `z.input`/`z.output` that
+ * are intentional, not bugs. Each key is the basename of a generated
+ * `*.test.ts` file (from `--generate-tests`) that fails project-wide
+ * type-checking; the value documents why. Keeping this list exhaustive
+ * (checked below) means any *new* divergence fails the build instead of
+ * silently passing.
+ */
+const KNOWN_TYPE_DIFFERENCES: Record<string, string> = {
+  "described-ref-schema.test.ts":
+    "JsonValueSchema is annotated z.ZodType<JsonValue>, leaving Input unset (defaults to unknown) per Zod 4's ZodType<Output, Input = unknown>; zinfer generates the full recursive union instead.",
+  "lazy-schema.test.ts":
+    "Same JsonValueSchema divergence as described-ref-schema.test.ts: z.input<> is unknown, zinfer's input type is the full recursive union.",
+  "enum-schema.test.ts":
+    "z.enum() infers the enum's own type; zinfer deliberately expands enum members to their literal values.",
+  "intersection-schema.test.ts":
+    "z.intersection() infers `A & B`; zinfer flattens it into a single object literal, which is not nominally equal to the intersection.",
+  "mixed-union-reference-schema.test.ts":
+    "A non-exported recursive union member (InternalNode) is inlined by zinfer rather than kept as a named type, which is not nominally equal to the original union member.",
+};
+
+// After all tests, type-check every generated snapshot and companion
+// *.test.ts file (from --generate-tests) as one project, so a mismatch that
+// only surfaces as a type error (expectTypeOf().toEqualTypeOf() is a runtime
+// no-op) fails the build instead of passing silently.
 afterAll(() => {
+  const tsconfigPath = resolve(snapshotsDir, "tsconfig.json");
+
+  let output = "";
+  let execError: unknown;
   try {
-    const snapshotFiles = readdirSync(snapshotsDir)
-      .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
-      .map((f) => resolve(snapshotsDir, f));
-
-    if (snapshotFiles.length === 0) {
-      console.log("No snapshot files found to type-check");
-      return;
-    }
-
-    console.log(`\nType-checking ${snapshotFiles.length} snapshot files with tsgo...`);
-
-    try {
-      // Run tsgo once with all files (--ignoreConfig to skip tsconfig.json when files are specified)
-      execSync(`npx tsgo --noEmit --ignoreConfig ${snapshotFiles.map((f) => `"${f}"`).join(" ")}`, {
-        stdio: "pipe",
-        encoding: "utf-8",
-      });
-      console.log(`✓ All ${snapshotFiles.length} snapshot files passed type-check\n`);
-    } catch (error: any) {
-      const output = error.stdout || error.stderr || "";
-      const relevantErrors = output
-        .split("\n")
-        .filter(
-          (line: string) =>
-            line.includes("error TS") &&
-            !line.includes("esModuleInterop") &&
-            !line.includes("locales"),
-        )
-        .join("\n");
-
-      if (relevantErrors) {
-        console.error(`✗ Type check failed:`);
-        console.error(relevantErrors);
-        throw new Error(`Type check failed for snapshot files`);
-      }
-      // If no relevant errors, consider it passed
-      console.log(`✓ All ${snapshotFiles.length} snapshot files passed type-check\n`);
-    }
+    execFileSync(execPath, [tsgoPath, "--noEmit", "-p", tsconfigPath], {
+      stdio: "pipe",
+      encoding: "utf-8",
+    });
   } catch (error: any) {
-    if (error.code === "ENOENT") {
-      console.log("Snapshots directory not found, skipping type-check");
-    } else {
-      throw error;
-    }
+    execError = error;
+    output = error.stdout || error.stderr || "";
+  }
+
+  const errorLines = output
+    .split("\n")
+    .filter((line: string) => /error TS\d+/.test(line) && !line.includes("locales"));
+
+  // tsgo exited non-zero but produced no `error TSxxxx` lines - it failed to
+  // run at all (bad path, missing tsconfig, etc.) rather than reporting type
+  // errors. Surface the real failure instead of letting the checks below
+  // report a misleading "KNOWN_TYPE_DIFFERENCES entries no longer reproduce".
+  if (execError && errorLines.length === 0) {
+    throw execError;
+  }
+
+  // Fixture errors must only be the intentionally-unannotated recursive
+  // getter fixtures' TS7022/TS7023 ("implicitly has type any" on a
+  // self-referential getter) - anything else is a real regression.
+  const fixtureErrors = errorLines.filter((line: string) => /[\\/]fixtures[\\/]/.test(line));
+  const unexpectedFixtureErrors = fixtureErrors.filter(
+    (line: string) => !line.includes("TS7022") && !line.includes("TS7023"),
+  );
+  if (unexpectedFixtureErrors.length > 0) {
+    throw new Error(
+      `Unexpected type error(s) in tests/fixtures (expected only TS7022/TS7023 on unannotated recursive getters):\n${unexpectedFixtureErrors.join("\n")}`,
+    );
+  }
+
+  // Generated *.test.ts files must fail exactly the set documented in
+  // KNOWN_TYPE_DIFFERENCES - no more (undocumented divergence), no less
+  // (documented divergence that no longer reproduces, so the allowlist is stale).
+  const failingTestFiles = new Set(
+    errorLines
+      .filter((line: string) => /\.test\.ts\(/.test(line))
+      .map((line: string) => basename(line.split("(")[0])),
+  );
+  const knownNames = new Set(Object.keys(KNOWN_TYPE_DIFFERENCES));
+
+  const undocumented = [...failingTestFiles].filter((name) => !knownNames.has(name));
+  if (undocumented.length > 0) {
+    throw new Error(
+      `New type divergence found in generated tests, not documented in KNOWN_TYPE_DIFFERENCES: ${undocumented.join(", ")}\n\n${errorLines.join("\n")}`,
+    );
+  }
+
+  const stale = [...knownNames].filter((name) => !failingTestFiles.has(name));
+  if (stale.length > 0) {
+    throw new Error(
+      `KNOWN_TYPE_DIFFERENCES entries no longer reproduce a type error - remove from the allowlist or investigate: ${stale.join(", ")}`,
+    );
+  }
+
+  // Generated *type* files (.ts, not .test.ts) must never have type errors -
+  // that's the actual output this tool promises to compile.
+  const typeFileErrors = errorLines.filter(
+    (line: string) => !/[\\/]fixtures[\\/]/.test(line) && !/\.test\.ts\(/.test(line),
+  );
+  if (typeFileErrors.length > 0) {
+    throw new Error(`Type error(s) in generated type files:\n${typeFileErrors.join("\n")}`);
   }
 }, 30000); // 30 second timeout (tsgo is much faster)
 
@@ -155,6 +213,50 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "brand-schema",
     "should generate TypeScript declarations with brand information",
   );
+
+  describe("array-brand-schema.ts", () => {
+    it("should brand the array element instead of the whole array", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "array-brand-schema.ts"));
+      const result = results.find((r) => r.schemaName === "TagsSchema");
+
+      expect(result?.output).toContain('tags: (string & BRAND<"Tag">)[]');
+      expect(result?.input).toBe("{ tags: string[]; lookup: { [x: string]: string; }; }");
+    });
+
+    it("should brand the record value instead of the whole record", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "array-brand-schema.ts"));
+      const result = results.find((r) => r.schemaName === "TagsSchema");
+
+      expect(result?.output).toContain('[x: string]: string & BRAND<"Tag">');
+    });
+
+    it("should not add an unused BRAND import when generating input-only declarations without a branded input", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "array-brand-schema.ts"));
+      const output = generateDeclarationFile(results, mapName, { inputOnly: true });
+
+      expect(output).not.toContain('import type { BRAND } from "zod"');
+    });
+  });
+
+  describe("object-brand-schema.ts", () => {
+    it("should keep a whole-object brand while still branding a nested array element", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "object-brand-schema.ts"));
+      const result = results.find((r) => r.schemaName === "WrapperSchema");
+
+      expect(result?.output).toBe('{ tags: (string & BRAND<"Tag">)[]; } & BRAND<"Wrapper">');
+      expect(result?.input).toBe("{ tags: string[]; }");
+    });
+  });
+
+  describe("nonexported-brand-schema.ts", () => {
+    it("should not add an unused BRAND import when the only branded schema is not exported", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "nonexported-brand-schema.ts"));
+      const output = generateDeclarationFile(results, mapName);
+
+      expect(output).not.toContain('import type { BRAND } from "zod"');
+    });
+  });
+
   createSchemaTest(
     extractor,
     "described-ref-schema",
@@ -165,6 +267,94 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "mixed-union-reference-schema",
     "should preserve named references through mixed and non-exported union members",
   );
+
+  describe("mixed-union-reference-common.ts", () => {
+    it("should not rewrite an explicit annotation naming a global type into a self-reference", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "mixed-union-reference-common.ts"));
+      const functionResult = results.find((r) => r.schemaName === "functionSchema");
+
+      expect(functionResult?.input).toBe("Function");
+      expect(functionResult?.output).toBe("Function");
+    });
+  });
+
+  describe("degenerate-explicit-type fixtures", () => {
+    it("should leave an explicit annotation naming a locally declared class unrewritten when the resolved type is exactly that identifier", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type/class-explicit-type-schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "FooSchema");
+
+      expect(result?.input).toBe("LocalClass");
+      expect(result?.output).toBe("LocalClass");
+
+      const output = generateDeclarationFile(results, mapName);
+      expect(output).not.toMatch(/FooInput\s*=\s*FooInput/);
+      expect(output).not.toMatch(/FooOutput\s*=\s*FooOutput/);
+    });
+
+    it("should leave an explicit annotation naming a locally declared interface unrewritten when the resolved type is exactly that identifier", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type/interface-explicit-type-schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "BarSchema");
+
+      expect(result?.input).toBe("LocalInterface");
+      expect(result?.output).toBe("LocalInterface");
+
+      const output = generateDeclarationFile(results, mapName);
+      expect(output).not.toMatch(/BarInput\s*=\s*BarInput/);
+      expect(output).not.toMatch(/BarOutput\s*=\s*BarOutput/);
+    });
+  });
+
+  describe("rest-tuple-schema.ts", () => {
+    it("should preserve the fixed leading elements of a variadic tuple instead of widening to an array", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "rest-tuple-schema.ts"));
+      const result = results.find((r) => r.schemaName === "RestTupleSchema");
+
+      expect(result?.input).toContain("[string, ...number[]]");
+    });
+  });
+
+  describe("multi-schema.ts", () => {
+    it("should resolve types through an aliased re-export instead of falling back to any", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "multi-schema.ts"));
+      const aliased = results.find((r) => r.schemaName === "AliasedSchema");
+
+      expect(aliased?.input).not.toBe("any");
+      expect(aliased?.input).toContain("internal: boolean");
+    });
+  });
+
+  describe("alias-getter-schema.ts", () => {
+    it("should resolve a getter-based self-reference on a schema exported through an alias", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "alias-getter-schema.ts"));
+      const aliased = results.find((r) => r.schemaName === "AliasedCategorySchema");
+
+      expect(aliased?.output).toContain("subcategories: AliasedCategorySchemaOutput[]");
+      expect(aliased?.output).not.toContain("any");
+    });
+  });
+
+  describe("alias-cross-reference-schema.ts", () => {
+    it("should reference a schema exported through an alias by its exported name instead of inlining it", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "alias-cross-reference-schema.ts"));
+      const container = results.find((r) => r.schemaName === "ContainerSchema");
+
+      expect(container?.output).toContain("AliasedNodeOutput");
+      expect(container?.output).not.toContain("id: string");
+    });
+  });
+
+  describe("alias-union-member-schema.ts", () => {
+    it("should compose a union from an aliased member's exported name instead of inlining it", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "alias-union-member-schema.ts"));
+      const union = results.find((r) => r.schemaName === "UnionSchema");
+
+      expect(union?.output).toBe("AliasedAOutput | BSchemaOutput");
+    });
+  });
 
   describe("described-schema.ts", () => {
     it("should generate TypeScript declarations without TSDoc comments by default", async () => {
@@ -201,9 +391,24 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("describe-order-schema.ts", () => {
+    it("should keep the description when .describe() is called before .optional()", async () => {
+      const filePath = resolve(fixturesDir, "describe-order-schema.ts");
+      const descriptionExtractor = new DescriptionExtractor();
+      const descriptions = await descriptionExtractor.extractDescriptions(filePath, [
+        "OrderSchema",
+      ]);
+
+      const fields = descriptions.get("OrderSchema")?.fields ?? [];
+      const fieldA = fields.find((f) => f.path === "a");
+
+      expect(fieldA?.description).toBe("described then optional");
+    });
+  });
+
   describe("multiline-description-schema.ts", () => {
     it("should generate TSDoc comments with multiline descriptions", async () => {
-      const filePath = resolve(fixturesDir, "multiline-description-schema.ts");
+      const filePath = resolve(fixturesDir, "with-descriptions/multiline-description-schema.ts");
       const results = extractor.extractAll(filePath);
       const descriptionExtractor = new DescriptionExtractor();
 
@@ -231,7 +436,10 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
   describe("nested-inline-description-schema.ts", () => {
     it("should not leak an unrelated same-named field's description into an inlined nested schema (#340)", async () => {
-      const filePath = resolve(fixturesDir, "nested-inline-description-schema.ts");
+      const filePath = resolve(
+        fixturesDir,
+        "with-descriptions/nested-inline-description-schema.ts",
+      );
       const results = extractor.extractAll(filePath);
       const descriptionExtractor = new DescriptionExtractor();
 
@@ -265,7 +473,10 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
   describe("recursive-inline-description-schema.ts", () => {
     it("should not stack-overflow on a self-recursive schema and must not blank out other schemas' descriptions (#340)", async () => {
-      const filePath = resolve(fixturesDir, "recursive-inline-description-schema.ts");
+      const filePath = resolve(
+        fixturesDir,
+        "with-descriptions/recursive-inline-description-schema.ts",
+      );
       const results = extractor.extractAll(filePath);
       const descriptionExtractor = new DescriptionExtractor();
 

@@ -11,6 +11,7 @@ export type ContainerInput = {
   name: string;
   /** Container-level description */
   description?: string | undefined;
+  /** A group of items, or 'none' */
   group?: "none" | readonly {
     flag: boolean;
     /** Item description, distinct from container description */
@@ -22,6 +23,7 @@ export type ContainerOutput = {
   name: string;
   /** Container-level description */
   description?: string | undefined;
+  /** A group of items, or 'none' */
   group?: "none" | readonly {
     flag: boolean;
     /** Item description, distinct from container description */
