@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { resolve, dirname, basename, relative, parse as parsePath } from "pathe";
-import { existsSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, writeFileSync, mkdirSync, readFileSync } from "fs";
+import { fileURLToPath } from "url";
 import {
   ZodTypeExtractor,
   generateDeclarationFile,
@@ -49,9 +50,21 @@ interface CLIOptions {
   verbose?: boolean;
 }
 
+function readPackageVersion(): string {
+  try {
+    const packageJsonPath = resolve(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
+    return JSON.parse(readFileSync(packageJsonPath, "utf-8")).version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
 const program = new Command();
 
-program.name("zinfer").description("Extract input/output types from Zod schemas").version("0.1.0");
+program
+  .name("zinfer")
+  .description("Extract input/output types from Zod schemas")
+  .version(readPackageVersion());
 
 program
   .argument("[files...]", "File paths or glob patterns")
