@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import { resolve } from "pathe";
+import { resolve, basename } from "pathe";
 import { ZodTypeExtractor } from "../src/core/extractor.js";
 import { generateDeclarationFile } from "../src/core/type-printer.js";
 import { createNameMapper } from "../src/core/name-mapper.js";
 import { DescriptionExtractor } from "../src/core/description-extractor.js";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { readdirSync } from "fs";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
@@ -28,53 +28,96 @@ function createSchemaTest(
   });
 }
 
-// After all tests, run tsgo on all generated snapshots (single invocation)
+/**
+ * Divergences between zinfer's generated types and `z.input`/`z.output` that
+ * are intentional, not bugs. Each key is the basename of a generated
+ * `*.test.ts` file (from `--generate-tests`) that fails project-wide
+ * type-checking; the value documents why. Keeping this list exhaustive
+ * (checked below) means any *new* divergence fails the build instead of
+ * silently passing.
+ */
+const KNOWN_TYPE_DIFFERENCES: Record<string, string> = {
+  "described-ref-schema.test.ts":
+    "JsonValueSchema is annotated z.ZodType<JsonValue>, leaving Input unset (defaults to unknown) per Zod 4's ZodType<Output, Input = unknown>; zinfer generates the full recursive union instead.",
+  "lazy-schema.test.ts":
+    "Same JsonValueSchema divergence as described-ref-schema.test.ts: z.input<> is unknown, zinfer's input type is the full recursive union.",
+  "enum-schema.test.ts":
+    "z.enum() infers the enum's own type; zinfer deliberately expands enum members to their literal values.",
+  "intersection-schema.test.ts":
+    "z.intersection() infers `A & B`; zinfer flattens it into a single object literal, which is not nominally equal to the intersection.",
+  "mixed-union-reference-schema.test.ts":
+    "A non-exported recursive union member (InternalNode) is inlined by zinfer rather than kept as a named type, which is not nominally equal to the original union member.",
+};
+
+// After all tests, type-check every generated snapshot and companion
+// *.test.ts file (from --generate-tests) as one project, so a mismatch that
+// only surfaces as a type error (expectTypeOf().toEqualTypeOf() is a runtime
+// no-op) fails the build instead of passing silently.
 afterAll(() => {
+  const tsconfigPath = resolve(snapshotsDir, "tsconfig.json");
+
+  let output = "";
   try {
-    const snapshotFiles = readdirSync(snapshotsDir)
-      .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
-      .map((f) => resolve(snapshotsDir, f));
-
-    if (snapshotFiles.length === 0) {
-      console.log("No snapshot files found to type-check");
-      return;
-    }
-
-    console.log(`\nType-checking ${snapshotFiles.length} snapshot files with tsgo...`);
-
-    try {
-      // Run tsgo once with all files (--ignoreConfig to skip tsconfig.json when files are specified)
-      execSync(`npx tsgo --noEmit --ignoreConfig ${snapshotFiles.map((f) => `"${f}"`).join(" ")}`, {
-        stdio: "pipe",
-        encoding: "utf-8",
-      });
-      console.log(`✓ All ${snapshotFiles.length} snapshot files passed type-check\n`);
-    } catch (error: any) {
-      const output = error.stdout || error.stderr || "";
-      const relevantErrors = output
-        .split("\n")
-        .filter(
-          (line: string) =>
-            line.includes("error TS") &&
-            !line.includes("esModuleInterop") &&
-            !line.includes("locales"),
-        )
-        .join("\n");
-
-      if (relevantErrors) {
-        console.error(`✗ Type check failed:`);
-        console.error(relevantErrors);
-        throw new Error(`Type check failed for snapshot files`);
-      }
-      // If no relevant errors, consider it passed
-      console.log(`✓ All ${snapshotFiles.length} snapshot files passed type-check\n`);
-    }
+    execFileSync("npx", ["tsgo", "--noEmit", "-p", tsconfigPath], {
+      stdio: "pipe",
+      encoding: "utf-8",
+    });
   } catch (error: any) {
     if (error.code === "ENOENT") {
       console.log("Snapshots directory not found, skipping type-check");
-    } else {
-      throw error;
+      return;
     }
+    output = error.stdout || error.stderr || "";
+  }
+
+  const errorLines = output
+    .split("\n")
+    .filter((line: string) => /error TS\d+/.test(line) && !line.includes("locales"));
+
+  // Fixture errors must only be the intentionally-unannotated recursive
+  // getter fixtures' TS7022/TS7023 ("implicitly has type any" on a
+  // self-referential getter) - anything else is a real regression.
+  const fixtureErrors = errorLines.filter((line: string) => line.includes("/fixtures/"));
+  const unexpectedFixtureErrors = fixtureErrors.filter(
+    (line: string) => !line.includes("TS7022") && !line.includes("TS7023"),
+  );
+  if (unexpectedFixtureErrors.length > 0) {
+    throw new Error(
+      `Unexpected type error(s) in tests/fixtures (expected only TS7022/TS7023 on unannotated recursive getters):\n${unexpectedFixtureErrors.join("\n")}`,
+    );
+  }
+
+  // Generated *.test.ts files must fail exactly the set documented in
+  // KNOWN_TYPE_DIFFERENCES - no more (undocumented divergence), no less
+  // (documented divergence that no longer reproduces, so the allowlist is stale).
+  const failingTestFiles = new Set(
+    errorLines
+      .filter((line: string) => /\.test\.ts\(/.test(line))
+      .map((line: string) => basename(line.split("(")[0])),
+  );
+  const knownNames = new Set(Object.keys(KNOWN_TYPE_DIFFERENCES));
+
+  const undocumented = [...failingTestFiles].filter((name) => !knownNames.has(name));
+  if (undocumented.length > 0) {
+    throw new Error(
+      `New type divergence found in generated tests, not documented in KNOWN_TYPE_DIFFERENCES: ${undocumented.join(", ")}\n\n${errorLines.join("\n")}`,
+    );
+  }
+
+  const stale = [...knownNames].filter((name) => !failingTestFiles.has(name));
+  if (stale.length > 0) {
+    throw new Error(
+      `KNOWN_TYPE_DIFFERENCES entries no longer reproduce a type error - remove from the allowlist or investigate: ${stale.join(", ")}`,
+    );
+  }
+
+  // Generated *type* files (.ts, not .test.ts) must never have type errors -
+  // that's the actual output this tool promises to compile.
+  const typeFileErrors = errorLines.filter(
+    (line: string) => !line.includes("/fixtures/") && !/\.test\.ts\(/.test(line),
+  );
+  if (typeFileErrors.length > 0) {
+    throw new Error(`Type error(s) in generated type files:\n${typeFileErrors.join("\n")}`);
   }
 }, 30000); // 30 second timeout (tsgo is much faster)
 
