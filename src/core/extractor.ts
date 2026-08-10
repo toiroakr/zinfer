@@ -765,15 +765,27 @@ export class ZodTypeExtractor {
    * never imports it. Reference it via an inline `import("...")` type
    * instead - this also sidesteps name collisions in `--outFile` mode,
    * where multiple source files are combined into one output and a name
-   * like `LocalClass` could collide across files. Only possible when the
-   * declaration is exported; otherwise no module specifier can reach it, so
-   * the caller falls back to the (still broken) bare identifier.
+   * like `LocalClass` could collide across files.
+   *
+   * The member accessed on the `import(...)` must be the name the module
+   * actually exports the declaration under, which isn't always `typeName`:
+   * a default export (`export default class LocalClass {}`) is reachable
+   * only as `.default`, and a renamed export (`export { LocalClass as Foo
+   * }`) only as `.Foo`. `getExportedDeclarations()` is keyed by that
+   * external name, so find the key whose declarations include this one.
+   * Returns null (falling back to the bare, still-broken identifier) when
+   * the declaration isn't exported under any name.
    */
   private qualifyLocalTypeReference(sourceFile: SourceFile, typeName: string): string | null {
     const declaration = this.getLocalTypeDeclaration(sourceFile, typeName);
-    if (!declaration?.isExported()) return null;
+    if (!declaration) return null;
+
+    const exportedName = [...sourceFile.getExportedDeclarations()].find(([, declarations]) =>
+      declarations.includes(declaration),
+    )?.[0];
+    if (!exportedName) return null;
 
     const modulePath = sourceFile.getFilePath().replace(/\.(ts|tsx|mts|cts)$/, "");
-    return `import("${modulePath}").${typeName}`;
+    return `import("${modulePath}").${exportedName}`;
   }
 }

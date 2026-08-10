@@ -326,6 +326,28 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       expect(result?.input).toBe("LocalNonExportedClass");
       expect(result?.output).toBe("LocalNonExportedClass");
     });
+
+    it("should qualify a default-exported local class via its `.default` member, not its local name", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type/default-export-explicit-type-schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "QuxSchema");
+
+      const expected = /^import\(".*default-export-explicit-type-schema"\)\.default$/;
+      expect(result?.input).toMatch(expected);
+      expect(result?.output).toMatch(expected);
+    });
+
+    it("should qualify a renamed-export local class via its external export name, not its local name", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type/aliased-export-explicit-type-schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "QuuxSchema");
+
+      const expected = /^import\(".*aliased-export-explicit-type-schema"\)\.RenamedClass$/;
+      expect(result?.input).toMatch(expected);
+      expect(result?.output).toMatch(expected);
+    });
   });
 
   createSchemaTest(
@@ -337,6 +359,16 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     extractor,
     "degenerate-explicit-type/interface-explicit-type-schema",
     "should generate a type-checkable inline import for an explicit annotation naming a local interface",
+  );
+  createSchemaTest(
+    extractor,
+    "degenerate-explicit-type/default-export-explicit-type-schema",
+    "should generate a type-checkable inline import for an explicit annotation naming a default-exported local class",
+  );
+  createSchemaTest(
+    extractor,
+    "degenerate-explicit-type/aliased-export-explicit-type-schema",
+    "should generate a type-checkable inline import for an explicit annotation naming a renamed-export local class",
   );
 
   describe("rest-tuple-schema.ts", () => {
