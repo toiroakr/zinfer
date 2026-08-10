@@ -1,5 +1,5 @@
 ---
-"zinfer": patch
+"zinfer": minor
 ---
 
 Fix a batch of recently reported issues:
@@ -15,3 +15,5 @@ Fix a batch of recently reported issues:
 - `runCLI` is now exported (via a new `cli-runner` module) so the CLI can be covered end to end (#392)
 - `-c`/`--config <path>` now loads the specified config file instead of being silently ignored, and `exclude` patterns are now honored (#389)
 - Generated `--generate-tests` files are now type-checked as part of the test suite, catching mismatches that `expectTypeOf().toEqualTypeOf()` alone cannot (a runtime no-op) (#391)
+
+**Breaking:** `BrandDetector`, `SchemaBrandMap`, and `BrandInfo` are removed from the `zinfer/core` exports. They were replaced by the normalization-based branding approach from the `.brand()` fix above and have no replacement export.
