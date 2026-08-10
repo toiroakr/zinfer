@@ -275,7 +275,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
   describe("multiline-description-schema.ts", () => {
     it("should generate TSDoc comments with multiline descriptions", async () => {
-      const filePath = resolve(fixturesDir, "multiline-description-schema.ts");
+      const filePath = resolve(fixturesDir, "with-descriptions/multiline-description-schema.ts");
       const results = extractor.extractAll(filePath);
       const descriptionExtractor = new DescriptionExtractor();
 
@@ -303,7 +303,10 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
   describe("nested-inline-description-schema.ts", () => {
     it("should not leak an unrelated same-named field's description into an inlined nested schema (#340)", async () => {
-      const filePath = resolve(fixturesDir, "nested-inline-description-schema.ts");
+      const filePath = resolve(
+        fixturesDir,
+        "with-descriptions/nested-inline-description-schema.ts",
+      );
       const results = extractor.extractAll(filePath);
       const descriptionExtractor = new DescriptionExtractor();
 
@@ -337,7 +340,10 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
   describe("recursive-inline-description-schema.ts", () => {
     it("should not stack-overflow on a self-recursive schema and must not blank out other schemas' descriptions (#340)", async () => {
-      const filePath = resolve(fixturesDir, "recursive-inline-description-schema.ts");
+      const filePath = resolve(
+        fixturesDir,
+        "with-descriptions/recursive-inline-description-schema.ts",
+      );
       const results = extractor.extractAll(filePath);
       const descriptionExtractor = new DescriptionExtractor();
 
