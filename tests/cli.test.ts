@@ -118,4 +118,54 @@ describe("runCLI", () => {
     expect(withExclude).toContain("IncludedInput");
     expect(withExclude).not.toContain("ExcludedInput");
   });
+
+  it("propagates a load failure for an explicit --config path instead of silently continuing", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(join(workDir, "schema.ts"), 'import { z } from "zod";\n');
+    writeFileSync(join(workDir, "bad.config.mjs"), 'throw new Error("boom");\n');
+    process.chdir(workDir);
+
+    await expect(runCLI([], { config: "bad.config.mjs", outDir: workDir })).rejects.toThrow("boom");
+  });
+
+  it("rejects --generate-tests combined with --declaration", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      'import { z } from "zod";\n\nexport const UserSchema = z.object({ id: z.string() });\n',
+    );
+    process.chdir(workDir);
+
+    await expect(
+      runCLI(["schema.ts"], { outDir: workDir, declaration: true, generateTests: true }),
+    ).rejects.toThrow("--declaration");
+  });
+
+  it("does not write a companion test file when a schema file has no exported schemas", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      'import { z } from "zod";\n\nconst InternalSchema = z.object({ id: z.string() });\n',
+    );
+    process.chdir(workDir);
+
+    await runCLI(["schema.ts"], { outDir: workDir, suffix: "Schema", generateTests: true });
+
+    expect(() => readFileSync(join(workDir, "schema.test.ts"), "utf-8")).toThrow();
+  });
 });
