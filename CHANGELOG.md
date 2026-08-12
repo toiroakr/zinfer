@@ -1,5 +1,43 @@
 # zinfer
 
+## 0.3.0
+
+### Minor Changes
+
+- 4f1365a: **Breaking:** `BrandDetector`, `SchemaBrandMap`, and `BrandInfo` are removed from the `zinfer/core` exports. They were replaced by the normalization-based branding approach from the `.brand()` fix below and have no replacement export.
+
+  Fix a batch of recently reported issues:
+
+  - `--version` now reads the version from `package.json` at runtime instead of reporting a hardcoded `0.1.0` (#390)
+  - A `z.record()` value replaced by a named cross-schema reference now emits a trailing semicolon on the index signature, matching every other index signature zinfer prints (#394)
+  - `.describe()` called before `.optional()` (or `.nullable()`/`.default()`/`.readonly()`) is no longer lost (#388)
+  - An explicit type annotation naming a global type (e.g. `z.ZodType<Function, Function>`) no longer produces a self-referential type alias, and the same rewrite no longer collapses into a circular alias when it names a locally declared class/interface/type that resolves to exactly itself (e.g. `z.ZodType<LocalClass, LocalClass>`) (#383)
+  - A schema exported under a different name via `export { X as Y }` now resolves its real type instead of falling back to `any`, including a self-referential getter field on the aliased schema, a cross-schema field reference to the aliased schema, and the aliased schema as a union member (#384)
+  - A variadic tuple (`z.tuple([...]).rest(...)`) no longer collapses into a plain array, losing its fixed leading elements (#386)
+  - `.brand()` applied inside `z.array()`/`z.record()` now brands the element/value instead of the whole collection; a whole-object `.brand()` continues to work. The generated `import type { BRAND } from "zod"` is also now added only when a brand actually appears in an emitted (exported, and `inputOnly`/`outputOnly`-respecting) declaration, instead of whenever any schema in the file happens to have one (#385)
+  - `pnpm generate:type-tests` no longer overwrites the `--with-descriptions` snapshot fixtures (#393)
+  - `runCLI` is now exported (via a new `cli-runner` module) so the CLI can be covered end to end (#392)
+  - `-c`/`--config <path>` now loads the specified config file instead of being silently ignored, and `exclude` patterns are now honored; an explicit `--config <path>` pointing at an unreadable or unparseable `package.json` now rejects instead of silently falling back to an empty config (#389)
+  - Generated `--generate-tests` files are now type-checked as part of the test suite, catching mismatches that `expectTypeOf().toEqualTypeOf()` alone cannot (a runtime no-op) (#391)
+
+### Patch Changes
+
+- 96f1509: Fix `peerDependencies` lower bounds that Renovate had silently narrowed without any accompanying source change (#413, #415):
+
+  - `typescript`: restored `>=5.9.3` back to `>=5.0.0`. Verified working (typecheck + full test suite) at the lowest installable release satisfying that range, `5.0.2`.
+  - `zod`: **not** reverted to the pre-Renovate `>=3.0.0` — that value was never actually correct. zod 3.0.0 predates `.describe()` (added in 3.11.6) and `.brand()` (added in 3.18.0), and CI had never once run zinfer's tests against an installed zod matching the declared floor, so this had gone unnoticed. The floor is corrected to `>=3.25.76`, the lowest version verified (via CI) to pass the full test suite.
+
+  Renovate's `peerDependencies` handling has also been fixed (`rangeStrategy: widen`, `automerge: false`) so future zod/typescript releases can't narrow these floors unnoticed again. CI now has a `peer-floor` job that actually installs each declared floor (individually and combined) and runs typecheck + test against it, so any future floor claim is continuously verified rather than assumed.
+
+- e1e2b72: Fix generated declarations printing an unimported bare identifier when a schema's explicit type annotation resolves to exactly a locally declared class, interface, or type alias (e.g. `z.ZodType<LocalClass, LocalClass>`). The reference is now qualified through an inline `import("...")` type instead, using whatever name the module actually exports the declaration under (a named export, a default export's `.default`, or a renamed export), so the generated file type-checks on its own for any exported local type. This also avoids name collisions across source files combined via `--outFile`, since each reference carries its own module path. Non-exported local types are unaffected and keep the existing bare-identifier fallback.
+- a96d6f3: chore(deps): update dependency typescript to >=5.9.3
+- 749532b: chore(deps): update dependency zod to >=3.25.76
+- 19ce457: Give `renovate.json` an explicit `rangeStrategy` per dependency type instead of one blanket `"bump"`:
+
+  - `peerDependencies`: kept at `"widen"` explicitly (matches Renovate's `"auto"` default for this depType, but spelled out so the intent — always widen a peer range, never narrow a floor — is clear from reading the file rather than relying on Renovate's implicit default). The dedicated `automerge: false` rule stays, since a peer range change still deserves human review even when it's a safe widen.
+  - `dependencies`: kept at `"bump"`. Unlike peers, these don't need to resolve to a single shared instance across the consumer's tree, so a floor bump can at most add a duplicate install of a slightly newer version alongside whatever the consumer already has — it doesn't force or conflict with the consumer's own declared version.
+  - `devDependencies`: changed from `"bump"` to `"pin"`, and the manifest's `^`-ranged versions were unpinned to the exact versions already resolved in the lockfile. This doesn't change what either `pnpm install --frozen-lockfile` or a plain `pnpm install` against an up-to-date lockfile resolves to (both already reuse the locked versions as-is; pnpm only re-resolves within a range on `pnpm update` or when the lockfile itself is regenerated). What it removes is the gap between what `package.json` documents and what's actually locked, and it keeps that guarantee even across a lockfile regeneration. Automerge behavior is unchanged.
+
 ## 0.2.8
 
 ### Patch Changes
