@@ -39,6 +39,7 @@
     },
     {
       "matchDepTypes": ["peerDependencies"],
+      "rangeStrategy": "widen",
       "automerge": false
     }
   ]
