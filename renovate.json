@@ -10,16 +10,20 @@
   "gitIgnoredAuthors": ["271965483+toiroakr-release-bot[bot]@users.noreply.github.com"],
   "minimumReleaseAge": "7 days",
   "prConcurrentLimit": 5,
-  "rangeStrategy": "bump",
+  "rangeStrategy": "auto",
   "packageRules": [
     {
       "matchDatasources": ["npm"],
       "minimumReleaseAge": "7 days"
     },
     {
+      "matchDepTypes": ["dependencies"],
+      "rangeStrategy": "bump"
+    },
+    {
       "matchDepTypes": ["devDependencies"],
       "automerge": true,
-      "rangeStrategy": "bump"
+      "rangeStrategy": "pin"
     },
     {
       "groupName": "testing",
@@ -35,7 +39,6 @@
     },
     {
       "matchDepTypes": ["peerDependencies"],
-      "rangeStrategy": "widen",
       "automerge": false
     }
   ]
