@@ -153,8 +153,11 @@ afterAll(() => {
     return true;
   });
   if (unexpectedFixtureErrors.length > 0) {
+    const expected = isZodV4
+      ? "TS7022/TS7023 on unannotated recursive getters"
+      : `TS7022/TS7023 on unannotated recursive getters, or errors from ${[...ZOD_V4_ONLY_FIXTURES, ...ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS].join(", ")} (zod v3 peerDependencies floor)`;
     throw new Error(
-      `Unexpected type error(s) in tests/fixtures (expected only TS7022/TS7023 on unannotated recursive getters):\n${unexpectedFixtureErrors.join("\n")}`,
+      `Unexpected type error(s) in tests/fixtures (expected only ${expected}):\n${unexpectedFixtureErrors.join("\n")}`,
     );
   }
 
