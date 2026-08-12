@@ -42,3 +42,46 @@ jobs:
         run: pnpm format:check
       - name: Test
         run: pnpm test
+
+  peer-floor:
+    name: Peer floor (${{ matrix.name }})
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: zod
+            # typescript stays at the devDependencies-pinned version for this row.
+            packages: zod@3.25.76
+          - name: typescript
+            # 5.0.0 was never published on npm; 5.0.2 is the first release satisfying
+            # peerDependencies.typescript's ">=5.0.0". zod stays at the pinned version here.
+            packages: typescript@5.0.2
+          - name: combined
+            # Both peerDependencies lower bounds installed together, since consumers can
+            # be at both floors simultaneously.
+            packages: zod@3.25.76 typescript@5.0.2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        name: Install pnpm
+        with:
+          standalone: true
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        name: Install Node.js
+        with:
+          node-version: 24.19.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install peerDependencies lower bound
+        run: pnpm add -D ${{ matrix.packages }}
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test
