@@ -23,6 +23,24 @@ import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.j
 export type { ExtractResult } from "./types.js";
 
 /**
+ * A schema's printed input/output types, before cross-schema references are
+ * resolved into type names.
+ */
+interface RawSchemaType {
+  input: string;
+  output: string;
+  isExported: boolean;
+  /** Set when the schema is declared in another file that generates types of its own. */
+  importedFrom?: string;
+  /**
+   * Set when the schema is recursive and imported from a file that gets no
+   * generated types, so the printed type is the closest inlinable approximation
+   * rather than what TypeScript gave up on.
+   */
+  isApproximatedImport?: boolean;
+}
+
+/**
  * Options for type extraction.
  */
 export interface ExtractOptions {
@@ -35,6 +53,21 @@ export interface ExtractOptions {
 }
 
 /**
+ * Extra context that lets extraction reach beyond the file being processed.
+ */
+export interface ExtractContext {
+  /**
+   * Absolute paths of the files that get generated types of their own.
+   *
+   * A recursive schema imported from one of them is referenced by name rather
+   * than inlined - an inline copy of a recursive type can only ever be an
+   * approximation - leaving the caller to `import type` it. Schemas from files
+   * outside this set are inlined as before.
+   */
+  importableFiles?: ReadonlySet<string>;
+}
+
+/**
  * Extracts input and output types from Zod schemas using TypeScript Compiler API.
  */
 export class ZodTypeExtractor {
@@ -43,7 +76,7 @@ export class ZodTypeExtractor {
   private getterResolver: GetterResolver;
   private referenceAnalyzer: SchemaReferenceAnalyzer;
   private importResolver: ImportResolver;
-  private importedSchemaCache = new Map<string, { input: string; output: string }>();
+  private importedSchemaCache = new Map<string, Omit<RawSchemaType, "isExported">>();
 
   /**
    * Creates a new ZodTypeExtractor instance.
@@ -84,11 +117,11 @@ export class ZodTypeExtractor {
    * @param filePath - Path to the TypeScript file
    * @returns Array of extraction results for each schema
    */
-  extractAll(filePath: string): ExtractResult[] {
+  extractAll(filePath: string, context: ExtractContext = {}): ExtractResult[] {
     const sourceFile = this.getOrAddSourceFile(filePath);
     const schemas = this.schemaDetector.detectExportedSchemas(sourceFile);
 
-    return this.extractMultipleFromSourceFile(sourceFile, schemas);
+    return this.extractMultipleFromSourceFile(sourceFile, schemas, context);
   }
 
   /**
@@ -98,7 +131,11 @@ export class ZodTypeExtractor {
    * @param schemaNames - Names of schemas to extract
    * @returns Array of extraction results
    */
-  extractMultiple(filePath: string, schemaNames: string[]): ExtractResult[] {
+  extractMultiple(
+    filePath: string,
+    schemaNames: string[],
+    context: ExtractContext = {},
+  ): ExtractResult[] {
     const sourceFile = this.getOrAddSourceFile(filePath);
     const allSchemas = this.schemaDetector.detectExportedSchemas(sourceFile);
     const schemas = schemaNames.map((name) => {
@@ -106,7 +143,7 @@ export class ZodTypeExtractor {
       return found || { name, isExported: true, line: 0 };
     });
 
-    return this.extractMultipleFromSourceFile(sourceFile, schemas);
+    return this.extractMultipleFromSourceFile(sourceFile, schemas, context);
   }
 
   /**
@@ -115,10 +152,10 @@ export class ZodTypeExtractor {
    * @param filePath - Path to the TypeScript file
    * @returns File extraction result with all schemas
    */
-  extractFile(filePath: string): FileExtractResult {
+  extractFile(filePath: string, context: ExtractContext = {}): FileExtractResult {
     return {
       filePath,
-      schemas: this.extractAll(filePath),
+      schemas: this.extractAll(filePath, context),
     };
   }
 
@@ -145,6 +182,7 @@ export class ZodTypeExtractor {
   private extractMultipleFromSourceFile(
     sourceFile: SourceFile,
     schemas: DetectedSchema[],
+    context: ExtractContext = {},
   ): ExtractResult[] {
     const results: ExtractResult[] = [];
 
@@ -168,7 +206,7 @@ export class ZodTypeExtractor {
       this.referenceAnalyzer.analyzeAllReferences(sourceFile, schemaNames);
 
     // First pass: extract raw types for all schemas
-    const rawTypes = new Map<string, { input: string; output: string; isExported: boolean }>();
+    const rawTypes = new Map<string, RawSchemaType>();
 
     // Inject __Normalize once for the main source file
     this.ensureNormalizeType(sourceFile);
@@ -177,15 +215,19 @@ export class ZodTypeExtractor {
     for (const [localName, importInfo] of importedSchemas) {
       if (!importInfo.resolved) continue;
 
-      // Check cache for previously extracted imported schemas
-      const cacheKey = `${importInfo.sourceFilePath}:${importInfo.originalName}`;
+      // The types the declaring file generates are named after the schema's own
+      // name, so an import that renames it (`import { X as Y }`) has no name to
+      // point at here and is inlined as before.
+      const isImportable =
+        (context.importableFiles?.has(importInfo.sourceFilePath) ?? false) &&
+        localName === importInfo.originalName;
+      // The self-references a recursive schema needs are spelled with the local
+      // name, and what they point at depends on whether the declaring file is
+      // generated, so both belong in the cache key alongside the declaration.
+      const cacheKey = `${importInfo.sourceFilePath}:${importInfo.originalName}:${localName}:${isImportable}`;
       const cached = this.importedSchemaCache.get(cacheKey);
       if (cached) {
-        rawTypes.set(localName, {
-          input: cached.input,
-          output: cached.output,
-          isExported: false,
-        });
+        rawTypes.set(localName, { ...cached, isExported: false });
         continue;
       }
 
@@ -195,18 +237,18 @@ export class ZodTypeExtractor {
       this.ensureNormalizeType(importedSourceFile);
       try {
         this.injectTemporaryTypes(importedSourceFile, importInfo.originalName);
-        const inputType = this.resolveType(importedSourceFile, "__TempInput");
-        const outputType = this.resolveType(importedSourceFile, "__TempOutput");
+        const raw = this.resolveImportedSchemaType(
+          importedSourceFile,
+          importInfo.originalName,
+          localName,
+          isImportable,
+        );
 
         // Cache the result
-        this.importedSchemaCache.set(cacheKey, { input: inputType, output: outputType });
+        this.importedSchemaCache.set(cacheKey, raw);
 
         // Use local name as the key (how it's referenced in current file)
-        rawTypes.set(localName, {
-          input: inputType,
-          output: outputType,
-          isExported: false, // Imported schemas won't be re-exported
-        });
+        rawTypes.set(localName, { ...raw, isExported: false });
       } catch (error) {
         logDebugError(`Failed to extract imported schema "${localName}"`, error);
       } finally {
@@ -365,10 +407,25 @@ export class ZodTypeExtractor {
       for (const ref of refs) {
         const refExportName = resolveExportName(ref.refSchema);
         const refRaw = rawTypes.get(refExportName);
-        if (!refRaw?.isExported) continue;
+        if (!refRaw) continue;
 
-        input = this.replaceSchemaReference(input, ref, refRaw.input, `${refExportName}Input`);
-        output = this.replaceSchemaReference(output, ref, refRaw.output, `${refExportName}Output`);
+        // A schema is referenced by name when this file declares its types, or
+        // when another generated file does and they can be imported from there.
+        if (refRaw.isExported || refRaw.importedFrom) {
+          input = this.replaceSchemaReference(input, ref, refRaw.input, `${refExportName}Input`);
+          output = this.replaceSchemaReference(
+            output,
+            ref,
+            refRaw.output,
+            `${refExportName}Output`,
+          );
+        } else if (refRaw.isApproximatedImport) {
+          // Nothing declares this recursive schema's types, so it stays inlined
+          // - but as the approximation, which keeps the index signature or array
+          // TypeScript dropped at the recursion point.
+          input = this.replaceSchemaReference(input, ref, refRaw.input, refRaw.input);
+          output = this.replaceSchemaReference(output, ref, refRaw.output, refRaw.output);
+        }
       }
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
@@ -409,6 +466,7 @@ export class ZodTypeExtractor {
         input: raw.input,
         output: raw.output,
         isExported: false, // Imported schemas are not re-exported
+        ...(raw.importedFrom ? { importedFrom: raw.importedFrom } : {}),
       });
     }
 
@@ -698,6 +756,55 @@ export class ZodTypeExtractor {
     }
 
     return result;
+  }
+
+  /**
+   * Resolves an imported schema's printed types, including its own recursion.
+   *
+   * The getters of an imported schema live in the file that declares it, so its
+   * recursion has to be resolved against that file. What the recursion points at
+   * depends on whether the declaring file gets generated types of its own: if it
+   * does, the self-reference is the type name the importing file will `import
+   * type`; if it does not, there is no name to point at, and the recursion is
+   * left as an `any` - widened to the index signature / array the getter
+   * describes, so property access stays type-checked - with the inline copy
+   * around it kept for whatever detail it still carries.
+   */
+  private resolveImportedSchemaType(
+    importedSourceFile: SourceFile,
+    originalName: string,
+    localName: string,
+    isImportable: boolean,
+  ): Omit<RawSchemaType, "isExported"> {
+    const inputType = this.resolveType(importedSourceFile, "__TempInput");
+    const outputType = this.resolveType(importedSourceFile, "__TempOutput");
+
+    const getterFields = this.getterResolver
+      .analyzeGetterFields(importedSourceFile, new Set([originalName]))
+      .get(originalName);
+
+    if (!getterFields || !this.getterResolver.hasSelfReferences(getterFields)) {
+      return { input: inputType, output: outputType };
+    }
+
+    const resolveOptions = { collapseInlinedCopies: isImportable };
+    return {
+      input: this.getterResolver.resolveAnyTypes(
+        inputType,
+        getterFields,
+        isImportable ? `${localName}Input` : "any",
+        resolveOptions,
+      ),
+      output: this.getterResolver.resolveAnyTypes(
+        outputType,
+        getterFields,
+        isImportable ? `${localName}Output` : "any",
+        resolveOptions,
+      ),
+      ...(isImportable
+        ? { importedFrom: importedSourceFile.getFilePath() }
+        : { isApproximatedImport: true }),
+    };
   }
 
   /**

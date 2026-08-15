@@ -171,131 +171,82 @@ export class GetterResolver {
   }
 
   /**
-   * Resolves `any` types in extracted type string by replacing with self-references.
-   * Uses structured parsing instead of regex.
+   * Replaces the placeholders a recursive getter leaves behind.
    *
-   * @param typeStr - The extracted type string with `any` placeholders
+   * TypeScript cannot infer a getter that refers back to the schema it belongs
+   * to, so the entry surfaces as `any` - or, on the input side of an annotated
+   * getter, as `unknown`, since `z.ZodType<Output>` leaves its `Input` parameter
+   * at its `unknown` default. Both are rebuilt here from what the getter's AST
+   * actually says.
+   *
+   * When the getter carries an explicit return type annotation, TypeScript gets
+   * one level further before giving up, so the printed type holds a full inline
+   * copy of the schema whose innermost recursion point is the placeholder. That
+   * copy says nothing the self-reference does not, so it is collapsed away too -
+   * see `collapseInlinedCopies`.
+   *
+   * @param typeStr - The extracted type string with placeholders
    * @param getterFields - Map of field name to getter field info
    * @param typeName - The generated type name to use for self-references
+   * @param options - Set `collapseInlinedCopies: false` to keep the inline copy,
+   *   which is what callers that have no name to point at have to do
    * @returns The resolved type string with proper self-references
    */
   resolveAnyTypes(
     typeStr: string,
     getterFields: Map<string, GetterFieldInfo>,
     typeName: string,
+    options: { collapseInlinedCopies?: boolean } = {},
   ): string {
+    const { collapseInlinedCopies = true } = options;
+    const selfRefFields = [...getterFields].filter(([, info]) => info.isSelfRef);
+    const selfRefNames = selfRefFields.map(([fieldName]) => fieldName);
+
     let result = typeStr;
-
-    for (const [fieldName, info] of getterFields) {
-      if (!info.isSelfRef) {
-        continue;
-      }
-
-      // For z.record pattern: { [x: string]: any } -> { [x: string]: TypeName }
-      if (info.isRecord) {
-        result = this.replaceRecordAny(result, fieldName, typeName);
-      }
-
-      // Handle any field (array or single reference)
-      result = this.replaceFieldAny(result, fieldName, typeName, info.isArray);
+    for (const [fieldName, info] of selfRefFields) {
+      result = this.replaceFieldPlaceholder(
+        result,
+        fieldName,
+        typeName,
+        info,
+        collapseInlinedCopies ? selfRefNames : [],
+      );
     }
 
     return result;
   }
 
   /**
-   * Replaces any type in a record field.
+   * Rewrites every recursive occurrence of a field to the getter's real type.
+   *
+   * A field qualifies when its printed type is a placeholder, or - when
+   * `collapsibleFields` is given - when it is an inline copy of the schema,
+   * recognised by a placeholder for one of those fields somewhere inside it.
    */
-  private replaceRecordAny(typeStr: string, fieldName: string, typeName: string): string {
-    // Find "fieldName: { [x: string]: any" or "fieldName?: { [x: string]: any"
-    const fieldPatterns = [`${fieldName}: {`, `${fieldName}?: {`];
-    const indexSigPattern = "[x: string]:";
-
-    for (const pattern of fieldPatterns) {
-      let idx = typeStr.indexOf(pattern);
-      while (idx !== -1) {
-        // Find the index signature pattern
-        const afterBrace = idx + pattern.length;
-        const indexSigStart = typeStr.indexOf(indexSigPattern, afterBrace);
-
-        if (indexSigStart !== -1 && indexSigStart < afterBrace + 20) {
-          const colonPos = indexSigStart + indexSigPattern.length;
-          // Find "any" after the colon - count whitespace explicitly
-          let scanPos = colonPos;
-          while (scanPos < typeStr.length && /\s/.test(typeStr[scanPos])) {
-            scanPos++;
-          }
-
-          if (typeStr.substring(scanPos, scanPos + 3) === "any") {
-            const anyStart = scanPos;
-            const anyEnd = anyStart + 3;
-            typeStr = typeStr.substring(0, anyStart) + typeName + typeStr.substring(anyEnd);
-          }
-        }
-
-        idx = typeStr.indexOf(pattern, idx + 1);
-      }
-    }
-
-    return typeStr;
-  }
-
-  /**
-   * Replaces any type in a regular field.
-   */
-  private replaceFieldAny(
+  private replaceFieldPlaceholder(
     typeStr: string,
     fieldName: string,
     typeName: string,
-    isArray: boolean,
+    info: GetterFieldInfo,
+    collapsibleFields: string[],
   ): string {
-    // Find "fieldName: any" or "fieldName?: any" patterns
-    const fieldPatterns = [`${fieldName}: `, `${fieldName}?: `];
+    let result = typeStr;
+    let searchFrom = 0;
 
-    for (const pattern of fieldPatterns) {
-      let idx = typeStr.indexOf(pattern);
-      while (idx !== -1) {
-        const valueStart = idx + pattern.length;
-        const restOfType = typeStr.substring(valueStart);
+    for (;;) {
+      const field = findFieldValue(result, fieldName, searchFrom);
+      if (!field) return result;
 
-        // Check for "readonly any" or just "any"
-        let anyIdx = -1;
-        let prefixLen = 0;
-
-        if (restOfType.startsWith("readonly ")) {
-          prefixLen = "readonly ".length;
-          if (restOfType.substring(prefixLen).startsWith("any")) {
-            anyIdx = valueStart + prefixLen;
-          }
-        } else if (restOfType.startsWith("any")) {
-          anyIdx = valueStart;
-        }
-
-        if (anyIdx !== -1) {
-          // Check what comes after "any"
-          const afterAny = typeStr.substring(anyIdx + 3);
-          const hasArrayBrackets = afterAny.startsWith("[]");
-
-          // Build replacement
-          let replacement = typeName;
-          if (isArray || hasArrayBrackets) {
-            replacement = `${typeName}[]`;
-          }
-
-          // Calculate end position (include [] if present)
-          let endPos = anyIdx + 3;
-          if (hasArrayBrackets) {
-            endPos += 2;
-          }
-
-          typeStr = typeStr.substring(0, anyIdx) + replacement + typeStr.substring(endPos);
-        }
-
-        idx = typeStr.indexOf(pattern, idx + 1);
+      const value = result.slice(field.valueStart, field.valueEnd);
+      const rewritten = rewriteRecursiveValue(value, typeName, info, collapsibleFields);
+      if (rewritten === undefined) {
+        searchFrom = field.valueStart;
+        continue;
       }
-    }
 
-    return typeStr;
+      result = result.slice(0, field.valueStart) + rewritten + result.slice(field.valueEnd);
+      searchFrom = field.valueStart + rewritten.length;
+    }
   }
 
   /**
@@ -304,4 +255,172 @@ export class GetterResolver {
   hasSelfReferences(getterFields: Map<string, GetterFieldInfo>): boolean {
     return Array.from(getterFields.values()).some((info) => info.isSelfRef);
   }
+}
+
+/** A printed type TypeScript fell back to at a recursion point. */
+const PLACEHOLDER = /^(?:any|unknown)(\[\])?$/;
+
+/** An index signature whose value TypeScript gave up on. */
+const INDEX_SIGNATURE_PLACEHOLDER = /^(\{\s*\[x: string\]:\s*)(?:any|unknown)(\s*;?\s*\})$/;
+
+/**
+ * Rewrites a recursive getter field's printed type, or returns undefined when
+ * the type is neither a placeholder nor an inline copy of the schema.
+ *
+ * Only the recursion point itself is rewritten: a trailing `| undefined` on an
+ * optional key, and a `readonly` modifier, describe the key rather than what it
+ * holds, so both are carried over untouched.
+ */
+function rewriteRecursiveValue(
+  value: string,
+  typeName: string,
+  info: GetterFieldInfo,
+  collapsibleFields: string[],
+): string | undefined {
+  const undefinedSuffix = /\s*\|\s*undefined\s*$/.exec(value);
+  const core = undefinedSuffix ? value.slice(0, undefinedSuffix.index) : value;
+  const suffix = undefinedSuffix ? value.slice(undefinedSuffix.index) : "";
+
+  const readonlyPrefix = /^readonly\s+/.exec(core)?.[0] ?? "";
+  const bare = core.slice(readonlyPrefix.length).trim();
+
+  if (PLACEHOLDER.test(bare)) {
+    const printedArray = bare.endsWith("[]");
+    return readonlyPrefix + buildReplacementType(typeName, info, printedArray) + suffix;
+  }
+
+  // An index signature the getter's AST already explains: only its value is
+  // unknown, so the printed braces are kept exactly as they are.
+  const indexSignature = INDEX_SIGNATURE_PLACEHOLDER.exec(bare);
+  if (indexSignature) {
+    return readonlyPrefix + indexSignature[1] + typeName + indexSignature[2] + suffix;
+  }
+
+  if (isInlinedRecursiveCopy(bare, collapsibleFields)) {
+    return readonlyPrefix + buildReplacementType(typeName, info) + suffix;
+  }
+
+  return undefined;
+}
+
+/**
+ * Builds the type a getter field should have, from the shape its AST describes.
+ *
+ * @param printedArray - Whether the placeholder itself was printed as an array,
+ *   which the AST may not say (e.g. a reference already wrapped elsewhere)
+ */
+function buildReplacementType(
+  typeName: string,
+  info: GetterFieldInfo,
+  printedArray = false,
+): string {
+  if (info.isArray || printedArray) return `${typeName}[]`;
+  if (info.isRecord) return `{ [x: string]: ${typeName}; }`;
+  return typeName;
+}
+
+/**
+ * Checks whether a printed field type is nothing but a placeholder.
+ *
+ * An annotated optional getter prints its placeholder as `any | undefined`: the
+ * annotation tells TypeScript the key may be absent even though it cannot tell
+ * what the key holds. The `| undefined` carries no information the optional key
+ * does not, so it is ignored here.
+ */
+function isAnyPlaceholder(value: string): boolean {
+  const normalized = value
+    .trim()
+    .replace(/^readonly\s+/, "")
+    .replace(/\s*\|\s*undefined$/, "")
+    .trim();
+  return PLACEHOLDER.test(normalized) || INDEX_SIGNATURE_PLACEHOLDER.test(normalized);
+}
+
+/**
+ * Checks whether a printed field type is an inline copy of the schema it belongs
+ * to, rather than the schema's own printed shape.
+ *
+ * The copy always bottoms out in a placeholder for one of the schema's recursive
+ * getter fields - that placeholder is precisely where TypeScript gave up - so
+ * finding one inside the value identifies the whole value as an unfolded step of
+ * the recursion.
+ */
+function isInlinedRecursiveCopy(value: string, selfRefFields: string[]): boolean {
+  return selfRefFields.some((fieldName) => {
+    let searchFrom = 0;
+    for (;;) {
+      const nested = findFieldValue(value, fieldName, searchFrom);
+      if (!nested) return false;
+      if (isAnyPlaceholder(value.slice(nested.valueStart, nested.valueEnd))) return true;
+      searchFrom = nested.valueStart;
+    }
+  });
+}
+
+/**
+ * Locates a field and its type inside a printed object type.
+ *
+ * @returns Offsets for the end of the field name and the bounds of its type,
+ *   or undefined when the field does not occur after `searchFrom`
+ */
+function findFieldValue(
+  typeStr: string,
+  fieldName: string,
+  searchFrom: number,
+): { valueStart: number; valueEnd: number } | undefined {
+  const pattern = new RegExp(`(?:^|[{;|(]\\s*)${escapeRegExp(fieldName)}\\??:\\s*`, "g");
+  pattern.lastIndex = searchFrom;
+
+  const match = pattern.exec(typeStr);
+  if (!match) return undefined;
+
+  const valueStart = match.index + match[0].length;
+
+  return { valueStart, valueEnd: findValueEnd(typeStr, valueStart) };
+}
+
+/**
+ * Finds where a field's type ends, tracking nesting and string literals.
+ */
+function findValueEnd(typeStr: string, valueStart: number): number {
+  let depth = 0;
+  let index = valueStart;
+  let inString = false;
+  let stringChar = "";
+
+  while (index < typeStr.length) {
+    const char = typeStr[index];
+    const prevChar = typeStr[index - 1];
+
+    if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+        stringChar = "";
+      }
+    }
+
+    if (!inString) {
+      if (char === "{" || char === "[" || char === "(" || char === "<") {
+        depth++;
+      } else if (char === "}" || char === "]" || char === ")" || char === ">") {
+        if (depth === 0) break;
+        depth--;
+      } else if (char === ";" && depth === 0) {
+        break;
+      }
+    }
+    index++;
+  }
+
+  return index;
+}
+
+/**
+ * Escapes special characters in a string for use in a RegExp.
+ */
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

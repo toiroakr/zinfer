@@ -328,6 +328,34 @@ export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 
 When an explicit type annotation (`z.ZodType<T>`) is present, that type name is used in the output.
 
+Annotating the getter itself lets TypeScript unfold one whole copy of the schema
+before it reaches the recursion. That copy is collapsed away, so the generated type
+holds the self-reference directly rather than an extra level of the same shape.
+
+### Recursive Schemas Across Files
+
+A recursive type has no faithful inline form, so a recursive schema imported from
+another file is referenced by name and imported from the file that declares its
+types:
+
+```typescript
+// out/tree.generated.ts
+import type { Node } from "./node.generated";
+
+export type Tree = {
+  root: Node;
+  index: {
+    [x: string]: Node;
+  };
+};
+```
+
+This needs the declaring file to be part of the same run and to get an output file of
+its own (`--outDir` / `--outPattern`, or `--outFile`, which puts both declarations in
+the one file and needs no import). When it is not, the schema is inlined as far as it
+can be, with the recursion point kept as the index signature or array the getter
+describes instead of collapsing to a bare `any`.
+
 ## Library API
 
 ### extractZodTypes

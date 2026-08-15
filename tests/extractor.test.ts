@@ -84,6 +84,8 @@ const KNOWN_TYPE_DIFFERENCES: Record<string, string> = {
     "JsonValueSchema is annotated z.ZodType<JsonValue>, leaving Input unset (defaults to unknown) per Zod 4's ZodType<Output, Input = unknown>; zinfer generates the full recursive union instead.",
   "lazy-schema.test.ts":
     "Same JsonValueSchema divergence as described-ref-schema.test.ts: z.input<> is unknown, zinfer's input type is the full recursive union.",
+  "recursive-record-schema.test.ts":
+    "An annotated recursive getter leaves z.input at `unknown` per Zod 4's ZodType<Output, Input = unknown>, so the input comparison can never hold; zinfer rebuilds the input shape from the getter's AST. Only the input assertions diverge - the output types do match z.output.",
   "enum-schema.test.ts":
     "z.enum() infers the enum's own type; zinfer deliberately expands enum members to their literal values.",
   "intersection-schema.test.ts":
@@ -255,6 +257,13 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     extractor,
     "getter-schema",
     "should generate TypeScript declarations with getter-based recursive schemas",
+    { requiresZodV4: true },
+  );
+  createSchemaTest(
+    extractor,
+    "recursive-record-schema",
+    "should generate TypeScript declarations with annotated recursive getters",
+    // zod v3 infers a getter-based recursion differently; see lazy-schema.ts.
     { requiresZodV4: true },
   );
   createSchemaTest(
@@ -644,6 +653,197 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         await expect(output).toMatchFileSnapshot(
           "__file_snapshots__/recursive-inline-description-schema.ts",
         );
+      },
+    );
+  });
+
+  describe("recursive-record-schema.ts", () => {
+    /**
+     * Runs the fixture through the same steps the CLI does for
+     * `--with-descriptions`.
+     */
+    async function generateWithDescriptions(): Promise<string> {
+      const filePath = resolve(fixturesDir, "recursive-record-schema.ts");
+      const results = extractor.extractAll(filePath);
+      const descriptionExtractor = new DescriptionExtractor();
+
+      const descriptions = await descriptionExtractor.extractDescriptions(
+        filePath,
+        results.map((r) => r.schemaName),
+      );
+
+      const resultsWithDescriptions = results.map((result) => {
+        const desc = descriptions.get(result.schemaName);
+        if (!desc) {
+          return result;
+        }
+        return {
+          ...result,
+          description: desc.description,
+          fieldDescriptions: desc.fields,
+        };
+      });
+
+      return generateDeclarationFile(resultsWithDescriptions, mapName);
+    }
+
+    // Getter-based recursion infers differently under zod v3; see lazy-schema.ts above.
+    it.skipIf(!isZodV4)(
+      "should emit the self-reference straight away instead of one inlined copy first",
+      async () => {
+        const output = await generateWithDescriptions();
+
+        // Required key: `children: Record<string, Self>`.
+        expect(output).toContain(
+          [
+            "export type RecursiveRecordInput = {",
+            "  /** The node name */",
+            "  name: string;",
+            "  children: {",
+            "    [x: string]: RecursiveRecordInput;",
+            "  };",
+            "};",
+          ].join("\n"),
+        );
+
+        // Optional key: `children?: Record<string, Self>`, both when the getter
+        // is annotated and when its shape is reconstructed from the AST.
+        for (const typeName of ["OptionalRecursiveRecordInput", "InferredOptionalRecordInput"]) {
+          expect(output).toMatch(
+            new RegExp(
+              `export type ${typeName} = \\{\\n  /\\*\\* The \\w+ node name \\*/\\n  name: string;\\n  children\\?: \\{\\n    \\[x: string\\]: ${typeName};\\n  \\}( \\| undefined)?;\\n\\};`,
+            ),
+          );
+        }
+
+        // Array-shaped recursion stays a plain self-referencing array.
+        expect(output).toContain("children: RecursiveArrayInput[];");
+
+        // No level of any of them is an expanded copy of the schema, and no
+        // placeholder survives in either direction.
+        expect(output).not.toMatch(/children\??: \{\n\s+\[x: string\]: \{/);
+        expect(output).not.toContain("any");
+        expect(output).not.toContain("unknown");
+      },
+    );
+
+    it.skipIf(!isZodV4)("should keep .describe() on every inlined level", async () => {
+      const output = await generateWithDescriptions();
+
+      // A description on a field behind an index signature is written at the
+      // path of the field holding the record, so the index signature must not
+      // count as a path segment of its own.
+      expect(output).toContain(
+        [
+          "export type LeafRecordInput = {",
+          "  leaves: {",
+          "    [x: string]: {",
+          "      /** The leaf label */",
+          "      label: string;",
+          "    };",
+          "  };",
+          "};",
+        ].join("\n"),
+      );
+
+      // Every recursive schema keeps its description in both directions.
+      expect(output.match(/\/\*\* The node name \*\//g)).toHaveLength(2);
+      expect(output.match(/\/\*\* The optional node name \*\//g)).toHaveLength(2);
+      expect(output.match(/\/\*\* The inferred node name \*\//g)).toHaveLength(2);
+      expect(output.match(/\/\*\* The array node name \*\//g)).toHaveLength(2);
+      expect(output.match(/\/\*\* The leaf label \*\//g)).toHaveLength(2);
+    });
+
+    it.skipIf(!isZodV4)(
+      "should merge the two directions of a recursive schema with mergeSame",
+      () => {
+        const results = extractor.extractAll(resolve(fixturesDir, "recursive-record-schema.ts"));
+        const output = generateDeclarationFile(results, mapName, { mergeSame: true });
+
+        expect(output).toContain("export type RecursiveRecordInput = RecursiveRecord;");
+        expect(output).toContain("export type RecursiveRecordOutput = RecursiveRecord;");
+        expect(output).toContain("[x: string]: RecursiveRecord;");
+      },
+    );
+  });
+
+  describe("cross-file-recursive", () => {
+    // Getter-based recursion infers differently under zod v3; see lazy-schema.ts above.
+    it.skipIf(!isZodV4)(
+      "should fall back to an index signature, never a bare any, without an importable declaration",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "cross-file-recursive/tree-schema.ts"),
+        );
+        const tree = results.find((r) => r.schemaName === "CrossFileTreeSchema");
+
+        // Nothing declares the imported schema's types here, so it stays inlined
+        // - but its recursion point keeps the index signature, without which
+        // property access would go unchecked.
+        expect(tree?.importedFrom).toBeUndefined();
+        expect(tree?.input).toContain("children: { [x: string]: any; }");
+        expect(tree?.input).not.toMatch(/children: (any|unknown)[;,]/);
+      },
+    );
+
+    it.skipIf(!isZodV4)(
+      "should reference the imported recursive schema by name when its file is generated too",
+      () => {
+        const nodeFile = resolve(fixturesDir, "cross-file-recursive/node-schema.ts");
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "cross-file-recursive/tree-schema.ts"),
+          { importableFiles: new Set([nodeFile]) },
+        );
+
+        const tree = results.find((r) => r.schemaName === "CrossFileTreeSchema");
+        expect(tree?.input).toBe(
+          "{ root: CrossFileNodeSchemaInput; index: { [x: string]: CrossFileNodeSchemaInput; }; }",
+        );
+
+        const node = results.find((r) => r.schemaName === "CrossFileNodeSchema");
+        expect(node?.importedFrom).toBe(nodeFile);
+        expect(node?.isExported).toBe(false);
+      },
+    );
+
+    it.skipIf(!isZodV4)(
+      "should inline a recursive schema imported under a different name, which no generated type is called",
+      () => {
+        const nodeFile = resolve(fixturesDir, "cross-file-recursive/node-schema.ts");
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "cross-file-recursive/aliased-tree-schema.ts"),
+          { importableFiles: new Set([nodeFile]) },
+        );
+
+        const renamed = results.find((r) => r.schemaName === "RenamedNodeSchema");
+        expect(renamed?.importedFrom).toBeUndefined();
+
+        const tree = results.find((r) => r.schemaName === "AliasedTreeSchema");
+        expect(tree?.input).not.toContain("RenamedNodeSchemaInput");
+        expect(tree?.input).toContain("children: { [x: string]: any; }");
+      },
+    );
+
+    it.skipIf(!isZodV4)(
+      "should import the referenced types from the file that declares them",
+      () => {
+        const nodeFile = resolve(fixturesDir, "cross-file-recursive/node-schema.ts");
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "cross-file-recursive/tree-schema.ts"),
+          { importableFiles: new Set([nodeFile]) },
+        );
+
+        const output = generateDeclarationFile(results, mapName, {
+          importSources: new Map([["CrossFileNodeSchema", "./node-schema.generated"]]),
+        });
+
+        expect(output).toContain(
+          'import type { CrossFileNodeInput, CrossFileNodeOutput } from "./node-schema.generated";',
+        );
+        expect(output).toContain("root: CrossFileNodeInput;");
+        expect(output).toContain("[x: string]: CrossFileNodeOutput;");
+        // The imported schema is declared by the other file, not re-declared here.
+        expect(output).not.toContain("export type CrossFileNodeInput = {");
       },
     );
   });

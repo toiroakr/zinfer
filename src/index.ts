@@ -2,6 +2,7 @@
 export {
   ZodTypeExtractor,
   type ExtractOptions,
+  type ExtractContext,
   formatResult,
   formatInputOnly,
   formatOutputOnly,

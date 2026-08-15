@@ -1,6 +1,6 @@
 export { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias } from "./normalizer.js";
 
-export { ZodTypeExtractor, type ExtractOptions } from "./extractor.js";
+export { ZodTypeExtractor, type ExtractOptions, type ExtractContext } from "./extractor.js";
 
 export {
   formatResult,
