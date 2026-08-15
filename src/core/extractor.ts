@@ -15,9 +15,14 @@ import {
 import { SchemaDetector } from "./schema-detector.js";
 import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
-import { ImportResolver } from "./import-resolver.js";
+import { ImportResolver, type ImportedSchemaMap } from "./import-resolver.js";
 import { logDebugError } from "./logger.js";
-import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
+import type {
+  ExtractResult,
+  ExternalTypeReference,
+  FileExtractResult,
+  DetectedSchema,
+} from "./types.js";
 
 // Re-export ExtractResult for backward compatibility
 export type { ExtractResult } from "./types.js";
@@ -35,6 +40,24 @@ export interface ExtractOptions {
 }
 
 /**
+ * Options controlling extractor behavior across files.
+ */
+export interface ZodTypeExtractorOptions {
+  /**
+   * Decides whether a schema imported from another file will itself have
+   * generated types. When it returns true, references to that schema are
+   * emitted as its generated type name (and recorded on the result as an
+   * external reference) instead of having its structure inlined - which is
+   * what lets a recursive imported schema stay recursive rather than
+   * collapsing to `any`.
+   *
+   * Callers that generate a single file per input file (the CLI) return true
+   * for every file in the same run.
+   */
+  isExternalTypeGenerated?: (sourceFilePath: string, schemaName: string) => boolean;
+}
+
+/**
  * Extracts input and output types from Zod schemas using TypeScript Compiler API.
  */
 export class ZodTypeExtractor {
@@ -43,6 +66,7 @@ export class ZodTypeExtractor {
   private getterResolver: GetterResolver;
   private referenceAnalyzer: SchemaReferenceAnalyzer;
   private importResolver: ImportResolver;
+  private options: ZodTypeExtractorOptions;
   private importedSchemaCache = new Map<string, { input: string; output: string }>();
 
   /**
@@ -50,13 +74,15 @@ export class ZodTypeExtractor {
    *
    * @param tsconfigPath - Optional path to tsconfig.json. If not provided,
    *                       default compiler options will be used.
+   * @param options - Optional cross-file extraction behavior.
    */
-  constructor(tsconfigPath?: string) {
+  constructor(tsconfigPath?: string, options: ZodTypeExtractorOptions = {}) {
     this.project = this.createProject(tsconfigPath);
     this.schemaDetector = new SchemaDetector();
     this.getterResolver = new GetterResolver();
     this.referenceAnalyzer = new SchemaReferenceAnalyzer();
     this.importResolver = new ImportResolver(this.schemaDetector);
+    this.options = options;
   }
 
   /**
@@ -150,6 +176,10 @@ export class ZodTypeExtractor {
 
     // Find and resolve imported schemas
     const importedSchemas = this.importResolver.findImportedSchemas(sourceFile, this.project);
+
+    // Imported schemas whose own generated types can be referenced by name
+    // instead of being inlined here (keyed by the local identifier).
+    const externalRefs = this.collectExternalReferences(importedSchemas, schemas);
 
     // Build schema names set including imports. Uses the declared (local
     // variable) name, not the exported name, since analyzeGetterFields and
@@ -342,6 +372,15 @@ export class ZodTypeExtractor {
             continue;
           }
 
+          // A member imported from a file that is generated too: reference
+          // its type names rather than inlining its structure.
+          const memberExternal = externalRefs.get(member);
+          if (memberExternal) {
+            inputMembers.push(`${memberExternal.schemaName}Input`);
+            outputMembers.push(`${memberExternal.schemaName}Output`);
+            continue;
+          }
+
           const resolvedMember = resolveSchemaTypes(memberExportName);
           if (!resolvedMember) continue;
           if (
@@ -365,10 +404,79 @@ export class ZodTypeExtractor {
       for (const ref of refs) {
         const refExportName = resolveExportName(ref.refSchema);
         const refRaw = rawTypes.get(refExportName);
-        if (!refRaw?.isExported) continue;
+        if (!refRaw) continue;
 
-        input = this.replaceSchemaReference(input, ref, refRaw.input, `${refExportName}Input`);
-        output = this.replaceSchemaReference(output, ref, refRaw.output, `${refExportName}Output`);
+        if (refRaw.isExported) {
+          // A schema annotated as `z.ZodType<T>` has no distinct input type,
+          // so `z.input<typeof Schema>` prints `unknown` at the reference
+          // site. The generated `<schema>Input` alias is what that field
+          // actually accepts, so allow the opaque value to be replaced.
+          const refIsOpaque = Boolean(schemasByName.get(refExportName)?.explicitType);
+          input = this.replaceSchemaReference(
+            input,
+            ref,
+            refRaw.input,
+            `${refExportName}Input`,
+            refIsOpaque,
+          );
+          output = this.replaceSchemaReference(
+            output,
+            ref,
+            refRaw.output,
+            `${refExportName}Output`,
+            refIsOpaque,
+          );
+          continue;
+        }
+
+        const external = externalRefs.get(ref.refSchema);
+        if (external) {
+          // Same `z.ZodType<T>` caveat as above, for a schema declared in
+          // another file.
+          const refIsOpaque = this.hasExplicitTypeAnnotation(
+            external.sourceFilePath,
+            external.schemaName,
+          );
+          input = this.replaceSchemaReference(
+            input,
+            ref,
+            refRaw.input,
+            `${external.schemaName}Input`,
+            refIsOpaque,
+          );
+          output = this.replaceSchemaReference(
+            output,
+            ref,
+            refRaw.output,
+            `${external.schemaName}Output`,
+            refIsOpaque,
+          );
+          continue;
+        }
+
+        // The referenced schema gets no generated type of its own (it isn't
+        // exported, or its file isn't part of this run), so its structure has
+        // to be inlined. Inline the *resolved* form rather than leaving the
+        // compiler's expansion in place: the resolved form still points at
+        // the generated types of everything it references, instead of
+        // re-expanding them (and collapsing their recursion to `any`).
+        if (refExportName === schemaName) continue;
+        const resolvedRef = resolveSchemaTypes(refExportName);
+        if (!resolvedRef) continue;
+        // Nothing was rewritten inside it - keep the compiler's expansion.
+        if (resolvedRef.input === refRaw.input && resolvedRef.output === refRaw.output) continue;
+        // A self-recursive non-generated schema resolves to its own type
+        // name, which the output file never declares. Inlining that would
+        // emit a dangling identifier.
+        if (
+          resolvedRef.input.includes(`${refExportName}Input`) ||
+          resolvedRef.output.includes(`${refExportName}Output`)
+        ) {
+          continue;
+        }
+
+        input = this.replaceSchemaReference(input, ref, refRaw.input, resolvedRef.input);
+        output = this.replaceSchemaReference(output, ref, refRaw.output, resolvedRef.output);
       }
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
@@ -421,11 +529,14 @@ export class ZodTypeExtractor {
       const resolved = resolveSchemaTypes(schemaName);
       if (!resolved) continue;
 
+      const usedExternals = this.findUsedExternalReferences(resolved, externalRefs);
+
       results.push({
         schemaName,
         input: resolved.input,
         output: resolved.output,
         isExported: raw.isExported,
+        ...(usedExternals.length > 0 ? { externalReferences: usedExternals } : {}),
       });
     }
 
@@ -433,13 +544,124 @@ export class ZodTypeExtractor {
   }
 
   /**
+   * Determines which imported schemas can be referenced by their generated
+   * type name instead of having their structure inlined.
+   *
+   * A reference is only safe when the other file's types are generated in the
+   * same run *and* the generated name is unambiguous in this output file, so
+   * two candidates that would print the same name (or that collide with a
+   * local schema's name) are dropped back to inlining.
+   */
+  private collectExternalReferences(
+    importedSchemas: ImportedSchemaMap,
+    localSchemas: DetectedSchema[],
+  ): Map<string, ExternalTypeReference> {
+    const isGenerated = this.options.isExternalTypeGenerated;
+    if (!isGenerated) return new Map();
+
+    const localNames = new Set(localSchemas.map((schema) => schema.name));
+    const candidates = new Map<string, ExternalTypeReference>();
+    const sourceByExportedName = new Map<string, string>();
+    const ambiguousNames = new Set<string>();
+
+    for (const [localName, importInfo] of importedSchemas) {
+      if (!importInfo.resolved) continue;
+      // A name a local schema already claims would collide in the output.
+      if (localNames.has(importInfo.originalName)) continue;
+      if (!this.isExportedSchema(importInfo.sourceFilePath, importInfo.originalName)) continue;
+      if (!isGenerated(importInfo.sourceFilePath, importInfo.originalName)) continue;
+
+      const knownSource = sourceByExportedName.get(importInfo.originalName);
+      if (knownSource !== undefined && knownSource !== importInfo.sourceFilePath) {
+        // Same exported name from two different files - both would print the
+        // same type name here.
+        ambiguousNames.add(importInfo.originalName);
+        continue;
+      }
+      sourceByExportedName.set(importInfo.originalName, importInfo.sourceFilePath);
+
+      candidates.set(localName, {
+        schemaName: importInfo.originalName,
+        sourceFilePath: importInfo.sourceFilePath,
+      });
+    }
+
+    for (const [localName, ref] of candidates) {
+      if (ambiguousNames.has(ref.schemaName)) {
+        candidates.delete(localName);
+      }
+    }
+
+    return candidates;
+  }
+
+  /**
+   * Checks whether a schema is exported from the given file - only exported
+   * schemas get a generated (and therefore importable) type.
+   */
+  private isExportedSchema(filePath: string, schemaName: string): boolean {
+    const sourceFile = this.project.getSourceFile(filePath);
+    if (!sourceFile) return false;
+    return this.schemaDetector
+      .detectExportedSchemas(sourceFile)
+      .some((schema) => schema.name === schemaName && schema.isExported);
+  }
+
+  /**
+   * Checks whether a schema in another file carries an explicit
+   * `z.ZodType<T>` annotation, which is what makes `z.input<>` of a field
+   * referencing it print as `unknown`.
+   */
+  private hasExplicitTypeAnnotation(filePath: string, schemaName: string): boolean {
+    const sourceFile = this.project.getSourceFile(filePath);
+    if (!sourceFile) return false;
+    return this.schemaDetector
+      .detectExportedSchemas(sourceFile)
+      .some((schema) => schema.name === schemaName && Boolean(schema.explicitType));
+  }
+
+  /**
+   * Collects the external schemas whose generated type names actually appear
+   * in a resolved result, so only those get imported.
+   */
+  private findUsedExternalReferences(
+    resolved: { input: string; output: string },
+    externalRefs: Map<string, ExternalTypeReference>,
+  ): ExternalTypeReference[] {
+    if (externalRefs.size === 0) return [];
+
+    const used: ExternalTypeReference[] = [];
+    const seen = new Set<string>();
+
+    for (const ref of externalRefs.values()) {
+      const key = `${ref.sourceFilePath}:${ref.schemaName}`;
+      if (seen.has(key)) continue;
+
+      const escaped = this.escapeRegExp(ref.schemaName);
+      const pattern = new RegExp(`\\b${escaped}(?:Input|Output)\\b`);
+      if (!pattern.test(resolved.input) && !pattern.test(resolved.output)) continue;
+
+      seen.add(key);
+      used.push(ref);
+    }
+
+    return used;
+  }
+
+  /**
    * Replaces an inline schema reference with a type name.
+   *
+   * @param allowOpaqueValue - Also replace when the printed field value is
+   *   `unknown` / `any`. Only safe when the referenced schema is known to
+   *   print that way (an explicit `z.ZodType<T>` annotation), since an
+   *   unrelated `unknown` must not be rewritten.
    */
   private replaceSchemaReference(
     typeStr: string,
     ref: SchemaReferenceInfo,
     refTypeStr: string,
     refTypeName: string,
+    allowOpaqueValue: boolean = false,
   ): string {
     const { fieldPath, isArray, isRecord } = ref;
 
@@ -494,7 +716,8 @@ export class ZodTypeExtractor {
       if (
         valueToCheck.startsWith("{") ||
         valueToCheck === refTypeStr ||
-        currentValue.includes("[x: string]:")
+        currentValue.includes("[x: string]:") ||
+        (allowOpaqueValue && (valueToCheck === "unknown" || valueToCheck === "any"))
       ) {
         // Handle record type
         if (isRecord) {

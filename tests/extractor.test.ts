@@ -65,7 +65,14 @@ function createSchemaTest(
       // without this, an inline `import("...")` type (e.g. for the
       // degenerate-explicit-type fixtures) would bake this machine's
       // absolute path into the committed snapshot.
-      const output = relativizeImportPaths(generateDeclarationFile(results, mapName), snapshotPath);
+      const output = relativizeImportPaths(
+        generateDeclarationFile(results, mapName, {
+          // Every snapshot lands in the same directory under the fixture's
+          // own name, matching what the CLI writes with `[name].ts`.
+          resolveExternalImport: (ref) => `./${basename(ref.sourceFilePath, ".ts")}`,
+        }),
+        snapshotPath,
+      );
       await expect(output).toMatchFileSnapshot(`__file_snapshots__/${schemaName}.ts`);
     });
   });
@@ -80,16 +87,27 @@ function createSchemaTest(
  * silently passing.
  */
 const KNOWN_TYPE_DIFFERENCES: Record<string, string> = {
-  "described-ref-schema.test.ts":
-    "JsonValueSchema is annotated z.ZodType<JsonValue>, leaving Input unset (defaults to unknown) per Zod 4's ZodType<Output, Input = unknown>; zinfer generates the full recursive union instead.",
   "lazy-schema.test.ts":
-    "Same JsonValueSchema divergence as described-ref-schema.test.ts: z.input<> is unknown, zinfer's input type is the full recursive union.",
+    "CategorySchema is annotated z.ZodType<Category>, leaving Input unset (defaults to unknown) per Zod 4's ZodType<Output, Input = unknown>; zinfer's input type is the full recursive union.",
   "enum-schema.test.ts":
     "z.enum() infers the enum's own type; zinfer deliberately expands enum members to their literal values.",
   "intersection-schema.test.ts":
     "z.intersection() infers `A & B`; zinfer flattens it into a single object literal, which is not nominally equal to the intersection.",
   "mixed-union-reference-schema.test.ts":
     "A non-exported recursive union member (InternalNode) is inlined by zinfer rather than kept as a named type, which is not nominally equal to the original union member.",
+};
+
+// Divergences that only reproduce under zod v4. v4's ZodType<Output, Input =
+// unknown> leaves Input unset for a `z.ZodType<T>` annotation, so `z.input<>`
+// is `unknown` there while zinfer resolves the reference to the generated
+// input type; v3's ZodType<Output, Def, Input = Output> defaults Input to
+// Output, and the two agree. Merged into KNOWN_TYPE_DIFFERENCES below only
+// when running under v4.
+const ZOD_V4_ONLY_TYPE_DIFFERENCES: Record<string, string> = {
+  "described-ref-schema.test.ts":
+    "JsonValueSchema is annotated z.ZodType<JsonValue>: z.input<> is unknown for the schema itself and for every field referencing it, while zinfer generates the full recursive union.",
+  "annotated-ref-schema.test.ts":
+    "Same z.ZodType<T> divergence as described-ref-schema.test.ts: z.input<> is unknown for NodeSchema and for every field referencing it, while zinfer resolves those to the generated NodeInput.",
 };
 
 // Additional divergences that only reproduce under the zod v3 peerDependencies
@@ -100,6 +118,8 @@ const ZOD_V3_ONLY_TYPE_DIFFERENCES: Record<string, string> = {
   "alias-getter-schema.test.ts":
     "Getter-based recursion infers differently under zod v3 than v4; see lazy-schema.ts.",
   "getter-schema.test.ts":
+    "Getter-based recursion infers differently under zod v3 than v4; see lazy-schema.ts.",
+  "nongenerated-ref-schema.test.ts":
     "Getter-based recursion infers differently under zod v3 than v4; see lazy-schema.ts.",
 };
 
@@ -172,7 +192,7 @@ afterAll(() => {
   const knownNames = new Set(
     Object.keys(
       isZodV4
-        ? KNOWN_TYPE_DIFFERENCES
+        ? { ...KNOWN_TYPE_DIFFERENCES, ...ZOD_V4_ONLY_TYPE_DIFFERENCES }
         : { ...KNOWN_TYPE_DIFFERENCES, ...ZOD_V3_ONLY_TYPE_DIFFERENCES },
     ),
   );
@@ -202,7 +222,19 @@ afterAll(() => {
 }, 30000); // 30 second timeout (tsgo is much faster)
 
 describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
-  const extractor = new ZodTypeExtractor();
+  // The CLI generates types for every file of a run, so a schema imported
+  // from one of them is referenced by name instead of being inlined. Mirror
+  // that over the top-level fixtures - exactly the set
+  // `pnpm generate:type-tests` processes - so these snapshots stay identical
+  // to the files that script writes into the same paths.
+  const topLevelFixtures = new Set(
+    readdirSync(fixturesDir)
+      .filter((file) => file.endsWith(".ts"))
+      .map((file) => resolve(fixturesDir, file)),
+  );
+  const extractor = new ZodTypeExtractor(undefined, {
+    isExternalTypeGenerated: (sourceFilePath) => topLevelFixtures.has(resolve(sourceFilePath)),
+  });
 
   // Warm up ts-morph project by triggering Zod module resolution
   // The first type resolution is slow (~5s in CI) as it processes Zod's entire type system
@@ -341,6 +373,64 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "mixed-union-reference-schema",
     "should preserve named references through mixed and non-exported union members",
   );
+
+  createSchemaTest(
+    extractor,
+    "nongenerated-ref-schema",
+    "should keep referencing generated types through schemas that generate none",
+    // Getter-based recursion infers differently under zod v3; see getter-schema.ts.
+    { requiresZodV4: true },
+  );
+
+  describe("nongenerated-ref-schema.ts", () => {
+    it.skipIf(!isZodV4)(
+      "should reference the generated type inside an inlined non-generated schema instead of re-expanding it",
+      () => {
+        const results = extractor.extractAll(resolve(fixturesDir, "nongenerated-ref-schema.ts"));
+        const tree = results.find((r) => r.schemaName === "TreeSchema");
+
+        // Depth 1: a direct reference already worked before.
+        expect(tree?.input).toContain("direct: NodeSchemaInput");
+        expect(tree?.output).toContain("direct: NodeSchemaOutput");
+
+        // Depth 2+: the non-generated schema's shape is inlined, but the
+        // references inside it still point at the generated Node type.
+        expect(tree?.input).toContain("viaGroup: { members: NodeSchemaInput[]; }");
+        expect(tree?.output).toContain("viaGroup: { members: NodeSchemaOutput[]; }");
+        expect(tree?.input).toContain("primary: NodeSchemaInput");
+        expect(tree?.input).toContain("groups: { members: NodeSchemaInput[]; }[]");
+
+        // Re-expanding Node inline is what used to collapse its recursion.
+        expect(tree?.input).not.toContain("any");
+        expect(tree?.output).not.toContain("any");
+      },
+    );
+  });
+
+  createSchemaTest(
+    extractor,
+    "annotated-ref-schema",
+    "should resolve references to a z.ZodType<T>-annotated schema on both the input and output side",
+  );
+
+  describe("annotated-ref-schema.ts", () => {
+    it("should reference the generated input type where z.input prints unknown", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "annotated-ref-schema.ts"));
+      const tree = results.find((r) => r.schemaName === "TreeSchema");
+
+      // z.ZodType<T> leaves Input unset, so every one of these prints as
+      // `unknown` before the reference is resolved.
+      expect(tree?.input).toContain("root: NodeSchemaInput");
+      expect(tree?.input).toContain("nodes: NodeSchemaInput[]");
+      expect(tree?.input).toContain("index: { [x: string]: NodeSchemaInput; }");
+      expect(tree?.input).not.toContain("unknown");
+
+      // The output side must keep working exactly as before.
+      expect(tree?.output).toContain("root: NodeSchemaOutput");
+      expect(tree?.output).toContain("nodes: NodeSchemaOutput[]");
+      expect(tree?.output).toContain("index: { [x: string]: NodeSchemaOutput; }");
+    });
+  });
 
   describe("mixed-union-reference-common.ts", () => {
     it("should not rewrite an explicit annotation naming a global type into a self-reference", () => {
@@ -695,8 +785,10 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         (result) => result.schemaName === "InlineImportedUnionSchema",
       );
 
-      expect(mixedValue?.input).toBe("JsonValueSchemaInput | Function");
-      expect(mixedValue?.output).toBe("JsonValueSchemaOutput | Function");
+      // functionSchema comes from mixed-union-reference-common.ts, which is
+      // generated too, so the union member keeps its generated name.
+      expect(mixedValue?.input).toBe("JsonValueSchemaInput | functionSchemaInput");
+      expect(mixedValue?.output).toBe("JsonValueSchemaOutput | functionSchemaOutput");
       expect(referencedValue?.input).not.toContain("any");
       expect(referencedValue?.output).not.toContain("any");
       expect(referencedValue?.input.match(/value\?: MixedValueSchemaInput/g)).toHaveLength(2);
@@ -715,6 +807,20 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       expect(mixedPlainUnion?.output).not.toContain("PublicPlainSchemaOutput");
       expect(inlineImportedUnion?.input).toContain("string");
       expect(inlineImportedUnion?.output).toContain("string");
+    });
+
+    it("inlines an imported schema when no type is generated for its file", () => {
+      // Default extractor: nothing tells it another file's types exist, so
+      // imported schemas must still be expanded in place.
+      const inliningExtractor = new ZodTypeExtractor();
+      const results = inliningExtractor.extractAll(
+        resolve(fixturesDir, "mixed-union-reference-schema.ts"),
+      );
+      const mixedValue = results.find((result) => result.schemaName === "MixedValueSchema");
+
+      expect(mixedValue?.input).toBe("JsonValueSchemaInput | Function");
+      expect(mixedValue?.output).toBe("JsonValueSchemaOutput | Function");
+      expect(mixedValue?.externalReferences).toBeUndefined();
     });
   });
 

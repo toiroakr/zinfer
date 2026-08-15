@@ -93,15 +93,22 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
   const tsconfigPath = config.project ? resolve(cwd, config.project) : findTsConfig(cwd);
   logVerbose(`Using tsconfig: ${tsconfigPath || "(none)"}`);
 
+  // Parse schema names if specified
+  const schemaFilter = config.schemas;
+
+  // Every file in this run gets its own generated types, so a schema imported
+  // from one of them can be referenced by name instead of being inlined.
+  const generatedSourceFiles = new Set(resolvedFiles.map((filePath) => resolve(filePath)));
+  const isExternalTypeGenerated = (sourceFilePath: string, schemaName: string): boolean =>
+    generatedSourceFiles.has(resolve(sourceFilePath)) &&
+    (!schemaFilter || schemaFilter.includes(schemaName));
+
   // Create extractor and name mapper
-  const extractor = new ZodTypeExtractor(tsconfigPath);
+  const extractor = new ZodTypeExtractor(tsconfigPath, { isExternalTypeGenerated });
   const nameMapper = createNameMapper(config);
   const descriptionExtractor = config.withDescriptions
     ? new DescriptionExtractor({ tsconfigPath: tsconfigPath })
     : null;
-
-  // Parse schema names if specified
-  const schemaFilter = config.schemas;
 
   // Output options
   const outputOptions: OutputOptions = {
@@ -144,7 +151,12 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
       throw new NoSchemasFoundError(resolvedFiles, schemaFilter);
     }
 
-    let content = generateDeclarationFile(allResults, nameMapper.createMapFunction(), declOptions);
+    // Every schema ends up in this one file, so external references need no
+    // import statement.
+    let content = generateDeclarationFile(allResults, nameMapper.createMapFunction(), {
+      ...declOptions,
+      resolveExternalImport: () => undefined,
+    });
 
     const outputPath = resolve(cwd, config.outFile);
     content = relativizeImportPaths(content, outputPath);
@@ -207,9 +219,17 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
 
     // File output mode
     if (config.outDir || config.outPattern) {
-      let content = generateDeclarationFile(results, nameMapper.createMapFunction(), declOptions);
-
       const outputPath = fileResolver.resolveOutputPath(filePath, outputOptions, cwd);
+
+      let content = generateDeclarationFile(results, nameMapper.createMapFunction(), {
+        ...declOptions,
+        resolveExternalImport: (ref) =>
+          resolveExternalModuleSpecifier(ref.sourceFilePath, outputPath, fileResolver, {
+            outputOptions,
+            cwd,
+          }),
+      });
+
       content = relativizeImportPaths(content, outputPath);
 
       if (options.dryRun) {
@@ -252,7 +272,17 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
         console.log(`// File: ${filePath}`);
       }
 
-      const content = generateDeclarationFile(results, nameMapper.createMapFunction(), declOptions);
+      // Console output has no file to import from, so external references
+      // fall back to the default output path each source file would produce.
+      const outputPath = fileResolver.resolveOutputPath(filePath, outputOptions, cwd);
+      const content = generateDeclarationFile(results, nameMapper.createMapFunction(), {
+        ...declOptions,
+        resolveExternalImport: (ref) =>
+          resolveExternalModuleSpecifier(ref.sourceFilePath, outputPath, fileResolver, {
+            outputOptions,
+            cwd,
+          }),
+      });
       console.log(content);
     }
   }
@@ -261,6 +291,33 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
   if (totalResults === 0) {
     throw new NoSchemasFoundError(resolvedFiles, schemaFilter);
   }
+}
+
+/**
+ * Resolves the module specifier a generated file uses to import types from
+ * the file generated for `sourceFilePath`.
+ *
+ * Returns undefined when both source files generate into the same output
+ * file - the types are already in scope there, so importing them would be a
+ * self-import.
+ */
+function resolveExternalModuleSpecifier(
+  sourceFilePath: string,
+  outputPath: string,
+  fileResolver: FileResolver,
+  context: { outputOptions: OutputOptions; cwd: string },
+): string | undefined {
+  const targetPath = fileResolver.resolveOutputPath(
+    sourceFilePath,
+    context.outputOptions,
+    context.cwd,
+  );
+  if (resolve(targetPath) === resolve(outputPath)) {
+    return undefined;
+  }
+
+  const relativePath = relative(dirname(outputPath), targetPath).replace(/\.(d\.ts|ts|tsx)$/, "");
+  return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
 }
 
 /**

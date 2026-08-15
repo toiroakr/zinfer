@@ -328,6 +328,62 @@ export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 
 When an explicit type annotation (`z.ZodType<T>`) is present, that type name is used in the output.
 
+## Schema References
+
+A field holding another schema is emitted as that schema's generated type name rather than as a copy of its structure. This holds however deep the reference sits:
+
+```typescript
+export const NodeSchema = z.object({
+  name: z.string(),
+  get children() {
+    return z.record(z.string(), NodeSchema);
+  },
+});
+
+// Not exported, so no type is generated for it
+const GroupSchema = z.object({ members: z.array(NodeSchema) });
+
+export const TreeSchema = z.object({
+  direct: NodeSchema,
+  viaGroup: GroupSchema,
+});
+```
+
+```typescript
+export type Tree = {
+  direct: Node;
+  viaGroup: {
+    // GroupSchema has no type of its own, so its shape is inlined -
+    // but the Node reference inside it is still a reference
+    members: Node[];
+  };
+};
+```
+
+Inlining a schema is only a last resort, because a recursive schema cannot be expressed inline (its recursion degenerates to `any`). zinfer therefore keeps referencing generated types inside an inlined shape.
+
+### Across Files
+
+When a schema is imported from a file that is part of the same run, its generated type is imported instead of inlined:
+
+```typescript
+// src/tree/schema.ts
+import { NodeSchema } from "../node/schema";
+
+export const TreeSchema = z.object({ root: NodeSchema });
+```
+
+```typescript
+// out/tree.generated.ts
+import type { Node } from "./node.generated";
+
+export type Tree = {
+  root: Node;
+};
+```
+
+A schema imported from a file outside the run has no generated type to point at, so its structure is inlined as before.
+
 ## Library API
 
 ### extractZodTypes
@@ -509,7 +565,7 @@ export const UserSchema = z.object({
 });
 ```
 
-The imported `AddressSchema` is resolved through the nearest package.json `imports` map (wildcard, exact, and conditional targets are all supported) so that its type is inlined into the generated output.
+The imported `AddressSchema` is resolved through the nearest package.json `imports` map (wildcard, exact, and conditional targets are all supported), so the generated output references its type (see [Schema References](#schema-references)) - or inlines its structure when that file is not part of the run.
 
 ## License
 

@@ -1,6 +1,7 @@
 import { relative, dirname, isAbsolute } from "pathe";
 import type {
   ExtractResult,
+  ExternalTypeReference,
   MappedTypeName,
   DeclarationOptions,
   FieldDescription,
@@ -412,6 +413,70 @@ function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Collects the distinct external schema references used by the declarations
+ * that will actually be emitted (non-exported schemas are never printed).
+ */
+function collectExternalReferences(results: ExtractResult[]): ExternalTypeReference[] {
+  const refs: ExternalTypeReference[] = [];
+  const seen = new Set<string>();
+
+  for (const result of results) {
+    if (!result.isExported) continue;
+    for (const ref of result.externalReferences ?? []) {
+      const key = `${ref.sourceFilePath}:${ref.schemaName}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      refs.push(ref);
+    }
+  }
+
+  return refs;
+}
+
+/**
+ * Builds the `import type { ... } from "..."` statements needed by external
+ * schema references, keeping only the names the declarations actually use.
+ */
+function buildExternalImports(
+  results: ExtractResult[],
+  declarations: string,
+  mapName: (schemaName: string) => MappedTypeName,
+  options: DeclarationOptions,
+): string[] {
+  const { resolveExternalImport } = options;
+  if (!resolveExternalImport) return [];
+
+  const namesByModule = new Map<string, Set<string>>();
+
+  for (const ref of collectExternalReferences(results)) {
+    const moduleSpecifier = resolveExternalImport(ref);
+    // No specifier means the referenced types live in this same output file.
+    if (!moduleSpecifier) continue;
+
+    const mapped = mapName(ref.schemaName);
+    let names = namesByModule.get(moduleSpecifier);
+    if (!names) {
+      names = new Set<string>();
+      namesByModule.set(moduleSpecifier, names);
+    }
+
+    for (const name of [mapped.inputName, mapped.outputName]) {
+      if (new RegExp(`\\b${escapeRegExp(name)}\\b`).test(declarations)) {
+        names.add(name);
+      }
+    }
+  }
+
+  return [...namesByModule.entries()]
+    .filter(([, names]) => names.size > 0)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([moduleSpecifier, names]) => {
+      const sorted = [...names].sort();
+      return `import type { ${sorted.join(", ")} } from "${moduleSpecifier}";`;
+    });
+}
+
 export function formatMultipleAsDeclarations(
   results: ExtractResult[],
   mapName: (schemaName: string) => MappedTypeName,
@@ -422,6 +487,12 @@ export function formatMultipleAsDeclarations(
   for (const result of results) {
     if (!result.isExported) continue;
     typeNameMap.set(result.schemaName, mapName(result.schemaName));
+  }
+  // Schemas from other files are referenced by their generated names too, and
+  // those names come from the same mapping (their own file generated them).
+  for (const ref of collectExternalReferences(results)) {
+    if (typeNameMap.has(ref.schemaName)) continue;
+    typeNameMap.set(ref.schemaName, mapName(ref.schemaName));
   }
 
   // Pass 1: Replace schema references with correct type names
@@ -502,9 +573,19 @@ export function formatMultipleAsDeclarations(
       if (!order.includes(result.schemaName)) order.push(result.schemaName);
     }
 
-    // Process in topological order, accumulating merged schemas
+    // Process in topological order, accumulating merged schemas.
+    // A schema imported by one of the processed files appears here as a
+    // placeholder result too (never printed, and holding the *unresolved*
+    // expansion). Where a real declaration for the same name exists, it wins
+    // - otherwise the placeholder would decide that name's merge status from
+    // types that no output file ever declares.
     const mergedSet = new Set<string>();
-    const resultMap = new Map(fixedResults.map((r) => [r.schemaName, r]));
+    const resultMap = new Map<string, ExtractResult>();
+    for (const result of fixedResults) {
+      const existing = resultMap.get(result.schemaName);
+      if (existing?.isExported && !result.isExported) continue;
+      resultMap.set(result.schemaName, result);
+    }
 
     for (const schemaName of order) {
       const result = resultMap.get(schemaName);
@@ -524,8 +605,12 @@ export function formatMultipleAsDeclarations(
 
       resultMap.set(schemaName, { ...result, input, output });
 
-      // Check if this schema is now mergeable
-      if (input === output) {
+      // Check if this schema is now mergeable. Only a schema this run
+      // actually declares can be merged: for one that is merely referenced
+      // from another output file, whether that file merged it is unknown
+      // here - and unimportant, since a merged file still declares both the
+      // input and output names.
+      if (input === output && result.isExported) {
         const mapped = typeNameMap.get(schemaName);
         if (mapped && mapped.inputName !== mapped.unifiedName) {
           mergedSet.add(schemaName);
@@ -587,14 +672,23 @@ export function generateDeclarationFile(
   lines.push("// Generated by zinfer - Do not edit manually");
   lines.push("");
 
+  const declarations = formatMultipleAsDeclarations(results, mapName, options);
+
   // Add BRAND import if any result has brands
   if (hasBrands(results, options)) {
     lines.push('import type { BRAND } from "zod";');
     lines.push("");
   }
 
+  // Import the generated types of schemas declared in other files
+  const externalImports = buildExternalImports(results, declarations, mapName, options);
+  if (externalImports.length > 0) {
+    lines.push(...externalImports);
+    lines.push("");
+  }
+
   // Add type declarations
-  lines.push(formatMultipleAsDeclarations(results, mapName, options));
+  lines.push(declarations);
   lines.push("");
 
   return lines.join("\n");

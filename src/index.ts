@@ -2,6 +2,7 @@
 export {
   ZodTypeExtractor,
   type ExtractOptions,
+  type ZodTypeExtractorOptions,
   formatResult,
   formatInputOnly,
   formatOutputOnly,
@@ -36,6 +37,7 @@ export type {
   OutputOptions,
   GeneratedFile,
   DeclarationOptions,
+  ExternalTypeReference,
 } from "./core/index.js";
 
 import {

@@ -31,6 +31,17 @@ export interface FieldDescription {
 }
 
 /**
+ * A schema declared in another file whose generated types are referenced by
+ * name (instead of having its structure inlined).
+ */
+export interface ExternalTypeReference {
+  /** Name the schema is exported under in its own file (e.g. "NodeSchema") */
+  schemaName: string;
+  /** Absolute path to the file declaring the schema */
+  sourceFilePath: string;
+}
+
+/**
  * Result of extracting types from a single schema.
  */
 export interface ExtractResult {
@@ -46,6 +57,11 @@ export interface ExtractResult {
   description?: string;
   /** Field descriptions from .describe() */
   fieldDescriptions?: FieldDescription[];
+  /**
+   * Schemas from other files whose generated type names appear in `input` /
+   * `output`. The printer turns these into `import type { ... }` statements.
+   */
+  externalReferences?: ExternalTypeReference[];
 }
 
 /**
@@ -120,4 +136,10 @@ export interface DeclarationOptions {
   outputOnly?: boolean;
   /** Merge input/output if they are identical */
   mergeSame?: boolean;
+  /**
+   * Resolves the module specifier used to import the generated types of a
+   * schema declared in another file. Return `undefined` when those types land
+   * in the same output file (e.g. `--outFile`), so no import is needed.
+   */
+  resolveExternalImport?: (ref: ExternalTypeReference) => string | undefined;
 }

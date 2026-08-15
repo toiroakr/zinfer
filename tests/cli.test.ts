@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { execFileSync } from "child_process";
 import { execPath } from "process";
 import { resolve, join } from "pathe";
-import { readFileSync, mkdtempSync, symlinkSync, writeFileSync, rmSync } from "fs";
+import { readFileSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { runCLI } from "../src/cli-runner.js";
 
@@ -149,6 +149,116 @@ describe("runCLI", () => {
     await expect(
       runCLI(["schema.ts"], { outDir: workDir, declaration: true, generateTests: true }),
     ).rejects.toThrow("--declaration");
+  });
+
+  describe("schemas imported from another generated file", () => {
+    /**
+     * Sets up a work dir with a recursive NodeSchema in src/node/schema.ts and
+     * a TreeSchema in src/tree/schema.ts referencing it across files.
+     */
+    function writeCrossFileSchemas(dir: string): void {
+      mkdirSync(join(dir, "src", "node"), { recursive: true });
+      mkdirSync(join(dir, "src", "tree"), { recursive: true });
+      writeFileSync(
+        join(dir, "src", "node", "schema.ts"),
+        'import { z } from "zod";\n\n' +
+          "export const NodeSchema = z.object({\n" +
+          "  name: z.string(),\n" +
+          "  get children() {\n" +
+          "    return z.record(z.string(), NodeSchema);\n" +
+          "  },\n" +
+          "});\n",
+      );
+      writeFileSync(
+        join(dir, "src", "tree", "schema.ts"),
+        'import { z } from "zod";\n' +
+          'import { NodeSchema } from "../node/schema";\n\n' +
+          "export const TreeSchema = z.object({\n" +
+          "  root: NodeSchema,\n" +
+          "  index: z.record(z.string(), NodeSchema),\n" +
+          "});\n",
+      );
+    }
+
+    it("imports the other file's generated types instead of inlining them", async () => {
+      workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+      symlinkSync(
+        resolve(import.meta.dirname, "../node_modules"),
+        join(workDir, "node_modules"),
+        "junction",
+      );
+      writeCrossFileSchemas(workDir);
+      process.chdir(workDir);
+
+      await runCLI(["src/**/schema.ts"], {
+        outDir: join(workDir, "out"),
+        outPattern: "[dir].generated[ext]",
+        suffix: "Schema",
+      });
+
+      const tree = readFileSync(join(workDir, "out", "tree.generated.ts"), "utf-8");
+
+      expect(tree).toContain('from "./node.generated"');
+      expect(tree).toContain("root: NodeInput");
+      expect(tree).toContain("root: NodeOutput");
+      expect(tree).toContain("[x: string]: NodeInput");
+      expect(tree).toContain("[x: string]: NodeOutput");
+      // Inlining the imported schema is what used to collapse its recursion.
+      expect(tree).not.toContain("any");
+
+      // The imported schema's own file is unaffected.
+      const node = readFileSync(join(workDir, "out", "node.generated.ts"), "utf-8");
+      expect(node).toContain("export type NodeInput");
+      expect(node).not.toContain("import type");
+    });
+
+    it("references the schema directly without an import when everything lands in one file", async () => {
+      workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+      symlinkSync(
+        resolve(import.meta.dirname, "../node_modules"),
+        join(workDir, "node_modules"),
+        "junction",
+      );
+      writeCrossFileSchemas(workDir);
+      process.chdir(workDir);
+
+      await runCLI(["src/**/schema.ts"], {
+        outFile: join(workDir, "out.ts"),
+        suffix: "Schema",
+      });
+
+      const output = readFileSync(join(workDir, "out.ts"), "utf-8");
+
+      // Both schemas are declared here, so there is nothing to import.
+      expect(output).not.toContain("import type {");
+      expect(output).toContain("export type NodeInput");
+      expect(output).toContain("root: NodeInput");
+      expect(output).toContain("root: NodeOutput");
+      expect(output).not.toContain("any");
+    });
+
+    it("inlines the imported schema when its file is not part of the run", async () => {
+      workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+      symlinkSync(
+        resolve(import.meta.dirname, "../node_modules"),
+        join(workDir, "node_modules"),
+        "junction",
+      );
+      writeCrossFileSchemas(workDir);
+      process.chdir(workDir);
+
+      await runCLI(["src/tree/schema.ts"], {
+        outDir: join(workDir, "out"),
+        outPattern: "[dir].generated[ext]",
+        suffix: "Schema",
+      });
+
+      const tree = readFileSync(join(workDir, "out", "tree.generated.ts"), "utf-8");
+
+      // Nothing generates node.generated.ts, so there is no type to import.
+      expect(tree).not.toContain("import type {");
+      expect(tree).toContain("name: string");
+    });
   });
 
   it("does not write a companion test file when a schema file has no exported schemas", async () => {
