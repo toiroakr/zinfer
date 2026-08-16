@@ -58,14 +58,20 @@ function createSchemaTest(
   const test = options.requiresZodV4 ? it.skipIf(!isZodV4) : it;
   describe(`${schemaName}.ts`, () => {
     test(description, async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, `${schemaName}.ts`));
+      const fixturePath = resolve(fixturesDir, `${schemaName}.ts`);
+      const results = extractor.extractAll(fixturePath);
       const snapshotPath = resolve(snapshotsDir, `${schemaName}.ts`);
       // Matches the real CLI pipeline (cli-runner.ts), which always runs
       // generated content through relativizeImportPaths before writing it -
       // without this, an inline `import("...")` type (e.g. for the
       // degenerate-explicit-type fixtures) would bake this machine's
-      // absolute path into the committed snapshot.
-      const output = relativizeImportPaths(generateDeclarationFile(results, mapName), snapshotPath);
+      // absolute path into the committed snapshot, and a source-relative one
+      // would point at a path that doesn't exist from the snapshot directory.
+      const output = relativizeImportPaths(
+        generateDeclarationFile(results, mapName),
+        snapshotPath,
+        fixturePath,
+      );
       await expect(output).toMatchFileSnapshot(`__file_snapshots__/${schemaName}.ts`);
     });
   });

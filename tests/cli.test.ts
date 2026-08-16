@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { execFileSync } from "child_process";
 import { execPath } from "process";
 import { resolve, join } from "pathe";
-import { readFileSync, mkdtempSync, symlinkSync, writeFileSync, rmSync } from "fs";
+import { readFileSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { runCLI } from "../src/cli-runner.js";
 
@@ -149,6 +149,70 @@ describe("runCLI", () => {
     await expect(
       runCLI(["schema.ts"], { outDir: workDir, declaration: true, generateTests: true }),
     ).rejects.toThrow("--declaration");
+  });
+
+  /**
+   * Writes a schema whose type annotation references a type declared in a
+   * *different* directory than the schema itself. TypeScript's type printer
+   * keeps that reference as `import("../shared/kind").Kind` - a specifier
+   * relative to the schema file, which does not resolve from the output
+   * directory unless zinfer rebases it.
+   */
+  function writeCrossDirectorySchema(dir: string): void {
+    mkdirSync(join(dir, "src/shared"), { recursive: true });
+    mkdirSync(join(dir, "src/schemas"), { recursive: true });
+    writeFileSync(join(dir, "src/shared/kind.ts"), 'export type Kind = "a" | "b" | "c";\n');
+    writeFileSync(
+      join(dir, "src/shared/model.ts"),
+      'import type { Kind } from "./kind";\n\nexport type Model = { kind: Kind; name: string };\n',
+    );
+    writeFileSync(
+      join(dir, "src/schemas/schema.ts"),
+      'import { z } from "zod";\n' +
+        'import type { Model } from "../shared/model";\n\n' +
+        "export const ModelSchema: z.ZodType<Model> = z.object({\n" +
+        '  kind: z.enum(["a", "b", "c"]),\n' +
+        "  name: z.string(),\n" +
+        "});\n",
+    );
+  }
+
+  it("rebases source-relative import() paths onto the output directory (outDir)", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeCrossDirectorySchema(workDir);
+    process.chdir(workDir);
+
+    await runCLI(["src/schemas/schema.ts"], { outDir: join(workDir, "out"), suffix: "Schema" });
+
+    const output = readFileSync(join(workDir, "out/schema.types.ts"), "utf-8");
+    // "../shared/kind" resolves from src/schemas/, not from out/.
+    expect(output).not.toContain('import("../shared/kind")');
+    expect(output).toContain('import("../src/shared/kind").Kind');
+  });
+
+  it("rebases source-relative import() paths onto the output file (outFile)", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeCrossDirectorySchema(workDir);
+    process.chdir(workDir);
+
+    await runCLI(["src/schemas/schema.ts"], {
+      outFile: join(workDir, "out/types.generated.ts"),
+      suffix: "Schema",
+    });
+
+    const output = readFileSync(join(workDir, "out/types.generated.ts"), "utf-8");
+    expect(output).not.toContain('import("../shared/kind")');
+    expect(output).toContain('import("../src/shared/kind").Kind');
   });
 
   it("does not write a companion test file when a schema file has no exported schemas", async () => {

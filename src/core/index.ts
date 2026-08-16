@@ -10,6 +10,7 @@ export {
   formatMultipleAsDeclarations,
   generateDeclarationFile,
   relativizeImportPaths,
+  relativizeResultImportPaths,
   type PrintOptions,
 } from "./type-printer.js";
 

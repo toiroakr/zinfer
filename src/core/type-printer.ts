@@ -1,4 +1,4 @@
-import { relative, dirname, isAbsolute } from "pathe";
+import { relative, resolve, dirname, isAbsolute } from "pathe";
 import type {
   ExtractResult,
   MappedTypeName,
@@ -601,27 +601,79 @@ export function generateDeclarationFile(
 }
 
 /**
- * Converts absolute `import("...")` paths in generated type content to relative paths.
+ * Rewrites `import("...")` paths in generated type content so they resolve
+ * from the output file.
  *
- * TypeScript's type printer may emit absolute file paths in `import()` type syntax
- * (e.g., `import("/Users/foo/bar/src/types/plugin").SomeType`).
- * These must be converted to relative paths so the output is portable across machines.
+ * TypeScript's type printer emits module specifiers relative to the enclosing
+ * declaration - i.e. relative to the schema source file - and sometimes as
+ * absolute file paths (e.g., `import("/Users/foo/bar/src/types/plugin").SomeType`).
+ * Neither form resolves from the generated file, which normally lives in a
+ * different directory (`outDir`), so both are rebased onto the output file:
+ * absolute paths for portability across machines, source-relative ones so the
+ * generated file type-checks at all.
+ *
+ * Bare specifiers (`zod`, `@scope/pkg`, `#/alias`) are package names or subpath
+ * imports rather than file paths, and are left untouched.
  *
  * @param content - The generated file content
  * @param outputFilePath - Absolute path to the output file
- * @returns Content with absolute import paths replaced by relative paths
+ * @param sourceFilePath - Absolute path to the schema source file the content was
+ *   generated from. Required to rebase source-relative specifiers; without it
+ *   they are left as-is.
+ * @returns Content with import paths made relative to the output file
  */
-export function relativizeImportPaths(content: string, outputFilePath: string): string {
+export function relativizeImportPaths(
+  content: string,
+  outputFilePath: string,
+  sourceFilePath?: string,
+): string {
   const outputDir = dirname(outputFilePath);
+  const sourceDir = sourceFilePath ? dirname(sourceFilePath) : undefined;
 
   return content.replace(/import\("([^"]+)"\)/g, (_match, importPath: string) => {
-    if (!isAbsolute(importPath)) {
+    let absolutePath: string;
+    if (isAbsolute(importPath)) {
+      absolutePath = importPath;
+    } else if (importPath.startsWith(".")) {
+      if (!sourceDir) {
+        return _match;
+      }
+      absolutePath = resolve(sourceDir, importPath);
+    } else {
       return _match;
     }
-    let rel = relative(outputDir, importPath);
+
+    // pathe's relative() always returns POSIX separators, so the emitted
+    // specifier stays valid on Windows too.
+    let rel = relative(outputDir, absolutePath);
     if (!rel.startsWith(".")) {
       rel = "./" + rel;
     }
     return `import("${rel}")`;
   });
+}
+
+/**
+ * Applies {@link relativizeImportPaths} to a single extraction result's type strings.
+ *
+ * Single output file mode (`--outFile`) merges results from several schema files
+ * into one declaration file, after which the source file each type came from is
+ * no longer known - so source-relative specifiers have to be rebased while it
+ * still is.
+ *
+ * @param result - The extraction result to rewrite
+ * @param outputFilePath - Absolute path to the output file
+ * @param sourceFilePath - Absolute path to the schema source file the result came from
+ * @returns A copy of the result with rebased import paths
+ */
+export function relativizeResultImportPaths(
+  result: ExtractResult,
+  outputFilePath: string,
+  sourceFilePath: string,
+): ExtractResult {
+  return {
+    ...result,
+    input: relativizeImportPaths(result.input, outputFilePath, sourceFilePath),
+    output: relativizeImportPaths(result.output, outputFilePath, sourceFilePath),
+  };
 }

@@ -4,6 +4,7 @@ import {
   ZodTypeExtractor,
   generateDeclarationFile,
   relativizeImportPaths,
+  relativizeResultImportPaths,
   NameMapper,
   FileResolver,
   DescriptionExtractor,
@@ -123,6 +124,7 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
     logVerbose("Processing files for single output...");
     const allResults: ExtractResult[] = [];
     const fileResultsMap: Map<string, ExtractResult[]> = new Map();
+    const outputPath = resolve(cwd, config.outFile);
 
     for (let i = 0; i < resolvedFiles.length; i++) {
       const filePath = resolvedFiles[i];
@@ -135,6 +137,12 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
       }
 
       if (results.length > 0) {
+        // Import specifiers are relative to their schema file, which is no
+        // longer known once results from every file are merged below - rebase
+        // them onto the output file while the source is still in hand.
+        results = results.map((result) =>
+          relativizeResultImportPaths(result, outputPath, filePath),
+        );
         allResults.push(...results);
         fileResultsMap.set(filePath, results);
       }
@@ -146,7 +154,8 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
 
     let content = generateDeclarationFile(allResults, nameMapper.createMapFunction(), declOptions);
 
-    const outputPath = resolve(cwd, config.outFile);
+    // Types were already rebased per source file above; this only catches
+    // absolute paths in anything else the declaration file adds.
     content = relativizeImportPaths(content, outputPath);
 
     if (options.dryRun) {
@@ -210,7 +219,7 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
       let content = generateDeclarationFile(results, nameMapper.createMapFunction(), declOptions);
 
       const outputPath = fileResolver.resolveOutputPath(filePath, outputOptions, cwd);
-      content = relativizeImportPaths(content, outputPath);
+      content = relativizeImportPaths(content, outputPath, filePath);
 
       if (options.dryRun) {
         console.log(`Would write to: ${outputPath}`);
