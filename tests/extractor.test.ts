@@ -110,6 +110,8 @@ const ZOD_V3_ONLY_TYPE_DIFFERENCES: Record<string, string> = {
     "Getter-based recursion infers differently under zod v3 than v4; see lazy-schema.ts.",
   "recursive-reference-schema.test.ts":
     "Getter-based recursion infers differently under zod v3 than v4; see lazy-schema.ts.",
+  "duplicate-field-name-schema.test.ts":
+    "zod v3 prints a z.any() key as optional, so the committed types - generated under v4, where the key is required - do not match z.input/z.output there.",
 };
 
 // After all tests, type-check every generated snapshot and companion
@@ -270,6 +272,14 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "recursive-record-schema",
     "should generate TypeScript declarations with annotated recursive getters",
     // zod v3 infers a getter-based recursion differently; see lazy-schema.ts.
+    { requiresZodV4: true },
+  );
+  createSchemaTest(
+    extractor,
+    "duplicate-field-name-schema",
+    "should generate TypeScript declarations when a nested field shares the reference field's name",
+    // zod v3 prints a `z.any()` key as optional and orders the keys
+    // differently, which changes the snapshot without changing what it guards.
     { requiresZodV4: true },
   );
   createSchemaTest(
@@ -856,6 +866,25 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         const tree = results.find((r) => r.schemaName === "AliasedTreeSchema");
         expect(tree?.input).not.toContain("RenamedNodeSchemaInput");
         expect(tree?.input).toContain("children: { [x: string]: any; }");
+        // The array and record forms inline the same approximation.
+        expect(tree?.input).toContain("list: { name: string; children: { [x: string]: any; }; }[]");
+        expect(tree?.input).toContain(
+          "index: { [x: string]: { name: string; children: { [x: string]: any; }; }; }",
+        );
+      },
+    );
+
+    it.skipIf(!isZodV4)(
+      "should keep an inlined union intact when the referencing field is an array",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "cross-file-recursive/union-tree-schema.ts"),
+        );
+        const tree = results.find((r) => r.schemaName === "UnionTreeSchema");
+
+        // The imported schema prints as a union. Wrapped in an array without
+        // parentheses, `A | B` followed by `[]` would read as `A | B[]`.
+        expect(tree?.input).toMatch(/list: \(string \| \{.*\}\)\[\]/);
       },
     );
 
@@ -879,6 +908,24 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         expect(output).toContain("[x: string]: CrossFileNodeOutput;");
         // The imported schema is declared by the other file, not re-declared here.
         expect(output).not.toContain("export type CrossFileNodeInput = {");
+      },
+    );
+  });
+
+  describe("duplicate-field-name-schema.ts", () => {
+    // zod v3 prints these keys differently; see the snapshot test above.
+    it.skipIf(!isZodV4)(
+      "should rewrite the referencing field, not an unrelated nested field of the same name",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "duplicate-field-name-schema.ts"),
+        );
+        const duplicate = results.find((r) => r.schemaName === "DuplicateFieldNameSchema");
+
+        // `child.value` is a plain z.any() that happens to share the reference
+        // field's name and to print as the placeholder a given-up-on schema does.
+        expect(duplicate?.input).toBe("{ child: { value: any; }; value: ValueSchemaInput; }");
+        expect(duplicate?.output).toBe("{ child: { value: any; }; value: ValueSchemaOutput; }");
       },
     );
   });

@@ -16,6 +16,8 @@ import { SchemaDetector } from "./schema-detector.js";
 import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver } from "./import-resolver.js";
+import { escapeRegExp } from "./regexp.js";
+import { resolve } from "pathe";
 import { logDebugError } from "./logger.js";
 import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
 
@@ -63,6 +65,9 @@ export interface ExtractContext {
    * than inlined - an inline copy of a recursive type can only ever be an
    * approximation - leaving the caller to `import type` it. Schemas from files
    * outside this set are inlined as before.
+   *
+   * Paths are compared canonicalized, so a caller's separators do not have to
+   * match the spelling TypeScript reports for the same file.
    */
   importableFiles?: ReadonlySet<string>;
 }
@@ -211,6 +216,13 @@ export class ZodTypeExtractor {
     // Inject __Normalize once for the main source file
     this.ensureNormalizeType(sourceFile);
 
+    // Compared canonicalized: the caller's paths come from a glob, while the
+    // declaring file's comes from TypeScript, and the two spell the same file
+    // differently on Windows.
+    const importableFiles = context.importableFiles
+      ? new Set([...context.importableFiles].map((filePath) => resolve(filePath)))
+      : undefined;
+
     // Extract types from imported schemas first
     for (const [localName, importInfo] of importedSchemas) {
       if (!importInfo.resolved) continue;
@@ -219,7 +231,7 @@ export class ZodTypeExtractor {
       // name, so an import that renames it (`import { X as Y }`) has no name to
       // point at here and is inlined as before.
       const isImportable =
-        (context.importableFiles?.has(importInfo.sourceFilePath) ?? false) &&
+        (importableFiles?.has(resolve(importInfo.sourceFilePath)) ?? false) &&
         localName === importInfo.originalName;
       // The self-references a recursive schema needs are spelled with the local
       // name, and what they point at depends on whether the declaring file is
@@ -430,7 +442,7 @@ export class ZodTypeExtractor {
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
       if (explicitType && this.isLocallyDeclaredType(sourceFile, explicitType)) {
-        const escapedTypeName = this.escapeRegExp(explicitType);
+        const escapedTypeName = escapeRegExp(explicitType);
         const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
         // When the resolved type is exactly the explicit identifier (as
         // opposed to appearing inside a larger composite type, e.g. a
@@ -492,6 +504,13 @@ export class ZodTypeExtractor {
 
   /**
    * Replaces an inline schema reference with a type name.
+   *
+   * A reference is recorded under the bare name of the field holding it, which
+   * a nested field elsewhere in the printed type may share. Every occurrence of
+   * the name is therefore scored by how much its printed value looks like the
+   * referenced schema, and only the best one is rewritten - the schema's own
+   * printed shape beats an unrelated field that merely happens to be inlined or
+   * to have been given up on.
    */
   private replaceSchemaReference(
     typeStr: string,
@@ -501,48 +520,52 @@ export class ZodTypeExtractor {
   ): string {
     const { fieldPath, isArray, isRecord } = ref;
 
-    // Build the replacement type
-    let replacement = refTypeName;
-    if (isArray) {
-      replacement = `${refTypeName}[]`;
+    const best = this.findReferenceOccurrence(typeStr, fieldPath, refTypeStr);
+    if (!best) return typeStr;
+
+    const { valueStart, valueEnd, currentValue, printedArray } = best;
+
+    // Build the replacement type from what the reference's AST says, falling
+    // back to what the printed placeholder said when the AST is less specific.
+    let replacement: string;
+    if (isRecord) {
+      replacement = `{ [x: string]: ${refTypeName}; }`;
+    } else if (isArray || printedArray) {
+      replacement = `${this.asArrayElement(refTypeName)}[]`;
+    } else {
+      replacement = refTypeName;
     }
 
-    // Find the field and replace its value
-    const fieldPatterns = [`${fieldPath}: `, `${fieldPath}?: `];
+    // Preserve readonly prefix for arrays
+    if (isArray && currentValue.startsWith("readonly ")) {
+      replacement = `readonly ${replacement}`;
+    }
 
-    for (const pattern of fieldPatterns) {
-      const idx = typeStr.indexOf(pattern);
-      if (idx === -1) continue;
+    return typeStr.substring(0, valueStart) + replacement + typeStr.substring(valueEnd);
+  }
 
-      const valueStart = idx + pattern.length;
+  /**
+   * Finds the occurrence of `fieldPath` whose printed value best matches the
+   * referenced schema, or undefined when no occurrence looks like the reference.
+   */
+  private findReferenceOccurrence(
+    typeStr: string,
+    fieldPath: string,
+    refTypeStr: string,
+  ):
+    | { valueStart: number; valueEnd: number; currentValue: string; printedArray: boolean }
+    | undefined {
+    const pattern = new RegExp(`${escapeRegExp(fieldPath)}\\??: `, "g");
+    let best:
+      | { valueStart: number; valueEnd: number; currentValue: string; printedArray: boolean }
+      | undefined;
+    let bestScore = 0;
 
-      // Find the end of the field value by tracking braces/brackets
-      let depth = 0;
-      let endIdx = valueStart;
-      let inString = false;
+    for (const match of typeStr.matchAll(pattern)) {
+      const valueStart = match.index + match[0].length;
+      const valueEnd = findReferenceValueEnd(typeStr, valueStart);
+      const currentValue = typeStr.substring(valueStart, valueEnd).trim();
 
-      while (endIdx < typeStr.length) {
-        const char = typeStr[endIdx];
-
-        if (char === '"' || char === "'") {
-          inString = !inString;
-        } else if (!inString) {
-          if (char === "{" || char === "[" || char === "(") {
-            depth++;
-          } else if (char === "}" || char === "]" || char === ")") {
-            if (depth === 0) break;
-            depth--;
-          } else if (char === ";" && depth === 0) {
-            break;
-          }
-        }
-        endIdx++;
-      }
-
-      // Extract the current value
-      const currentValue = typeStr.substring(valueStart, endIdx).trim();
-
-      // Check if this looks like an expanded type that should be replaced
       // Handle: { ... }, readonly { ... }[], SomeType, etc.
       const valueToCheck = currentValue
         .replace(/^readonly\s+/, "")
@@ -552,35 +575,33 @@ export class ZodTypeExtractor {
       // A reference to a schema TypeScript itself gave up on - a recursive one
       // whose getter carries no annotation - prints as a bare placeholder rather
       // than an expanded shape. The field is known to hold that schema, so the
-      // name says strictly more than the placeholder does.
+      // name says strictly more than the placeholder does. It is the weakest
+      // signal of the three, since a placeholder says nothing about the schema.
       const placeholder = /^(?:readonly\s+)?(?:any|unknown)(\[\])?(?:\s*\|\s*undefined)?$/.exec(
         currentValue,
       );
 
-      if (
-        valueToCheck.startsWith("{") ||
-        valueToCheck === refTypeStr ||
-        currentValue.includes("[x: string]:") ||
-        placeholder
-      ) {
-        // Handle record type
-        if (isRecord) {
-          replacement = `{ [x: string]: ${refTypeName}; }`;
-        } else if (!isArray && placeholder?.[1]) {
-          // The AST does not say array, but the printed placeholder does.
-          replacement = `${refTypeName}[]`;
-        }
+      let score = 0;
+      if (valueToCheck === refTypeStr) score = 3;
+      else if (valueToCheck.startsWith("{") || currentValue.includes("[x: string]:")) score = 2;
+      else if (placeholder) score = 1;
 
-        // Preserve readonly prefix for arrays
-        if (isArray && currentValue.startsWith("readonly ")) {
-          replacement = `readonly ${replacement}`;
-        }
-
-        return typeStr.substring(0, valueStart) + replacement + typeStr.substring(endIdx);
+      if (score > bestScore) {
+        bestScore = score;
+        best = { valueStart, valueEnd, currentValue, printedArray: placeholder?.[1] === "[]" };
       }
     }
 
-    return typeStr;
+    return best;
+  }
+
+  /**
+   * Parenthesizes an inline type so that wrapping it in `[]` keeps its meaning.
+   * A named reference needs nothing; an approximation that prints as a union
+   * would otherwise bind `[]` to its last member alone.
+   */
+  private asArrayElement(refTypeName: string): string {
+    return hasTopLevelUnion(refTypeName) ? `(${refTypeName})` : refTypeName;
   }
 
   /**
@@ -833,13 +854,6 @@ export class ZodTypeExtractor {
   }
 
   /**
-   * Escapes special characters in a string for use in a RegExp.
-   */
-  private escapeRegExp(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-
-  /**
    * Checks if a string is a valid TypeScript identifier.
    * Used to determine if a type name can be safely used in regex replacement.
    */
@@ -907,4 +921,55 @@ export class ZodTypeExtractor {
     const modulePath = sourceFile.getFilePath().replace(/\.(ts|tsx|mts|cts)$/, "");
     return `import("${modulePath}").${exportedName}`;
   }
+}
+
+/**
+ * Finds where a referenced field's printed type ends, tracking nesting and
+ * string literals.
+ */
+function findReferenceValueEnd(typeStr: string, valueStart: number): number {
+  let depth = 0;
+  let index = valueStart;
+  let inString = false;
+
+  while (index < typeStr.length) {
+    const char = typeStr[index];
+
+    if (char === '"' || char === "'") {
+      inString = !inString;
+    } else if (!inString) {
+      if (char === "{" || char === "[" || char === "(") {
+        depth++;
+      } else if (char === "}" || char === "]" || char === ")") {
+        if (depth === 0) break;
+        depth--;
+      } else if (char === ";" && depth === 0) {
+        break;
+      }
+    }
+    index++;
+  }
+
+  return index;
+}
+
+/**
+ * Checks whether a printed type is a union or intersection at its top level,
+ * which is what decides whether it can carry a `[]` suffix on its own.
+ */
+function hasTopLevelUnion(typeStr: string): boolean {
+  let depth = 0;
+
+  for (let index = 0; index < typeStr.length; index++) {
+    const char = typeStr[index];
+    if (char === "{" || char === "[" || char === "(" || char === "<") {
+      depth++;
+    } else if (char === "}" || char === "]" || char === ")" || char === ">") {
+      depth--;
+    } else if ((char === "|" || char === "&") && depth === 0) {
+      return true;
+    }
+  }
+
+  return false;
 }

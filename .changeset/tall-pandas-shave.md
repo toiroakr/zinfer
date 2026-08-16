@@ -31,5 +31,6 @@ Fix recursive schema generation.
   managed to print were rewritten to the type name; the field is known to hold
   that schema either way, so it is now named there too.
 
-`FieldDescription` is exported from the package root, so `ExtractResult`'s
-`fieldDescriptions` can be named by consumers.
+`FieldDescription` and `ExtractContext` are exported from the package root, so
+`ExtractResult`'s `fieldDescriptions` and the extraction context can be named by
+consumers.

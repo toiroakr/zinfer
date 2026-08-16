@@ -1,4 +1,5 @@
 import { SourceFile, SyntaxKind, Node, CallExpression, PropertyAccessExpression } from "ts-morph";
+import { escapeRegExp } from "./regexp.js";
 
 /**
  * Information about a getter field in a z.object schema.
@@ -406,6 +407,12 @@ function findValueEnd(typeStr: string, valueStart: number): number {
       if (char === "{" || char === "[" || char === "(" || char === "<") {
         depth++;
       } else if (char === "}" || char === "]" || char === ")" || char === ">") {
+        // The `>` of an arrow type closes nothing - a function type's `=>`
+        // would otherwise cut the value short.
+        if (char === ">" && prevChar === "=") {
+          index++;
+          continue;
+        }
         if (depth === 0) break;
         depth--;
       } else if (char === ";" && depth === 0) {
@@ -416,11 +423,4 @@ function findValueEnd(typeStr: string, valueStart: number): number {
   }
 
   return index;
-}
-
-/**
- * Escapes special characters in a string for use in a RegExp.
- */
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

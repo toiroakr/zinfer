@@ -124,7 +124,14 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
   // and a schema filter may drop the very declaration a reference points at.
   const writesFiles = Boolean(config.outDir || config.outFile || config.outPattern);
   const extractContext: ExtractContext =
-    writesFiles && !schemaFilter ? { importableFiles: new Set(resolvedFiles) } : {};
+    writesFiles && !schemaFilter
+      ? {
+          importableFiles: config.outFile
+            ? // One output file holds every declaration, so each is reachable.
+              new Set(resolvedFiles.map((filePath) => resolve(filePath)))
+            : filesWithOwnOutput(resolvedFiles, outputOptions, cwd, fileResolver),
+        }
+      : {};
 
   // Single output file mode
   if (config.outFile) {
@@ -328,6 +335,42 @@ function getFilteredResults(
   }
 
   return extractor.extractMultiple(filePath, schemasToExtract, context);
+}
+
+/**
+ * Selects the files that get an output file to themselves.
+ *
+ * Per-file output can map two inputs onto one path - `[dir]` for two files in
+ * the same directory, say - and the second write then replaces the first. A
+ * declaration that may not survive is no use to reference by name, so those
+ * files are left out and their schemas stay inlined.
+ *
+ * @returns Absolute paths, canonicalized so extraction can match them against
+ *   the paths TypeScript reports for the same files
+ */
+function filesWithOwnOutput(
+  resolvedFiles: string[],
+  outputOptions: OutputOptions,
+  cwd: string,
+  fileResolver: FileResolver,
+): Set<string> {
+  const filesByOutputPath = new Map<string, string[]>();
+
+  for (const filePath of resolvedFiles) {
+    const outputPath = fileResolver.resolveOutputPath(filePath, outputOptions, cwd);
+    const files = filesByOutputPath.get(outputPath);
+    if (files) {
+      files.push(filePath);
+    } else {
+      filesByOutputPath.set(outputPath, [filePath]);
+    }
+  }
+
+  return new Set(
+    [...filesByOutputPath.values()]
+      .filter((files) => files.length === 1)
+      .map(([filePath]) => resolve(filePath)),
+  );
 }
 
 /**

@@ -352,9 +352,11 @@ export type Tree = {
 
 This needs the declaring file to be part of the same run and to get an output file of
 its own (`--outDir` / `--outPattern`, or `--outFile`, which puts both declarations in
-the one file and needs no import). When it is not, the schema is inlined as far as it
-can be, with the recursion point kept as the index signature or array the getter
-describes instead of collapsing to a bare `any`.
+the one file and needs no import). `--schemas` turns it off as well, since the filter
+can drop the very declaration a reference points at, as does an output pattern that
+maps two schema files onto one path. Whenever a reference cannot be made, the schema
+is inlined as far as it can be, with the recursion point kept as the index signature
+or array the getter describes instead of collapsing to a bare `any`.
 
 ## Library API
 

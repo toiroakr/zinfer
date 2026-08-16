@@ -249,6 +249,36 @@ describe("runCLI", () => {
       expect(tree).toContain("root: CrossFileNodeOutput;");
     });
 
+    it("inlines instead of importing when two inputs share one output path", async () => {
+      workDir = setUpCrossFileWorkDir();
+      // Both schema files now land in the same directory, so `[dir]` maps them
+      // onto one output path and the second write replaces the first. A
+      // declaration that may not survive must not be referenced by name.
+      mkdirSync(join(workDir, "flat"), { recursive: true });
+      writeFileSync(
+        join(workDir, "flat/node.ts"),
+        readFileSync(join(workDir, "schemas/node/schema.ts"), "utf-8"),
+      );
+      writeFileSync(
+        join(workDir, "flat/tree.ts"),
+        readFileSync(join(workDir, "schemas/tree/schema.ts"), "utf-8").replace(
+          '../node/schema"',
+          './node"',
+        ),
+      );
+
+      await runCLI(["flat/*.ts"], {
+        outDir: "types",
+        outPattern: "[dir].generated[ext]",
+        suffix: "Schema",
+      });
+
+      const generated = readFileSync(join(workDir, "types/flat.generated.ts"), "utf-8");
+      expect(generated).not.toContain("import type {");
+      // The recursion point still keeps the shape the getter describes.
+      expect(generated).toContain("[x: string]: any;");
+    });
+
     it("keeps a single output file self-contained, with no import to itself", async () => {
       workDir = setUpCrossFileWorkDir();
 

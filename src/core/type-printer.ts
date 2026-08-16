@@ -5,6 +5,7 @@ import type {
   DeclarationOptions,
   FieldDescription,
 } from "./types.js";
+import { escapeRegExp } from "./regexp.js";
 
 /**
  * Options for formatting type output.
@@ -408,13 +409,6 @@ export function formatAsDeclaration(
  * @param options - Declaration options
  * @returns TypeScript type declarations string
  */
-/**
- * Escapes special characters in a string for use in a RegExp.
- */
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 export function formatMultipleAsDeclarations(
   results: ExtractResult[],
   mapName: (schemaName: string) => MappedTypeName,
