@@ -16,7 +16,7 @@ export type FunctionOperationOutput = {
 
 export type WorkflowOperationInput = {
   kind: "workflow";
-  args?: unknown;
+  args?: JsonValueInput;
 };
 
 export type WorkflowOperationOutput = {

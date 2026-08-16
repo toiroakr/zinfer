@@ -80,8 +80,6 @@ function createSchemaTest(
  * silently passing.
  */
 const KNOWN_TYPE_DIFFERENCES: Record<string, string> = {
-  "described-ref-schema.test.ts":
-    "JsonValueSchema is annotated z.ZodType<JsonValue>, leaving Input unset (defaults to unknown) per Zod 4's ZodType<Output, Input = unknown>; zinfer generates the full recursive union instead.",
   "lazy-schema.test.ts":
     "Same JsonValueSchema divergence as described-ref-schema.test.ts: z.input<> is unknown, zinfer's input type is the full recursive union.",
   "recursive-record-schema.test.ts":
@@ -94,6 +92,13 @@ const KNOWN_TYPE_DIFFERENCES: Record<string, string> = {
     "A non-exported recursive union member (InternalNode) is inlined by zinfer rather than kept as a named type, which is not nominally equal to the original union member.",
 };
 
+// Divergences that only reproduce under zod v4. Merged into
+// KNOWN_TYPE_DIFFERENCES below only when running under v4.
+const ZOD_V4_ONLY_TYPE_DIFFERENCES: Record<string, string> = {
+  "described-ref-schema.test.ts":
+    "JsonValueSchema is annotated z.ZodType<JsonValue>, leaving Input unset (defaults to unknown) per Zod 4's ZodType<Output, Input = unknown>; zinfer generates (and references) the full recursive union instead. zod v3's ZodType defaults Input to Output, so there is nothing to diverge from there.",
+};
+
 // Additional divergences that only reproduce under the zod v3 peerDependencies
 // floor - zod v3's getter-based recursion infers differently than v4's (see
 // lazy-schema.ts above), which changes what these generated companion tests
@@ -102,6 +107,8 @@ const ZOD_V3_ONLY_TYPE_DIFFERENCES: Record<string, string> = {
   "alias-getter-schema.test.ts":
     "Getter-based recursion infers differently under zod v3 than v4; see lazy-schema.ts.",
   "getter-schema.test.ts":
+    "Getter-based recursion infers differently under zod v3 than v4; see lazy-schema.ts.",
+  "recursive-reference-schema.test.ts":
     "Getter-based recursion infers differently under zod v3 than v4; see lazy-schema.ts.",
 };
 
@@ -172,11 +179,10 @@ afterAll(() => {
       .map((line: string) => basename(line.split("(")[0])),
   );
   const knownNames = new Set(
-    Object.keys(
-      isZodV4
-        ? KNOWN_TYPE_DIFFERENCES
-        : { ...KNOWN_TYPE_DIFFERENCES, ...ZOD_V3_ONLY_TYPE_DIFFERENCES },
-    ),
+    Object.keys({
+      ...KNOWN_TYPE_DIFFERENCES,
+      ...(isZodV4 ? ZOD_V4_ONLY_TYPE_DIFFERENCES : ZOD_V3_ONLY_TYPE_DIFFERENCES),
+    }),
   );
 
   const undocumented = [...failingTestFiles].filter((name) => !knownNames.has(name));
@@ -263,6 +269,13 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     extractor,
     "recursive-record-schema",
     "should generate TypeScript declarations with annotated recursive getters",
+    // zod v3 infers a getter-based recursion differently; see lazy-schema.ts.
+    { requiresZodV4: true },
+  );
+  createSchemaTest(
+    extractor,
+    "recursive-reference-schema",
+    "should name a recursive schema at every reference, even where TypeScript printed a placeholder",
     // zod v3 infers a getter-based recursion differently; see lazy-schema.ts.
     { requiresZodV4: true },
   );
@@ -763,6 +776,28 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         expect(output).toContain("export type RecursiveRecordInput = RecursiveRecord;");
         expect(output).toContain("export type RecursiveRecordOutput = RecursiveRecord;");
         expect(output).toContain("[x: string]: RecursiveRecord;");
+      },
+    );
+  });
+
+  describe("recursive-reference-schema.ts", () => {
+    // Getter-based recursion infers differently under zod v3; see lazy-schema.ts above.
+    it.skipIf(!isZodV4)(
+      "should name the recursive schema at a reference TypeScript printed as a bare any",
+      () => {
+        const results = extractor.extractAll(resolve(fixturesDir, "recursive-reference-schema.ts"));
+        const holder = results.find((r) => r.schemaName === "RefHolderSchema");
+
+        // `z.array()` of a schema TypeScript gave up on prints as `any[]`, with
+        // no shape to recognise - the field is still known to hold the schema.
+        expect(holder?.input).toContain("list: RefNodeSchemaInput[]");
+        expect(holder?.output).toContain("list: RefNodeSchemaOutput[]");
+        // The shapes it does print must keep naming the schema too.
+        expect(holder?.input).toContain("one: RefNodeSchemaInput");
+        expect(holder?.input).toContain("map: { [x: string]: RefNodeSchemaInput; }");
+        expect(holder?.input).toContain("optional?: RefNodeSchemaInput");
+        expect(holder?.input).not.toContain("any");
+        expect(holder?.output).not.toContain("any");
       },
     );
   });

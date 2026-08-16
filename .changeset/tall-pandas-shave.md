@@ -26,3 +26,10 @@ Fix recursive schema generation.
   schema whose input and output agree emits a single type plus `type XInput = X`.
   A schema declared in one file and imported by another is also no longer dropped
   from a merged single-file output.
+- A reference to a recursive schema is named wherever it occurs. `z.array(Node)`
+  printed as `any[]` when TypeScript had given up on `Node`, and only shapes it
+  managed to print were rewritten to the type name; the field is known to hold
+  that schema either way, so it is now named there too.
+
+`FieldDescription` is exported from the package root, so `ExtractResult`'s
+`fieldDescriptions` can be named by consumers.

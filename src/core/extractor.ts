@@ -549,14 +549,26 @@ export class ZodTypeExtractor {
         .replace(/\[\]$/, "")
         .trim();
 
+      // A reference to a schema TypeScript itself gave up on - a recursive one
+      // whose getter carries no annotation - prints as a bare placeholder rather
+      // than an expanded shape. The field is known to hold that schema, so the
+      // name says strictly more than the placeholder does.
+      const placeholder = /^(?:readonly\s+)?(?:any|unknown)(\[\])?(?:\s*\|\s*undefined)?$/.exec(
+        currentValue,
+      );
+
       if (
         valueToCheck.startsWith("{") ||
         valueToCheck === refTypeStr ||
-        currentValue.includes("[x: string]:")
+        currentValue.includes("[x: string]:") ||
+        placeholder
       ) {
         // Handle record type
         if (isRecord) {
           replacement = `{ [x: string]: ${refTypeName}; }`;
+        } else if (!isArray && placeholder?.[1]) {
+          // The AST does not say array, but the printed placeholder does.
+          replacement = `${refTypeName}[]`;
         }
 
         // Preserve readonly prefix for arrays
