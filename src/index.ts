@@ -37,6 +37,7 @@ export type {
   OutputOptions,
   GeneratedFile,
   DeclarationOptions,
+  FieldDescription,
 } from "./core/index.js";
 
 import {

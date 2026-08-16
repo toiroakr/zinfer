@@ -1,5 +1,3 @@
-export { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias } from "./normalizer.js";
-
 export { ZodTypeExtractor, type ExtractOptions, type ExtractContext } from "./extractor.js";
 
 export {
@@ -22,21 +20,15 @@ export { FileResolver } from "./file-resolver.js";
 export { DescriptionExtractor } from "./description-extractor.js";
 
 export {
-  ZinferError,
   NoSchemasFoundError,
   NoFilesMatchedError,
   InvalidOptionError,
   formatError,
 } from "./errors.js";
 
-export { setVerbose, logVerbose, logDebugError, logProgress } from "./logger.js";
+export { setVerbose, logVerbose, logProgress } from "./logger.js";
 
-export {
-  ConfigLoader,
-  defineConfig,
-  type ZinferConfig,
-  type ConfigLoadResult,
-} from "./config-loader.js";
+export { ConfigLoader, defineConfig, type ZinferConfig } from "./config-loader.js";
 
 export {
   TestGenerator,
