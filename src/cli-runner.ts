@@ -120,18 +120,20 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
   };
 
   // Types are only referenced across files when every matched file actually
-  // gets written out: without a file output there is nowhere to import from,
-  // and a schema filter may drop the very declaration a reference points at.
+  // gets written out: without a file output there is nowhere to import from.
+  // A `--schemas` filter doesn't disable this - it only drops referencing a
+  // schema the filter itself excludes, since that schema's own declaration
+  // never gets generated either.
   const writesFiles = Boolean(config.outDir || config.outFile || config.outPattern);
-  const extractContext: ExtractContext =
-    writesFiles && !schemaFilter
-      ? {
-          importableFiles: config.outFile
-            ? // One output file holds every declaration, so each is reachable.
-              new Set(resolvedFiles.map((filePath) => resolve(filePath)))
-            : filesWithOwnOutput(resolvedFiles, outputOptions, cwd, fileResolver),
-        }
-      : {};
+  const extractContext: ExtractContext = writesFiles
+    ? {
+        importableFiles: config.outFile
+          ? // One output file holds every declaration, so each is reachable.
+            new Set(resolvedFiles.map((filePath) => resolve(filePath)))
+          : filesWithOwnOutput(resolvedFiles, outputOptions, cwd, fileResolver),
+        generatedSchemaNames: schemaFilter ? new Set(schemaFilter) : undefined,
+      }
+    : {};
 
   // Single output file mode
   if (config.outFile) {
