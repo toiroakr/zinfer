@@ -352,9 +352,12 @@ export type Tree = {
 
 This needs the declaring file to be part of the same run and to get an output file of
 its own (`--outDir` / `--outPattern`, or `--outFile`, which puts both declarations in
-the one file and needs no import). `--schemas` turns it off as well, since the filter
-can drop the very declaration a reference points at, as does an output pattern that
-maps two schema files onto one path. Whenever a reference cannot be made, the schema
+the one file and needs no import). A local import alias (`import { Node as N }`) makes
+no difference - the reference and import still use the declaring file's own export name,
+since that is the only name its generated file actually declares. `--schemas` only turns
+this off for a schema the filter itself excludes, since that schema's own declaration
+wouldn't be generated either; an output pattern that maps two schema files onto one path
+turns it off too, for the same reason. Whenever a reference cannot be made, the schema
 is inlined as far as it can be, with the recursion point kept as the index signature
 or array the getter describes instead of collapsing to a bare `any`.
 

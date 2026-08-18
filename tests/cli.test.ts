@@ -307,6 +307,55 @@ describe("runCLI", () => {
       expect(generated).toContain("export type CrossFileNodeInput = CrossFileNode;");
       expect(generated).toContain("root: CrossFileNode;");
     });
+
+    it("keeps referencing by name when --schemas includes the referenced schema", async () => {
+      workDir = setUpCrossFileWorkDir();
+
+      // A `--schemas` filter must not disable cross-file referencing outright
+      // - only for a schema it excludes, whose own declaration wouldn't be
+      // generated either. Both schemas here are included, so referencing must
+      // work exactly as without the filter.
+      await runCLI(["schemas/**/schema.ts"], {
+        outDir: "types",
+        outPattern: "[dir].generated[ext]",
+        suffix: "Schema",
+        schemas: "CrossFileNodeSchema,CrossFileTreeSchema",
+      });
+
+      const tree = readFileSync(join(workDir, "types/tree.generated.ts"), "utf-8");
+      expect(tree).toContain("import type { CrossFileNodeInput, CrossFileNodeOutput }");
+      expect(tree).toContain("root: CrossFileNodeInput;");
+      expect(tree).not.toContain("any");
+    });
+
+    it("references an aliased cross-file import by the declaring file's own export name", async () => {
+      workDir = setUpCrossFileWorkDir();
+      // Re-import the same recursive schema under a local alias - the
+      // declaring file has no generated type named after that alias, only
+      // after its own export, which is what referencing it must use instead.
+      writeFileSync(
+        join(workDir, "schemas/tree/schema.ts"),
+        readFileSync(
+          resolve(import.meta.dirname, "fixtures/cross-file-recursive/aliased-tree-schema.ts"),
+          "utf-8",
+        ).replace('./node-schema"', '../node/schema"'),
+      );
+
+      await runCLI(["schemas/**/schema.ts"], {
+        outDir: "types",
+        outPattern: "[dir].generated[ext]",
+        suffix: "Schema",
+      });
+
+      const tree = readFileSync(join(workDir, "types/tree.generated.ts"), "utf-8");
+      expect(tree).toContain(
+        'import type { CrossFileNodeInput, CrossFileNodeOutput } from "./node.generated";',
+      );
+      expect(tree).toContain("root: CrossFileNodeInput;");
+      expect(tree).toContain("list: CrossFileNodeInput[];");
+      expect(tree).not.toContain("RenamedNodeSchema");
+      expect(tree).not.toContain("any");
+    });
   });
 
   describe("--outFile with a schema one file declares and another imports", () => {

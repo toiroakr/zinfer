@@ -852,7 +852,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     );
 
     it.skipIf(!isZodV4)(
-      "should inline a recursive schema imported under a different name, which no generated type is called",
+      "should reference a recursive schema imported under a different name by its declaring file's own export name",
       () => {
         const nodeFile = resolve(fixturesDir, "cross-file-recursive/node-schema.ts");
         const results = extractor.extractAll(
@@ -860,17 +860,19 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
           { importableFiles: new Set([nodeFile]) },
         );
 
-        const renamed = results.find((r) => r.schemaName === "RenamedNodeSchema");
-        expect(renamed?.importedFrom).toBeUndefined();
+        // The local alias has no generated type of its own to point at, but
+        // the declaring file's own export (CrossFileNodeSchema) does - so the
+        // import is just as importable as the non-aliased case.
+        const renamed = results.find((r) => r.schemaName === "CrossFileNodeSchema");
+        expect(renamed?.importedFrom).toBe(nodeFile);
+        expect(renamed?.isExported).toBe(false);
 
         const tree = results.find((r) => r.schemaName === "AliasedTreeSchema");
-        expect(tree?.input).not.toContain("RenamedNodeSchemaInput");
-        expect(tree?.input).toContain("children: { [x: string]: any; }");
-        // The array and record forms inline the same approximation.
-        expect(tree?.input).toContain("list: { name: string; children: { [x: string]: any; }; }[]");
-        expect(tree?.input).toContain(
-          "index: { [x: string]: { name: string; children: { [x: string]: any; }; }; }",
+        expect(tree?.input).toBe(
+          "{ root: CrossFileNodeSchemaInput; list: CrossFileNodeSchemaInput[]; index: { [x: string]: CrossFileNodeSchemaInput; }; }",
         );
+        expect(tree?.input).not.toContain("RenamedNodeSchemaInput");
+        expect(tree?.input).not.toContain("any");
       },
     );
 
