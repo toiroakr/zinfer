@@ -16,6 +16,7 @@ import {
   setVerbose,
   logVerbose,
   logProgress,
+  type ExtractContext,
   type ExtractResult,
   type NameMappingOptions,
   type OutputOptions,
@@ -118,6 +119,20 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
     mergeSame: config.mergeSame,
   };
 
+  // Types are only referenced across files when every matched file actually
+  // gets written out: without a file output there is nowhere to import from,
+  // and a schema filter may drop the very declaration a reference points at.
+  const writesFiles = Boolean(config.outDir || config.outFile || config.outPattern);
+  const extractContext: ExtractContext =
+    writesFiles && !schemaFilter
+      ? {
+          importableFiles: config.outFile
+            ? // One output file holds every declaration, so each is reachable.
+              new Set(resolvedFiles.map((filePath) => resolve(filePath)))
+            : filesWithOwnOutput(resolvedFiles, outputOptions, cwd, fileResolver),
+        }
+      : {};
+
   // Single output file mode
   if (config.outFile) {
     logVerbose("Processing files for single output...");
@@ -127,7 +142,7 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
     for (let i = 0; i < resolvedFiles.length; i++) {
       const filePath = resolvedFiles[i];
       logProgress(i + 1, resolvedFiles.length, `Processing ${basename(filePath)}`);
-      let results = getFilteredResults(extractor, filePath, schemaFilter);
+      let results = getFilteredResults(extractor, filePath, schemaFilter, extractContext);
 
       // Add descriptions if enabled
       if (descriptionExtractor) {
@@ -191,7 +206,7 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
   for (let i = 0; i < resolvedFiles.length; i++) {
     const filePath = resolvedFiles[i];
     logProgress(i + 1, resolvedFiles.length, `Processing ${basename(filePath)}`);
-    let results = getFilteredResults(extractor, filePath, schemaFilter);
+    let results = getFilteredResults(extractor, filePath, schemaFilter, extractContext);
 
     if (results.length === 0) {
       logVerbose(`  No schemas found in ${basename(filePath)}`);
@@ -207,9 +222,19 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
 
     // File output mode
     if (config.outDir || config.outPattern) {
-      let content = generateDeclarationFile(results, nameMapper.createMapFunction(), declOptions);
-
       const outputPath = fileResolver.resolveOutputPath(filePath, outputOptions, cwd);
+      const importSources = buildImportSources(
+        results,
+        outputPath,
+        outputOptions,
+        cwd,
+        fileResolver,
+      );
+
+      let content = generateDeclarationFile(results, nameMapper.createMapFunction(), {
+        ...declOptions,
+        importSources,
+      });
       content = relativizeImportPaths(content, outputPath);
 
       if (options.dryRun) {
@@ -296,9 +321,10 @@ function getFilteredResults(
   extractor: ZodTypeExtractor,
   filePath: string,
   schemaFilter?: string[],
+  context: ExtractContext = {},
 ): ExtractResult[] {
   if (!schemaFilter) {
-    return extractor.extractAll(filePath);
+    return extractor.extractAll(filePath, context);
   }
 
   const existingSchemas = extractor.getSchemaNames(filePath);
@@ -308,7 +334,83 @@ function getFilteredResults(
     return [];
   }
 
-  return extractor.extractMultiple(filePath, schemasToExtract);
+  return extractor.extractMultiple(filePath, schemasToExtract, context);
+}
+
+/**
+ * Selects the files that get an output file to themselves.
+ *
+ * Per-file output can map two inputs onto one path - `[dir]` for two files in
+ * the same directory, say - and the second write then replaces the first. A
+ * declaration that may not survive is no use to reference by name, so those
+ * files are left out and their schemas stay inlined.
+ *
+ * @returns Absolute paths, canonicalized so extraction can match them against
+ *   the paths TypeScript reports for the same files
+ */
+function filesWithOwnOutput(
+  resolvedFiles: string[],
+  outputOptions: OutputOptions,
+  cwd: string,
+  fileResolver: FileResolver,
+): Set<string> {
+  const filesByOutputPath = new Map<string, string[]>();
+
+  for (const filePath of resolvedFiles) {
+    const outputPath = fileResolver.resolveOutputPath(filePath, outputOptions, cwd);
+    const files = filesByOutputPath.get(outputPath);
+    if (files) {
+      files.push(filePath);
+    } else {
+      filesByOutputPath.set(outputPath, [filePath]);
+    }
+  }
+
+  return new Set(
+    [...filesByOutputPath.values()]
+      .filter((files) => files.length === 1)
+      .map(([filePath]) => resolve(filePath)),
+  );
+}
+
+/**
+ * Resolves where each cross-file type reference has to be imported from.
+ *
+ * A schema whose declaring file lands in the very file being written needs no
+ * import, so it is left out; everything else is addressed by the path from this
+ * output file to the one that declares it, extension dropped.
+ *
+ * @returns Map of schema name to module specifier
+ */
+function buildImportSources(
+  results: ExtractResult[],
+  outputPath: string,
+  outputOptions: OutputOptions,
+  cwd: string,
+  fileResolver: FileResolver,
+): Map<string, string> {
+  const importSources = new Map<string, string>();
+
+  for (const result of results) {
+    if (!result.importedFrom) continue;
+
+    const declaringOutputPath = fileResolver.resolveOutputPath(
+      result.importedFrom,
+      outputOptions,
+      cwd,
+    );
+    if (declaringOutputPath === outputPath) continue;
+
+    const withoutExtension = declaringOutputPath.replace(/\.d\.ts$|\.ts$/, "");
+    let specifier = relative(dirname(outputPath), withoutExtension);
+    if (!specifier.startsWith(".")) {
+      specifier = `./${specifier}`;
+    }
+
+    importSources.set(result.schemaName, specifier);
+  }
+
+  return importSources;
 }
 
 /**

@@ -4,6 +4,12 @@ import { createJiti, type Jiti } from "jiti";
 import { getErrorMessage, logDebugError, logVerbose } from "./logger.js";
 import type { FieldDescription } from "./types.js";
 
+/** Zod v4 schema types whose value schema is printed inline (see `getValueSchema`). */
+const VALUE_SCHEMA_TYPES = new Set(["record", "map", "set"]);
+
+/** The Zod v3 names of the same schema types. */
+const VALUE_SCHEMA_TYPE_NAMES = new Set(["ZodRecord", "ZodMap", "ZodSet"]);
+
 /**
  * Schema description information.
  */
@@ -312,6 +318,15 @@ export class DescriptionExtractor {
       return;
     }
 
+    // A record's (or map's/set's) value schema is printed under an index
+    // signature, which is not a path segment of its own, so its fields are
+    // scoped to the path of the field holding the collection.
+    const valueSchema = this.getValueSchema(schema);
+    if (valueSchema) {
+      this.extractFieldDescriptions(this.unwrapSchema(valueSchema), prefix, fields, ancestors);
+      return;
+    }
+
     // Union members print inline too; only object-shaped members contribute
     // fields, scoped to the same path as the union itself.
     const unionOptions = this.getUnionOptions(schema);
@@ -544,6 +559,37 @@ export class DescriptionExtractor {
     const _def = zodSchema._def as Record<string, unknown> | undefined;
     if (_def?.typeName === "ZodArray" && _def.type) {
       return _def.type;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Gets the value schema of a keyed/element collection (record, map, set).
+   *
+   * Their values are printed inline - a record and a map behind an index
+   * signature or type argument, a set behind its element type - so whatever
+   * they hold is described at the path of the field holding the collection.
+   *
+   * Supports both Zod v3 and v4.
+   */
+  private getValueSchema(schema: unknown): unknown {
+    if (!schema || typeof schema !== "object") {
+      return undefined;
+    }
+
+    const zodSchema = schema as Record<string, unknown>;
+
+    // Zod v4: type property and def.valueType
+    if (VALUE_SCHEMA_TYPES.has(zodSchema.type as string)) {
+      const def = zodSchema.def as Record<string, unknown> | undefined;
+      if (def?.valueType) return def.valueType;
+    }
+
+    // Zod v3 fallback: _def.typeName and _def.valueType
+    const _def = zodSchema._def as Record<string, unknown> | undefined;
+    if (VALUE_SCHEMA_TYPE_NAMES.has(_def?.typeName as string) && _def?.valueType) {
+      return _def.valueType;
     }
 
     return undefined;
