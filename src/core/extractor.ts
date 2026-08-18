@@ -893,15 +893,18 @@ export class ZodTypeExtractor {
 
     for (const importInfo of importedSchemas.values()) {
       if (!importInfo.resolved) continue;
-      if (!importableFiles?.has(resolve(importInfo.sourceFilePath))) continue;
+      // Canonicalized once and reused below: two import resolutions can spell
+      // the same file differently (see the importableFiles comment above).
+      const sourceFilePath = resolve(importInfo.sourceFilePath);
+      if (!importableFiles?.has(sourceFilePath)) continue;
       if (generatedSchemaNames && !generatedSchemaNames.has(importInfo.originalName)) continue;
 
       const knownSource = sourceByName.get(importInfo.originalName);
-      if (knownSource !== undefined && knownSource !== importInfo.sourceFilePath) {
+      if (knownSource !== undefined && knownSource !== sourceFilePath) {
         ambiguous.add(importInfo.originalName);
         continue;
       }
-      sourceByName.set(importInfo.originalName, importInfo.sourceFilePath);
+      sourceByName.set(importInfo.originalName, sourceFilePath);
     }
 
     return ambiguous;
