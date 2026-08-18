@@ -237,6 +237,68 @@ describe("runCLI", () => {
       expect(output).not.toContain("any");
     });
 
+    it("merges a cross-file referenced schema correctly under --merge-same in --outFile mode", async () => {
+      // Regression test for a duplicate-entry hazard: in --outFile mode,
+      // address/schema.ts contributes AddressSchema's real (resolved,
+      // exported) result, but person/schema.ts also contributes an
+      // unresolved import placeholder for the same "AddressSchema" name.
+      // Glob order processes address/schema.ts first, so the placeholder is
+      // appended later - if the real result isn't preferred when both share
+      // a name, the merge pass would decide AddressSchema's merge status
+      // from the placeholder's unresolved expansion instead, and (before the
+      // fix) both entries would resolve to the same result and print the
+      // declaration twice.
+      //
+      // Uses non-recursive schemas (unlike writeCrossFileSchemas' NodeSchema)
+      // so mergeSame's `input === output` check can actually merge them -
+      // a self-referencing recursive schema's input/output text always
+      // differs by its own recursive Input/Output placeholder, regardless of
+      // this bug, which would make a false negative here indistinguishable
+      // from that unrelated, pre-existing limitation.
+      workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+      symlinkSync(
+        resolve(import.meta.dirname, "../node_modules"),
+        join(workDir, "node_modules"),
+        "junction",
+      );
+      mkdirSync(join(workDir, "src", "address"), { recursive: true });
+      mkdirSync(join(workDir, "src", "person"), { recursive: true });
+      writeFileSync(
+        join(workDir, "src", "address", "schema.ts"),
+        'import { z } from "zod";\n\n' +
+          "export const AddressSchema = z.object({\n" +
+          "  street: z.string(),\n" +
+          "  city: z.string(),\n" +
+          "});\n",
+      );
+      writeFileSync(
+        join(workDir, "src", "person", "schema.ts"),
+        'import { z } from "zod";\n' +
+          'import { AddressSchema } from "../address/schema";\n\n' +
+          "export const PersonSchema = z.object({\n" +
+          "  name: z.string(),\n" +
+          "  address: AddressSchema,\n" +
+          "});\n",
+      );
+      process.chdir(workDir);
+
+      await runCLI(["src/**/schema.ts"], {
+        outFile: join(workDir, "out.ts"),
+        suffix: "Schema",
+        mergeSame: true,
+      });
+
+      const output = readFileSync(join(workDir, "out.ts"), "utf-8");
+
+      expect(output).toContain("export type Address = {");
+      expect(output).toContain("export type AddressInput = Address;");
+      expect(output).toContain("export type AddressOutput = Address;");
+      expect(output).toContain("address: Address");
+      // The declaration must be printed exactly once, not once per position
+      // the duplicate (real + placeholder) entries used to occupy.
+      expect(output.match(/export type Address = \{/g)).toHaveLength(1);
+    });
+
     it("inlines the imported schema when its file is not part of the run", async () => {
       workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
       symlinkSync(

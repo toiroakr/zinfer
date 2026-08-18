@@ -618,7 +618,20 @@ export function formatMultipleAsDeclarations(
       }
     }
 
-    fixedResults = fixedResults.map((r) => resultMap.get(r.schemaName) ?? r);
+    // Collapse back to one entry per schema name (first occurrence keeps its
+    // position, preserving the original declaration order): resultMap holds
+    // exactly one result per name, but fixedResults can still hold both the
+    // real declaration and its placeholder duplicate side by side, which
+    // would otherwise print the same declaration twice now that both resolve
+    // to the same (exported) entry.
+    const seenSchemaNames = new Set<string>();
+    fixedResults = fixedResults
+      .filter((r) => {
+        if (seenSchemaNames.has(r.schemaName)) return false;
+        seenSchemaNames.add(r.schemaName);
+        return true;
+      })
+      .map((r) => resultMap.get(r.schemaName) ?? r);
   }
 
   const declarations: string[] = [];
