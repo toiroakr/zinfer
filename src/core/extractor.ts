@@ -433,9 +433,8 @@ export class ZodTypeExtractor {
         if (external) {
           // Same `z.ZodType<T>` caveat as above, for a schema declared in
           // another file.
-          const refIsOpaque = this.hasExplicitTypeAnnotation(
-            external.sourceFilePath,
-            external.schemaName,
+          const refIsOpaque = Boolean(
+            this.findDetectedSchema(external.sourceFilePath, external.schemaName)?.explicitType,
           );
           input = this.replaceSchemaReference(
             input,
@@ -568,7 +567,8 @@ export class ZodTypeExtractor {
       if (!importInfo.resolved) continue;
       // A name a local schema already claims would collide in the output.
       if (localNames.has(importInfo.originalName)) continue;
-      if (!this.isExportedSchema(importInfo.sourceFilePath, importInfo.originalName)) continue;
+      if (!this.findDetectedSchema(importInfo.sourceFilePath, importInfo.originalName)?.isExported)
+        continue;
       if (!isGenerated(importInfo.sourceFilePath, importInfo.originalName)) continue;
 
       const knownSource = sourceByExportedName.get(importInfo.originalName);
@@ -596,28 +596,15 @@ export class ZodTypeExtractor {
   }
 
   /**
-   * Checks whether a schema is exported from the given file - only exported
-   * schemas get a generated (and therefore importable) type.
+   * Finds the detected schema info for `schemaName` in another file, or
+   * undefined if that file isn't loaded or declares no such schema.
    */
-  private isExportedSchema(filePath: string, schemaName: string): boolean {
+  private findDetectedSchema(filePath: string, schemaName: string): DetectedSchema | undefined {
     const sourceFile = this.project.getSourceFile(filePath);
-    if (!sourceFile) return false;
+    if (!sourceFile) return undefined;
     return this.schemaDetector
       .detectExportedSchemas(sourceFile)
-      .some((schema) => schema.name === schemaName && schema.isExported);
-  }
-
-  /**
-   * Checks whether a schema in another file carries an explicit
-   * `z.ZodType<T>` annotation, which is what makes `z.input<>` of a field
-   * referencing it print as `unknown`.
-   */
-  private hasExplicitTypeAnnotation(filePath: string, schemaName: string): boolean {
-    const sourceFile = this.project.getSourceFile(filePath);
-    if (!sourceFile) return false;
-    return this.schemaDetector
-      .detectExportedSchemas(sourceFile)
-      .some((schema) => schema.name === schemaName && Boolean(schema.explicitType));
+      .find((schema) => schema.name === schemaName);
   }
 
   /**
