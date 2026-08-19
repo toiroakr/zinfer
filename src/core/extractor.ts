@@ -468,6 +468,19 @@ export class ZodTypeExtractor {
           // TypeScript dropped at the recursion point.
           input = this.replaceSchemaReference(input, ref, refRaw.input, refRaw.input);
           output = this.replaceSchemaReference(output, ref, refRaw.output, refRaw.output);
+        } else {
+          // A plain local schema that gets no generated type of its own (not
+          // exported, not imported) still holds its own references to schemas
+          // that ARE exported/generated - resolve it first, so an inlined copy
+          // keeps pointing at generated types instead of the compiler's raw
+          // structural expansion, which this file's own reference map never
+          // gets a chance to rewrite on its own (it's only ever printed as
+          // part of whatever schema inlines it, never resolved independently).
+          const resolvedRef = resolveSchemaTypes(refExportName);
+          if (resolvedRef) {
+            input = this.replaceSchemaReference(input, ref, refRaw.input, resolvedRef.input);
+            output = this.replaceSchemaReference(output, ref, refRaw.output, resolvedRef.output);
+          }
         }
       }
 

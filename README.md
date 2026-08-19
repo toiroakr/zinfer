@@ -361,6 +361,45 @@ turns it off too, for the same reason. Whenever a reference cannot be made, the 
 is inlined as far as it can be, with the recursion point kept as the index signature
 or array the getter describes instead of collapsing to a bare `any`.
 
+### Recursive Schemas Through a Non-Generated Intermediate
+
+A schema that is not exported gets no generated type of its own, so a reference to
+it is inlined. Its own references to schemas that ARE generated still resolve by
+name, even when the reference to the recursive schema is nested inside that inlined
+copy:
+
+```typescript
+export const NodeSchema = z.object({
+  name: z.string(),
+  get children() {
+    return z.record(z.string(), NodeSchema);
+  },
+});
+
+// Not exported - no type is generated for it
+const GroupSchema = z.object({
+  members: z.array(NodeSchema),
+});
+
+export const TreeSchema = z.object({
+  direct: NodeSchema,
+  viaGroup: GroupSchema,
+});
+```
+
+```typescript
+export type Tree = {
+  direct: Node;
+  viaGroup: {
+    members: Node[];
+  };
+};
+```
+
+No import is needed here, since `Node` is generated in this same file - unlike the
+cross-file case above, this works regardless of whether the intermediate's own file
+is part of the run.
+
 ## Library API
 
 ### extractZodTypes
