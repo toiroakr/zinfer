@@ -1142,37 +1142,44 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   });
 
   describe("description extraction sweep", () => {
-    it("should extract descriptions from every top-level fixture without warning (#340)", async () => {
-      // Guards against the class of bug in #340: recursion tests
-      // (lazy-schema.ts, getter-schema.ts) and description tests
-      // (described-schema.ts, etc.) previously never ran through the same
-      // extractor, so a schema that was both self-recursive AND described
-      // slipped through CI untested. Running DescriptionExtractor over every
-      // fixture - regardless of whether it has any .describe() calls - would
-      // have caught the stack overflow immediately, since it happens even
-      // without a single description present.
-      const fixtureFiles = readdirSync(fixturesDir)
-        .filter((f) => f.endsWith(".ts"))
-        // Skip fixtures that only import under zod v4 when running under the
-        // zod v3 peerDependencies floor - an import failure there isn't the
-        // regression this sweep guards against.
-        .filter((f) => isZodV4 || !ZOD_V4_ONLY_FIXTURES.includes(f));
-      const descriptionExtractor = new DescriptionExtractor();
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // Guards against the class of bug in #340: recursion tests
+    // (lazy-schema.ts, getter-schema.ts) and description tests
+    // (described-schema.ts, etc.) previously never ran through the same
+    // extractor, so a schema that was both self-recursive AND described
+    // slipped through CI untested. Running DescriptionExtractor over every
+    // fixture - regardless of whether it has any .describe() calls - would
+    // have caught the stack overflow immediately, since it happens even
+    // without a single description present.
+    //
+    // One `it` per fixture (rather than one `it` looping over all of them)
+    // so each test's runtime stays well within testTimeout - the combined
+    // sweep's total AST-parse-plus-dynamic-import time crept up on the 30s
+    // testTimeout configured in vitest.config.ts and made it flaky on CI.
+    const fixtureFiles = readdirSync(fixturesDir)
+      .filter((f) => f.endsWith(".ts"))
+      // Skip fixtures that only import under zod v4 when running under the
+      // zod v3 peerDependencies floor - an import failure there isn't the
+      // regression this sweep guards against.
+      .filter((f) => isZodV4 || !ZOD_V4_ONLY_FIXTURES.includes(f));
+    const descriptionExtractor = new DescriptionExtractor();
 
-      // Assert before mockRestore(): restoring a spy also clears its
-      // recorded calls, which would make a post-restore assertion pass
-      // unconditionally regardless of what actually happened in the loop.
-      try {
-        for (const file of fixtureFiles) {
+    it.each(fixtureFiles)(
+      "should extract descriptions from %s without warning (#340)",
+      async (file) => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+        // Assert before mockRestore(): restoring a spy also clears its
+        // recorded calls, which would make a post-restore assertion pass
+        // unconditionally regardless of what actually happened above.
+        try {
           const filePath = resolve(fixturesDir, file);
           const schemaNames = extractor.extractAll(filePath).map((r) => r.schemaName);
           await descriptionExtractor.extractDescriptions(filePath, schemaNames);
+          expect(warnSpy).not.toHaveBeenCalled();
+        } finally {
+          warnSpy.mockRestore();
         }
-        expect(warnSpy).not.toHaveBeenCalled();
-      } finally {
-        warnSpy.mockRestore();
-      }
-    });
+      },
+    );
   });
 });
