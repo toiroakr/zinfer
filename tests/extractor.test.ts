@@ -914,6 +914,52 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     );
   });
 
+  describe("same-file-nongenerated-recursive-schema.ts", () => {
+    // Getter-based recursion infers differently under zod v3; see lazy-schema.ts above.
+    it.skipIf(!isZodV4)(
+      "should reference the recursive schema by name through a same-file non-generated intermediate",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "same-file-nongenerated-recursive-schema.ts"),
+        );
+        const tree = results.find((r) => r.schemaName === "SameFileTreeSchema");
+
+        // Direct reference already worked before this fix; the point of this
+        // fixture is that the reference reached through the non-exported
+        // intermediate (SameFileGroupSchema) resolves identically - no
+        // import needed, since both generated types live in this same file.
+        expect(tree?.input).toBe(
+          "{ direct: SameFileNodeSchemaInput; viaGroup: { members: SameFileNodeSchemaInput[]; }; }",
+        );
+        expect(tree?.output).toBe(
+          "{ direct: SameFileNodeSchemaOutput; viaGroup: { members: SameFileNodeSchemaOutput[]; }; }",
+        );
+        expect(tree?.input).not.toContain("any");
+        expect(tree?.output).not.toContain("any");
+
+        const group = results.find((r) => r.schemaName === "SameFileGroupSchema");
+        expect(group?.isExported).toBe(false);
+        expect(group?.input).toBe("{ members: SameFileNodeSchemaInput[]; }");
+        expect(group?.output).toBe("{ members: SameFileNodeSchemaOutput[]; }");
+      },
+    );
+
+    it.skipIf(!isZodV4)(
+      "should print the generated type name, not re-declare it, in the declaration file",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "same-file-nongenerated-recursive-schema.ts"),
+        );
+        const output = generateDeclarationFile(results, mapName);
+
+        expect(output).toContain("viaGroup: {\n    members: SameFileNodeInput[];\n  };");
+        expect(output).toContain("viaGroup: {\n    members: SameFileNodeOutput[];\n  };");
+        expect(output).not.toContain("export type SameFileGroup");
+        expect(output).not.toContain("any");
+      },
+    );
+  });
+
   describe("duplicate-field-name-schema.ts", () => {
     // zod v3 prints these keys differently; see the snapshot test above.
     it.skipIf(!isZodV4)(
