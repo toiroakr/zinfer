@@ -755,6 +755,18 @@ export class ZodTypeExtractor {
       rawType = rawType.trimEnd();
     }
 
+    // The printer synthesizes `import("...")` references for named types
+    // declared in another file that isn't otherwise visible at this print
+    // location. It prints these already relative - but relative to this
+    // source file's directory, not the eventual output file. Rebase them to
+    // absolute here so relativizeImportPaths (which only rewrites absolute
+    // paths) can correctly recompute them relative to the real output path.
+    const sourceDir = sourceFile.getDirectoryPath();
+    rawType = rawType.replace(/import\("([^"]+)"\)/g, (match, importPath: string) => {
+      if (!importPath.startsWith(".")) return match;
+      return `import("${resolve(sourceDir, importPath)}")`;
+    });
+
     // Expand enum types: if the type is a single identifier, check if it's an enum
     if (/^[A-Z][a-zA-Z0-9]*$/.test(rawType)) {
       const enumDecl = sourceFile.getEnum(rawType);
