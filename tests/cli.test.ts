@@ -58,6 +58,54 @@ describe("runCLI", () => {
     expect(output).toContain("id: string");
   });
 
+  it("rebases import() paths when outDir is an absolute path through a symlinked directory", async () => {
+    const realBase = mkdtempSync(join(tmpdir(), "zinfer-real-"));
+    const linkPath = mkdtempSync(join(tmpdir(), "zinfer-link-"));
+    rmSync(linkPath, { recursive: true, force: true });
+    symlinkSync(realBase, linkPath, "dir");
+
+    try {
+      symlinkSync(
+        resolve(import.meta.dirname, "../node_modules"),
+        join(realBase, "node_modules"),
+        "junction",
+      );
+      mkdirSync(join(realBase, "src/shared"), { recursive: true });
+      mkdirSync(join(realBase, "src/schemas"), { recursive: true });
+      writeFileSync(join(realBase, "src/shared/kind.ts"), 'export type Kind = "a" | "b" | "c";\n');
+      writeFileSync(
+        join(realBase, "src/shared/model.ts"),
+        'import type { Kind } from "./kind";\n\nexport type Model = { kind: Kind; name: string };\n',
+      );
+      writeFileSync(
+        join(realBase, "src/schemas/schema.ts"),
+        'import { z } from "zod";\n' +
+          'import type { Model } from "../shared/model";\n\n' +
+          "export const ModelSchema: z.ZodType<Model> = z.object({\n" +
+          '  kind: z.enum(["a", "b", "c"]),\n' +
+          "  name: z.string(),\n" +
+          "});\n",
+      );
+      process.chdir(linkPath);
+
+      // outDir is given as an absolute path built from the symlink entry
+      // point, not derived from process.cwd() (which Node always reports
+      // fully resolved) - this is what a caller does when it stores a
+      // directory path before any chdir happens.
+      await runCLI(["src/schemas/schema.ts"], {
+        outDir: join(linkPath, "out"),
+        suffix: "Schema",
+      });
+
+      const output = readFileSync(join(realBase, "out/schema.types.ts"), "utf-8");
+      expect(output).toContain('import("../src/shared/kind").Kind');
+    } finally {
+      process.chdir(originalCwd);
+      rmSync(linkPath, { recursive: true, force: true });
+      rmSync(realBase, { recursive: true, force: true });
+    }
+  });
+
   it("loads config from an explicit --config path, not just well-known filenames", async () => {
     workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
     symlinkSync(
