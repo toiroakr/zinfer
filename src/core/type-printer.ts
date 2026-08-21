@@ -1,4 +1,4 @@
-import { relative, dirname, basename, isAbsolute } from "pathe";
+import { relative, dirname, basename, join, isAbsolute } from "pathe";
 import { existsSync, realpathSync } from "fs";
 import type {
   ExtractResult,
@@ -703,7 +703,7 @@ function realpathExisting(path: string): string {
   if (parent === path) {
     return path;
   }
-  return `${realpathExisting(parent)}/${basename(path)}`;
+  return join(realpathExisting(parent), basename(path));
 }
 
 /**
