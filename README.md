@@ -84,6 +84,7 @@ Options:
   --dry-run                  Preview without writing files
   --with-descriptions        Include Zod .describe() as TSDoc comments
   --generate-tests           Generate vitest type equality tests alongside type files
+  --inline-external-types    Inline a plain type imported from another file instead of referencing it
   -V, --version              Output the version number
   -h, --help                 Display help
 ```
@@ -132,6 +133,9 @@ export default defineConfig({
 
   // Output .describe() as TSDoc
   withDescriptions: true,
+
+  // Inline a plain type imported from another file instead of referencing it
+  inlineExternalTypes: false,
 });
 ```
 
@@ -556,6 +560,49 @@ Re-run with `--generate-tests` after modifying schemas to continuously verify ty
 - Descriptions: `.describe()`
 - Branded types: `.brand()`
 - Imported schemas: relative imports and subpath imports (package.json `imports` field, including the `#/*` form)
+
+## Inlining External Types (`--inline-external-types`)
+
+When a schema carries an explicit `z.ZodType<T>` annotation and `T` reaches a plain (non-Zod) `type`/`interface`/`enum` declared in another file, TypeScript prints an `import("...").Name` reference to it rather than expanding it - there is nothing else visible to print from that location. By default zinfer keeps that reference (rewritten to resolve correctly from wherever the output is written). Setting `--inline-external-types` replaces it with the referenced type's own structure instead, recursively, so the generated output carries no dependency on the original file layout - useful when generated files are moved, published, or read outside the project that declares those types.
+
+```typescript
+// field.types.ts
+export type FieldType = "uuid" | "string" | "number" | "boolean";
+export type FieldOutput = { type: FieldType; fields?: Record<string, FieldOutput> };
+
+// field.schema.ts
+import { z } from "zod";
+import type { FieldOutput } from "./field.types";
+
+export const FieldSchema: z.ZodType<FieldOutput> = z.lazy(() =>
+  z.object({
+    type: z.enum(["uuid", "string", "number", "boolean"]),
+    fields: z.record(z.string(), FieldSchema).optional(),
+  }),
+);
+```
+
+Without the flag, `FieldType` is referenced:
+
+```typescript
+export type FieldOutput = {
+  type: import("./field.types").FieldType;
+  fields?: Record<string, FieldOutput>;
+};
+```
+
+With `--inline-external-types`, it's expanded in place:
+
+```typescript
+export type FieldOutput = {
+  type: "uuid" | "string" | "number" | "boolean";
+  fields?: Record<string, FieldOutput>;
+};
+```
+
+The expansion follows references across as many files as needed. A reference that would recurse into itself - directly, or by cycling back through another file - is left as an `import(...)` at the point it would repeat; everything outside the cycle is still fully expanded. A same-file type that isn't exported has no importable name to fall back to, so a cycle through one is left as a bare (unresolved) identifier - the same known limitation `nonexported-explicit-type-schema.ts` documents for a local explicit annotation. Namespace imports (`import * as ns`), default-imported types, and generic instantiations (`import("...").Foo<Bar>`) aren't expanded either; each is left as the reference zinfer would otherwise print.
+
+This only applies to a plain type reached through an explicit `z.ZodType<T>` annotation - a Zod schema imported from another file is unaffected, and continues to be referenced by its own generated type name or inlined as already described elsewhere in this document.
 
 ## Subpath Imports
 

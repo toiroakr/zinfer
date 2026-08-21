@@ -41,6 +41,12 @@ export interface ZinferConfig {
   withDescriptions?: boolean;
   /** Generate vitest type equality tests alongside type files */
   generateTests?: boolean;
+  /**
+   * Replace an `import("...")` reference to a plain type declared in
+   * another file with that type's own structure, instead of leaving the
+   * generated output pointing back at it.
+   */
+  inlineExternalTypes?: boolean;
 }
 
 /**

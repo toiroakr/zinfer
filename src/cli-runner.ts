@@ -45,6 +45,7 @@ export interface CLIOptions {
   config?: string;
   generateTests?: boolean;
   verbose?: boolean;
+  inlineExternalTypes?: boolean;
 }
 
 /**
@@ -125,15 +126,18 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
   // schema the filter itself excludes, since that schema's own declaration
   // never gets generated either.
   const writesFiles = Boolean(config.outDir || config.outFile || config.outPattern);
-  const extractContext: ExtractContext = writesFiles
-    ? {
-        importableFiles: config.outFile
-          ? // One output file holds every declaration, so each is reachable.
-            new Set(resolvedFiles.map((filePath) => resolve(filePath)))
-          : filesWithOwnOutput(resolvedFiles, outputOptions, cwd, fileResolver),
-        generatedSchemaNames: schemaFilter ? new Set(schemaFilter) : undefined,
-      }
-    : {};
+  const extractContext: ExtractContext = {
+    inlineExternalTypes: config.inlineExternalTypes,
+    ...(writesFiles
+      ? {
+          importableFiles: config.outFile
+            ? // One output file holds every declaration, so each is reachable.
+              new Set(resolvedFiles.map((filePath) => resolve(filePath)))
+            : filesWithOwnOutput(resolvedFiles, outputOptions, cwd, fileResolver),
+          generatedSchemaNames: schemaFilter ? new Set(schemaFilter) : undefined,
+        }
+      : {}),
+  };
 
   // Single output file mode
   if (config.outFile) {
@@ -443,6 +447,8 @@ function mergeCliWithConfig(cliOptions: CLIOptions, fileConfig: ZinferConfig): Z
   if (cliOptions.withDescriptions !== undefined)
     merged.withDescriptions = cliOptions.withDescriptions;
   if (cliOptions.generateTests !== undefined) merged.generateTests = cliOptions.generateTests;
+  if (cliOptions.inlineExternalTypes !== undefined)
+    merged.inlineExternalTypes = cliOptions.inlineExternalTypes;
 
   return merged;
 }
