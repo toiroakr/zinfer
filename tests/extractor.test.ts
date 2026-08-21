@@ -43,6 +43,9 @@ const ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS = [
   "inline-external-types/computed-enum/schema.ts",
   "inline-external-types/dts-source/schema.ts",
   "inline-external-types/package-specifier/schema.ts",
+  "inline-external-types/typeof-query/direct-schema.ts",
+  "inline-external-types/typeof-query/schema.ts",
+  "inline-external-types/method-collision/schema.ts",
 ];
 // tsgo's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
 // Windows) that execFileSync cannot run directly without a shell; run its
@@ -1108,12 +1111,56 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
       expect(result?.input).toBe('{ foo: import("virtual-lib").Foo; }');
     });
+
+    it("should never expand the operand of a `typeof` type query - only reference it", () => {
+      // `typeof Kind` names Kind's own value, not its type - printing
+      // `typeof ("a" | "b")` (Kind's expanded structure) isn't valid
+      // TypeScript at all. Checked at both code paths: the top-level
+      // synthesis TypeScript itself does (direct-schema.ts, where it prints
+      // `typeof import("./kind").Kind`) and the bare-reference promotion
+      // path (schema.ts via wrapper.ts, where holder.ts's own scope prints
+      // the bare `typeof Kind`).
+      const direct = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/typeof-query/direct-schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const directResult = direct.find((r) => r.schemaName === "DirectTypeofQuerySchema");
+      expect(directResult?.input).toMatch(/typeof import\(".*kind"\)\.Kind/);
+
+      const viaWrapper = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/typeof-query/schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const wrapped = viaWrapper.find((r) => r.schemaName === "TypeofQuerySchema");
+      expect(wrapped?.input).toMatch(/typeof import\(".*kind"\)\.Kind/);
+      expect(wrapped?.input).not.toContain('"a"');
+    });
+
+    it("should never rewrite a method's own name, even when it collides with an in-scope type name", () => {
+      // Box(): string is a method signature - its name "Box" is not a type
+      // reference, even though an imported type is also named Box.
+      // Substituting it would corrupt the method into invalid syntax
+      // (`{ value: string }(): string`). Only reachable through
+      // bare-reference promotion (holder.ts's own scope, via wrapper.ts) -
+      // TypeScript's own top-level synthesis always prefixes with
+      // `import("...").`, so it never produces this ambiguity.
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/method-collision/schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const result = results.find((r) => r.schemaName === "MethodCollisionSchema");
+
+      expect(result?.input).toBe("{ holder: { Box(): string; value: { value: string; }; }; }");
+    });
   });
 
   createSchemaTest(extractor, "inline-external-types/chain/schema");
   createSchemaTest(extractor, "inline-external-types/cycle/schema");
   createSchemaTest(extractor, "inline-external-types/qualified/direct-schema");
   createSchemaTest(extractor, "inline-external-types/qualified/schema");
+  createSchemaTest(extractor, "inline-external-types/typeof-query/direct-schema");
+  createSchemaTest(extractor, "inline-external-types/typeof-query/schema");
+  createSchemaTest(extractor, "inline-external-types/method-collision/schema");
 
   // The tests above assert on individual substrings of the raw extracted
   // type; none of them get run through tsgo. These mirror createSchemaTest
@@ -1155,6 +1202,24 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     {
       context: { inlineExternalTypes: true },
       snapshotName: "inline-external-types/dts-source/schema-inlined",
+    },
+  );
+  createSchemaTest(
+    extractor,
+    "inline-external-types/typeof-query/schema",
+    "should generate TypeScript declarations",
+    {
+      context: { inlineExternalTypes: true },
+      snapshotName: "inline-external-types/typeof-query/schema-inlined",
+    },
+  );
+  createSchemaTest(
+    extractor,
+    "inline-external-types/method-collision/schema",
+    "should generate TypeScript declarations",
+    {
+      context: { inlineExternalTypes: true },
+      snapshotName: "inline-external-types/method-collision/schema-inlined",
     },
   );
 

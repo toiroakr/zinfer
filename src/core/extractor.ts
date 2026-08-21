@@ -913,10 +913,14 @@ export class ZodTypeExtractor {
       result += rawType.slice(lastIndex, match.index);
 
       const nextChar = rawType[nameEnd];
+      // `typeof import("...").Name` is a valid type query pointing at a
+      // value, not a type - `typeof` followed by Name's expanded structure
+      // (`typeof { ... }`) is not valid syntax at all. The printer always
+      // normalizes to exactly one space after `typeof`.
+      const isTypeQuery = rawType.slice(0, match.index).endsWith("typeof ");
       const isQualifiedOrGeneric = nextChar === "." || nextChar === "<";
-      const targetFile = isQualifiedOrGeneric
-        ? undefined
-        : this.resolveModuleSourceFile(modulePath);
+      const targetFile =
+        isQualifiedOrGeneric || isTypeQuery ? undefined : this.resolveModuleSourceFile(modulePath);
 
       result += targetFile
         ? this.resolveOrKeepImportText(
@@ -1064,6 +1068,11 @@ export class ZodTypeExtractor {
         // space), so this is how the two are told apart without a parser.
         const nextChar = text[end];
         const isPropertyKey = nextChar === ":" || (nextChar === "?" && text[end + 1] === ":");
+        // A method signature's name (`Name(): T`) is not a type reference
+        // at all - substituting it would corrupt the method's own name,
+        // not a type. `(` never otherwise directly follows a bare type
+        // reference this scan produces.
+        const isMethodName = nextChar === "(";
         // `Name.Member` (a qualified name, e.g. an enum member) or
         // `Name<Args>` (a generic instantiation): substituting only `Name`
         // would strand `.Member`/`<Args>` against whatever replaces it.
@@ -1071,11 +1080,15 @@ export class ZodTypeExtractor {
         // own structure in place would not, so this reference is only ever
         // qualified, never expanded.
         const isQualifiedOrGeneric = nextChar === "." || nextChar === "<";
+        // `typeof Name` is a type query pointing at a value, not a type -
+        // `typeof` followed by Name's expanded structure (`typeof { ... }`)
+        // isn't valid syntax at all, so this can only ever be qualified.
+        const isTypeQuery = result.endsWith("typeof ");
 
         const reference = references.get(word);
         result +=
-          reference && !precededByDot && !isPropertyKey
-            ? isQualifiedOrGeneric
+          reference && !precededByDot && !isPropertyKey && !isMethodName
+            ? isQualifiedOrGeneric || isTypeQuery
               ? this.referenceFallbackText(reference, word)
               : this.resolveReferenceOrFallback(reference, word, visiting)
             : word;
