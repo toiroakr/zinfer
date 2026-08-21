@@ -19,6 +19,7 @@ import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-refe
 import { ImportResolver, type ImportedSchemaMap } from "./import-resolver.js";
 import { escapeRegExp } from "./regexp.js";
 import { resolve, isAbsolute } from "pathe";
+import { realpathSync } from "fs";
 import { logDebugError } from "./logger.js";
 import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
 
@@ -839,12 +840,20 @@ export class ZodTypeExtractor {
    * relative to the file the type was read from - not the eventual output
    * file - so this is the form `relativizeImportPaths` (which only rewrites
    * absolute paths) can correctly re-anchor later.
+   *
+   * `sourceDir` is realpath'd first: it always exists (a file was just read
+   * from it), and on a symlinked working directory (e.g. macOS's
+   * `/var` -> `/private/var` tmpdir) leaving it un-resolved here would
+   * produce an absolute path on a different symlink base than the output
+   * directory `relativizeImportPaths` later resolves against, corrupting the
+   * relative path between the two.
    */
   private absolutizeImportPaths(rawType: string, sourceDir: string): string {
     if (!rawType.includes('import("')) return rawType;
+    const resolvedSourceDir = realpathSync(sourceDir);
     return rawType.replace(/import\("([^"]+)"\)/g, (match, importPath: string) => {
       if (!importPath.startsWith(".")) return match;
-      return `import("${resolve(sourceDir, importPath)}")`;
+      return `import("${resolve(resolvedSourceDir, importPath)}")`;
     });
   }
 
