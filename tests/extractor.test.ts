@@ -35,6 +35,11 @@ const ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS = [
   "degenerate-explicit-type/nonexported-explicit-type-schema.ts",
   "mixed-union-reference-common.ts",
   "mixed-union-reference-schema.ts",
+  "inline-external-types/chain/schema.ts",
+  "inline-external-types/cycle/schema.ts",
+  "inline-external-types/nonexported-cycle/schema.ts",
+  "inline-external-types/qualified/direct-schema.ts",
+  "inline-external-types/qualified/schema.ts",
 ];
 // tsgo's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
 // Windows) that execFileSync cannot run directly without a shell; run its
