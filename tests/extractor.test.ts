@@ -914,6 +914,31 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     );
   });
 
+  describe("nested-import-path fixtures", () => {
+    it("should rebase an already-relative import(...) reference against the output file, not the source file, when the output directory differs from the source directory", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "nested-import-path/deep/nested/schema.ts"),
+      );
+      const raw = generateDeclarationFile(results, mapName);
+
+      // Simulates outDir/outPattern remapping: the source lives two
+      // directories deeper (deep/nested/) than the output (out/), so a path
+      // that is merely left untouched from the printer's source-relative
+      // "./common" would be wrong once rebased against this output location.
+      const outputPath = resolve(fixturesDir, "nested-import-path/out/schema.generated.ts");
+      const output = relativizeImportPaths(raw, outputPath);
+
+      expect(output).toContain('import("../deep/nested/common")');
+      expect(output).not.toContain('import("./common")');
+    });
+  });
+
+  createSchemaTest(
+    extractor,
+    "nested-import-path/deep/nested/schema",
+    "should generate a type-checkable declaration when the referenced type lives in a sibling file two directories deep",
+  );
+
   describe("same-file-nongenerated-recursive-schema.ts", () => {
     // Getter-based recursion infers differently under zod v3; see lazy-schema.ts above.
     it.skipIf(!isZodV4)(
