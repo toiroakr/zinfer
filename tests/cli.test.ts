@@ -62,7 +62,7 @@ describe("runCLI", () => {
     const realBase = mkdtempSync(join(tmpdir(), "zinfer-real-"));
     const linkPath = mkdtempSync(join(tmpdir(), "zinfer-link-"));
     rmSync(linkPath, { recursive: true, force: true });
-    symlinkSync(realBase, linkPath, "dir");
+    symlinkSync(realBase, linkPath, "junction");
 
     try {
       symlinkSync(
