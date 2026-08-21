@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { resolve, basename } from "pathe";
 import { z } from "zod";
-import { ZodTypeExtractor } from "../src/core/extractor.js";
+import { ZodTypeExtractor, type ExtractContext } from "../src/core/extractor.js";
 import { generateDeclarationFile, relativizeImportPaths } from "../src/core/type-printer.js";
 import { createNameMapper } from "../src/core/name-mapper.js";
 import { DescriptionExtractor } from "../src/core/description-extractor.js";
@@ -35,6 +35,17 @@ const ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS = [
   "degenerate-explicit-type/nonexported-explicit-type-schema.ts",
   "mixed-union-reference-common.ts",
   "mixed-union-reference-schema.ts",
+  "inline-external-types/chain/schema.ts",
+  "inline-external-types/cycle/schema.ts",
+  "inline-external-types/nonexported-cycle/schema.ts",
+  "inline-external-types/qualified/direct-schema.ts",
+  "inline-external-types/qualified/schema.ts",
+  "inline-external-types/computed-enum/schema.ts",
+  "inline-external-types/dts-source/schema.ts",
+  "inline-external-types/package-specifier/schema.ts",
+  "inline-external-types/typeof-query/direct-schema.ts",
+  "inline-external-types/typeof-query/schema.ts",
+  "inline-external-types/method-collision/schema.ts",
 ];
 // tsgo's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
 // Windows) that execFileSync cannot run directly without a shell; run its
@@ -53,20 +64,24 @@ function createSchemaTest(
   extractor: ZodTypeExtractor,
   schemaName: string,
   description: string = "should generate TypeScript declarations",
-  options: { requiresZodV4?: boolean } = {},
+  options: { requiresZodV4?: boolean; context?: ExtractContext; snapshotName?: string } = {},
 ) {
   const test = options.requiresZodV4 ? it.skipIf(!isZodV4) : it;
+  const snapshotName = options.snapshotName ?? schemaName;
   describe(`${schemaName}.ts`, () => {
     test(description, async () => {
-      const results = extractor.extractAll(resolve(fixturesDir, `${schemaName}.ts`));
-      const snapshotPath = resolve(snapshotsDir, `${schemaName}.ts`);
+      const results = extractor.extractAll(
+        resolve(fixturesDir, `${schemaName}.ts`),
+        options.context,
+      );
+      const snapshotPath = resolve(snapshotsDir, `${snapshotName}.ts`);
       // Matches the real CLI pipeline (cli-runner.ts), which always runs
       // generated content through relativizeImportPaths before writing it -
       // without this, an inline `import("...")` type (e.g. for the
       // degenerate-explicit-type fixtures) would bake this machine's
       // absolute path into the committed snapshot.
       const output = relativizeImportPaths(generateDeclarationFile(results, mapName), snapshotPath);
-      await expect(output).toMatchFileSnapshot(`__file_snapshots__/${schemaName}.ts`);
+      await expect(output).toMatchFileSnapshot(`__file_snapshots__/${snapshotName}.ts`);
     });
   });
 }
@@ -937,6 +952,275 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     extractor,
     "nested-import-path/deep/nested/schema",
     "should generate a type-checkable declaration when the referenced type lives in a sibling file two directories deep",
+  );
+
+  describe("inline-external-types fixtures", () => {
+    it("should leave an import(...) reference untouched by default, and inline the referenced type's own literal union when the flag is set", () => {
+      const filePath = resolve(fixturesDir, "nested-import-path/deep/nested/schema.ts");
+
+      const withoutFlag = extractor.extractAll(filePath);
+      const field = withoutFlag.find((r) => r.schemaName === "FieldSchema");
+      expect(field?.input).toContain('import("');
+
+      const withFlag = extractor.extractAll(filePath, { inlineExternalTypes: true });
+      const inlinedField = withFlag.find((r) => r.schemaName === "FieldSchema");
+      expect(inlinedField?.input).not.toContain("import(");
+      for (const literal of ['"uuid"', '"string"', '"number"', '"boolean"']) {
+        expect(inlinedField?.input).toContain(literal);
+      }
+    });
+
+    it("should recursively inline a type reached through a chain of three separate files", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/chain/schema.ts"),
+        {
+          inlineExternalTypes: true,
+        },
+      );
+      const chain = results.find((r) => r.schemaName === "ChainSchema");
+
+      // Level2 (reached from Level1) and Level3/Formatter (reached from
+      // Level2's own import, invisible from schema.ts) are all expanded -
+      // not just the outermost level TypeScript's own printer already
+      // expands for free.
+      expect(chain?.input).not.toContain("import(");
+      expect(chain?.input).toContain("name: string");
+      for (const literal of ['"x"', '"y"', '"z"']) {
+        expect(chain?.input).toContain(literal);
+      }
+
+      // Formatter is a union with a function type member - TypeScript
+      // prints the function type already parenthesized, so the "| null"
+      // that follows only reads as top-level if the scan correctly skips
+      // the arrow's `=>` (which has no matching `<` to close) rather than
+      // letting it desync the bracket depth. A desync would silently drop
+      // the wrapping parens instead of failing to compile, so this checks
+      // the exact string rather than relying on tsgo to catch it.
+      expect(chain?.input).toContain("format: (((value: string) => string) | null)");
+    });
+
+    it("should stop at a cross-file cycle between plain types and leave a resolvable import(...) reference there, never a dangling bare identifier", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/cycle/schema.ts"),
+        {
+          inlineExternalTypes: true,
+        },
+      );
+      const cycle = results.find((r) => r.schemaName === "CycleSchema");
+
+      // NodeA and NodeB refer to each other through their own imports, so
+      // expanding one hits the other's bare "NodeA"/"NodeB" identifier -
+      // valid only inside node-a.ts/node-b.ts's own scope. The cycle must
+      // resolve to an absolute import(...), never survive as that bare name.
+      expect(cycle?.input).not.toMatch(/[^."]\bNodeA\b/);
+      expect(cycle?.input).not.toMatch(/[^."]\bNodeB\b/);
+      expect(cycle?.input).toMatch(/import\(".*node-b"\)\.NodeB/);
+    });
+
+    it("should never expand a qualified name (an enum member) or a generic instantiation - only reference them", () => {
+      // Holder is imported directly, so Kind/Box (invisible here) print as
+      // import("kind").Kind.A / import("kind").Box<string> in the raw text
+      // resolveType() reads at the top level.
+      const direct = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/qualified/direct-schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const directHolder = direct.find((r) => r.schemaName === "DirectQualifiedSchema");
+      expect(directHolder?.input).toMatch(/import\(".*kind"\)\.Kind\.A/);
+      expect(directHolder?.input).toMatch(/import\(".*kind"\)\.Box<string>/);
+
+      // Holder isn't visible from schema.ts (only Wrapper is), so reaching
+      // it recurses into holder.ts's own declaration - where Kind and Box
+      // *are* visible, printing as the bare "Kind.A"/"Box<string>" that
+      // promoteBareTypeReferences has to turn into the same valid form.
+      const viaWrapper = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/qualified/schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const wrapped = viaWrapper.find((r) => r.schemaName === "QualifiedSchema");
+      expect(wrapped?.input).toMatch(/import\(".*kind"\)\.Kind\.A/);
+      expect(wrapped?.input).toMatch(/import\(".*kind"\)\.Box<string>/);
+      // Holder itself has no such ambiguity, so it's still expanded, not referenced.
+      expect(wrapped?.input).not.toMatch(/import\(".*holder"\)/);
+    });
+
+    it("should document the known limitation: a cycle through a non-exported same-file type has no fallback and is left as a bare identifier", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/nonexported-cycle/schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const result = results.find((r) => r.schemaName === "NonExportedCycleSchema");
+
+      // Middle (exported, reached through outer.ts) is expanded; Hidden -
+      // declared but not exported from middle.ts, and self-referential -
+      // has no importable name to fall back to on the cycle, so it's left
+      // as the bare "Hidden" instead. Not asserting this is correct output
+      // (it isn't, on its own) - just the accepted, documented limitation.
+      expect(result?.input).toBe("{ middle: { hidden: { self?: Hidden; }; }; }");
+    });
+
+    it("should never print a partial union when an enum member's value can't be statically resolved", () => {
+      // Kind.B is initialized from a function call, so ts-morph's
+      // getValue() can't compute it. Printing "a" | "c" (silently dropping
+      // B) would reject a value TypeScript itself accepts through Kind -
+      // narrower than the real enum is worse than not expanding at all.
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/computed-enum/schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "ComputedEnumSchema");
+
+      expect(result?.input).toBe("Kind");
+      expect(result?.input).not.toContain('"a"');
+    });
+
+    it("should resolve a reference to a type declared in a .d.ts file, not just a .ts one", () => {
+      // A .d.ts file's derived module specifier ("declared", not
+      // "declared.d") has to match what TypeScript's own printer
+      // synthesizes for it, or resolveModuleSourceFile()'s lookup misses -
+      // exercised through the bare-reference promotion path (holder.ts's
+      // own import of Declared), not just the top-level synthesis path.
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/dts-source/schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const result = results.find((r) => r.schemaName === "DtsSourceSchema");
+
+      expect(result?.input).toBe("{ declared: { value: string; }; }");
+    });
+
+    it("should not treat a bare package specifier as a filesystem path to probe", () => {
+      // "virtual-lib" is an ambient module (package-specifier/ambient.d.ts),
+      // not a relative or absolute path - import("virtual-lib") is exactly
+      // the form a real node_modules package would print. Resolving it
+      // against the filesystem (e.g. probing "virtual-lib.ts") could
+      // accidentally match an unrelated same-named local file; it must be
+      // left as the reference, not expanded, however the file is named.
+      //
+      // ambient.d.ts needs to be loaded into the shared project before
+      // schema.ts is (skipFileDependencyResolution means extractAll never
+      // pulls it in on its own) - getSchemaNames touches it for that,
+      // independent of it having no schemas of its own.
+      extractor.getSchemaNames(
+        resolve(fixturesDir, "inline-external-types/package-specifier/ambient.d.ts"),
+      );
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/package-specifier/schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const result = results.find((r) => r.schemaName === "PackageSpecifierSchema");
+
+      expect(result?.input).toBe('{ foo: import("virtual-lib").Foo; }');
+    });
+
+    it("should never expand the operand of a `typeof` type query - only reference it", () => {
+      // `typeof Kind` names Kind's own value, not its type - printing
+      // `typeof ("a" | "b")` (Kind's expanded structure) isn't valid
+      // TypeScript at all. Checked at both code paths: the top-level
+      // synthesis TypeScript itself does (direct-schema.ts, where it prints
+      // `typeof import("./kind").Kind`) and the bare-reference promotion
+      // path (schema.ts via wrapper.ts, where holder.ts's own scope prints
+      // the bare `typeof Kind`).
+      const direct = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/typeof-query/direct-schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const directResult = direct.find((r) => r.schemaName === "DirectTypeofQuerySchema");
+      expect(directResult?.input).toMatch(/typeof import\(".*kind"\)\.Kind/);
+
+      const viaWrapper = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/typeof-query/schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const wrapped = viaWrapper.find((r) => r.schemaName === "TypeofQuerySchema");
+      expect(wrapped?.input).toMatch(/typeof import\(".*kind"\)\.Kind/);
+      expect(wrapped?.input).not.toContain('"a"');
+    });
+
+    it("should never rewrite a method's own name, even when it collides with an in-scope type name", () => {
+      // Box(): string is a method signature - its name "Box" is not a type
+      // reference, even though an imported type is also named Box.
+      // Substituting it would corrupt the method into invalid syntax
+      // (`{ value: string }(): string`). Only reachable through
+      // bare-reference promotion (holder.ts's own scope, via wrapper.ts) -
+      // TypeScript's own top-level synthesis always prefixes with
+      // `import("...").`, so it never produces this ambiguity.
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/method-collision/schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const result = results.find((r) => r.schemaName === "MethodCollisionSchema");
+
+      expect(result?.input).toBe("{ holder: { Box(): string; value: { value: string; }; }; }");
+    });
+  });
+
+  createSchemaTest(extractor, "inline-external-types/chain/schema");
+  createSchemaTest(extractor, "inline-external-types/cycle/schema");
+  createSchemaTest(extractor, "inline-external-types/qualified/direct-schema");
+  createSchemaTest(extractor, "inline-external-types/qualified/schema");
+  createSchemaTest(extractor, "inline-external-types/typeof-query/direct-schema");
+  createSchemaTest(extractor, "inline-external-types/typeof-query/schema");
+  createSchemaTest(extractor, "inline-external-types/method-collision/schema");
+
+  // The tests above assert on individual substrings of the raw extracted
+  // type; none of them get run through tsgo. These mirror createSchemaTest
+  // but with the flag on, so the afterAll sweep below actually type-checks
+  // the novel output shapes this feature produces - parenthesized unions,
+  // the cycle fallback, and multi-file expansion - the same way every other
+  // fixture's declaration file is verified to compile.
+  createSchemaTest(
+    extractor,
+    "inline-external-types/chain/schema",
+    "should generate TypeScript declarations",
+    {
+      context: { inlineExternalTypes: true },
+      snapshotName: "inline-external-types/chain/schema-inlined",
+    },
+  );
+  createSchemaTest(
+    extractor,
+    "inline-external-types/cycle/schema",
+    "should generate TypeScript declarations",
+    {
+      context: { inlineExternalTypes: true },
+      snapshotName: "inline-external-types/cycle/schema-inlined",
+    },
+  );
+  createSchemaTest(
+    extractor,
+    "inline-external-types/qualified/schema",
+    "should generate TypeScript declarations",
+    {
+      context: { inlineExternalTypes: true },
+      snapshotName: "inline-external-types/qualified/schema-inlined",
+    },
+  );
+  createSchemaTest(
+    extractor,
+    "inline-external-types/dts-source/schema",
+    "should generate TypeScript declarations",
+    {
+      context: { inlineExternalTypes: true },
+      snapshotName: "inline-external-types/dts-source/schema-inlined",
+    },
+  );
+  createSchemaTest(
+    extractor,
+    "inline-external-types/typeof-query/schema",
+    "should generate TypeScript declarations",
+    {
+      context: { inlineExternalTypes: true },
+      snapshotName: "inline-external-types/typeof-query/schema-inlined",
+    },
+  );
+  createSchemaTest(
+    extractor,
+    "inline-external-types/method-collision/schema",
+    "should generate TypeScript declarations",
+    {
+      context: { inlineExternalTypes: true },
+      snapshotName: "inline-external-types/method-collision/schema-inlined",
+    },
   );
 
   describe("same-file-nongenerated-recursive-schema.ts", () => {
