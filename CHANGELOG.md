@@ -1,5 +1,58 @@
 # zinfer
 
+## 0.3.1
+
+### Patch Changes
+
+- d04462a: Fix recursive schema generation.
+
+  - A recursive getter now prints its self-reference straight away. When the getter
+    carries an explicit return type, TypeScript unfolds one whole copy of the
+    schema before it reaches the recursion; that copy is collapsed away, so
+    `children: Record<string, Self>` prints as `children: { [x: string]: Self; }`
+    instead of an extra level of the same shape.
+  - The input side of an annotated getter is rebuilt too. `z.ZodType<Output>`
+    leaves its `Input` parameter at `unknown`, and that placeholder was left as-is,
+    losing both the shape and the recursion.
+  - `.describe()` now reaches fields behind an index signature. A record's value
+    schema is described at the path of the field holding the record, so the index
+    signature no longer counts as a path segment of its own and inlined levels keep
+    their TSDoc.
+  - A recursive schema imported from another generated file is referenced by name
+    and `import type`d from that file, instead of being inlined into an
+    approximation that lost its recursion point. When no generated file declares
+    it, the recursion point keeps the index signature or array the getter
+    describes rather than collapsing to a bare `any`.
+  - `mergeSame` now merges recursive schemas: the two directions of a schema that
+    names itself are compared with those self-references unified, so a recursive
+    schema whose input and output agree emits a single type plus `type XInput = X`.
+    A schema declared in one file and imported by another is also no longer dropped
+    from a merged single-file output.
+  - A reference to a recursive schema is named wherever it occurs. `z.array(Node)`
+    printed as `any[]` when TypeScript had given up on `Node`, and only shapes it
+    managed to print were rewritten to the type name; the field is known to hold
+    that schema either way, so it is now named there too.
+
+  `FieldDescription` and `ExtractContext` are exported from the package root, so
+  `ExtractResult`'s `fieldDescriptions` and the extraction context can be named by
+  consumers.
+
+- 3d2ba39: Fix two gaps in cross-file recursive schema referencing.
+
+  - A schema imported under a local alias (`import { X as Y } from "..."`) is
+    referenced by the declaring file's own export name instead of falling back to
+    an inlined approximation. The declaring file has no generated type named
+    after the local alias, only after its own export, so that is what the
+    printed reference and the `import type` now use.
+  - A `--schemas` filter no longer disables cross-file referencing outright. It
+    only drops referencing a schema the filter itself excludes, since that
+    schema's own declaration wouldn't be generated either; a schema the filter
+    does include keeps referencing by name as if no filter were set.
+
+- cb41186: Fix a recursive schema reached only through a non-exported intermediate schema in the same file collapsing to `any` instead of referencing the recursive schema's own generated type.
+
+  A non-exported schema gets no generated type of its own, so a reference to it was always left as the compiler's raw inlined structure - including whatever recursion the compiler itself couldn't resolve at that point, which printed as a bare `any`. The intermediate's own references are now resolved first, so an inlined copy of it keeps pointing at generated types (no import needed, since both live in the same file) instead of the compiler's unresolved structural expansion. This is the same-file counterpart of the cross-file fix in a previous release.
+
 ## 0.3.0
 
 ### Minor Changes

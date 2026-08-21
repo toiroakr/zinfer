@@ -1,10 +1,11 @@
-import { relative, resolve, dirname, isAbsolute } from "pathe";
+import { relative, dirname, isAbsolute } from "pathe";
 import type {
   ExtractResult,
   MappedTypeName,
   DeclarationOptions,
   FieldDescription,
 } from "./types.js";
+import { escapeRegExp } from "./regexp.js";
 
 /**
  * Options for formatting type output.
@@ -212,7 +213,10 @@ function handleColon(
       const fieldPart = state.result.substring(lastNewlinePos + 1);
       state.result = beforeField + createTsDocComment(desc, indent.repeat(state.depth)) + fieldPart;
     }
-    state.lastFieldByDepth[state.depth] = cleanFieldName;
+    // An index signature is not a path segment: a record's value schema carries
+    // its descriptions at the very path of the field holding the record, so
+    // recording "[x" here would put every nested description out of reach.
+    state.lastFieldByDepth[state.depth] = cleanFieldName.startsWith("[") ? "" : cleanFieldName;
   }
   state.result += ":";
   state.capturingFieldName = false;
@@ -405,22 +409,18 @@ export function formatAsDeclaration(
  * @param options - Declaration options
  * @returns TypeScript type declarations string
  */
-/**
- * Escapes special characters in a string for use in a RegExp.
- */
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 export function formatMultipleAsDeclarations(
   results: ExtractResult[],
   mapName: (schemaName: string) => MappedTypeName,
   options: DeclarationOptions = {},
 ): string {
-  // Build a map of schema names to their mapped type names (exported only)
+  // Build a map of schema names to their mapped type names. Schemas declared
+  // here are joined by those imported from another generated file, whose names
+  // this file references without declaring them.
   const typeNameMap = new Map<string, MappedTypeName>();
   for (const result of results) {
-    if (!result.isExported) continue;
+    if (!result.isExported && !result.importedFrom) continue;
+    if (typeNameMap.has(result.schemaName)) continue;
     typeNameMap.set(result.schemaName, mapName(result.schemaName));
   }
 
@@ -479,7 +479,10 @@ export function formatMultipleAsDeclarations(
       let count = 0;
       for (const refInputName of refInputNames) {
         const depSchema = inputNameToSchema.get(refInputName);
-        if (depSchema && graph.has(depSchema)) {
+        // A recursive schema depends on itself, but its own merge is decided by
+        // unifying those self-references - not by waiting for another schema -
+        // so the self-edge must not keep it out of the topological order.
+        if (depSchema && depSchema !== schemaName && graph.has(depSchema)) {
           graph.get(depSchema)!.push(schemaName);
           count++;
         }
@@ -502,12 +505,20 @@ export function formatMultipleAsDeclarations(
       if (!order.includes(result.schemaName)) order.push(result.schemaName);
     }
 
-    // Process in topological order, accumulating merged schemas
+    // Process in topological order, accumulating merged schemas. A schema can
+    // appear twice - once as this file's own declaration, once as the imported
+    // copy a sibling file brought along - and both describe the same types, so
+    // the pass runs over one entry per name.
     const mergedSet = new Set<string>();
-    const resultMap = new Map(fixedResults.map((r) => [r.schemaName, r]));
+    const unifiedTypes = new Map<string, { input: string; output: string }>();
+    for (const result of fixedResults) {
+      if (!unifiedTypes.has(result.schemaName)) {
+        unifiedTypes.set(result.schemaName, { input: result.input, output: result.output });
+      }
+    }
 
     for (const schemaName of order) {
-      const result = resultMap.get(schemaName);
+      const result = unifiedTypes.get(schemaName);
       if (!result) continue;
 
       let { input, output } = result;
@@ -522,18 +533,39 @@ export function formatMultipleAsDeclarations(
         output = output.replace(new RegExp(`\\b${escapedOutput}\\b`, "g"), mapped.unifiedName);
       }
 
-      resultMap.set(schemaName, { ...result, input, output });
+      const mapped = typeNameMap.get(schemaName);
+      const mergeable = mapped != null && mapped.inputName !== mapped.unifiedName;
+
+      // A recursive schema spells its own name inside itself, once per
+      // direction. Those two names describe the same shape whenever everything
+      // around them does, so they are unified before the comparison - otherwise
+      // no recursive schema could ever merge.
+      if (mergeable) {
+        const selfInput = input.replace(
+          new RegExp(`\\b${escapeRegExp(mapped.inputName)}\\b`, "g"),
+          mapped.unifiedName,
+        );
+        const selfOutput = output.replace(
+          new RegExp(`\\b${escapeRegExp(mapped.outputName)}\\b`, "g"),
+          mapped.unifiedName,
+        );
+        if (selfInput === selfOutput) {
+          input = selfInput;
+          output = selfOutput;
+        }
+      }
+
+      unifiedTypes.set(schemaName, { input, output });
 
       // Check if this schema is now mergeable
-      if (input === output) {
-        const mapped = typeNameMap.get(schemaName);
-        if (mapped && mapped.inputName !== mapped.unifiedName) {
-          mergedSet.add(schemaName);
-        }
+      if (input === output && mergeable) {
+        mergedSet.add(schemaName);
       }
     }
 
-    fixedResults = fixedResults.map((r) => resultMap.get(r.schemaName) ?? r);
+    // Take only the unified types back, so each entry keeps its own export
+    // status and descriptions.
+    fixedResults = fixedResults.map((r) => ({ ...r, ...unifiedTypes.get(r.schemaName) }));
   }
 
   const declarations: string[] = [];
@@ -582,6 +614,7 @@ export function generateDeclarationFile(
   options: DeclarationOptions = {},
 ): string {
   const lines: string[] = [];
+  const declarations = formatMultipleAsDeclarations(results, mapName, options);
 
   // Add header comment
   lines.push("// Generated by zinfer - Do not edit manually");
@@ -593,87 +626,90 @@ export function generateDeclarationFile(
     lines.push("");
   }
 
+  // Import the types this file references from other generated files
+  const crossFileImports = crossFileImportLines(results, mapName, options, declarations);
+  if (crossFileImports.length > 0) {
+    lines.push(...crossFileImports);
+    lines.push("");
+  }
+
   // Add type declarations
-  lines.push(formatMultipleAsDeclarations(results, mapName, options));
+  lines.push(declarations);
   lines.push("");
 
   return lines.join("\n");
 }
 
 /**
- * Rewrites `import("...")` paths in generated type content so they resolve
- * from the output file.
+ * Builds the `import type` lines for schemas whose types another generated file
+ * declares.
  *
- * TypeScript's type printer emits module specifiers relative to the enclosing
- * declaration - i.e. relative to the schema source file - and sometimes as
- * absolute file paths (e.g., `import("/Users/foo/bar/src/types/plugin").SomeType`).
- * Neither form resolves from the generated file, which normally lives in a
- * different directory (`outDir`), so both are rebased onto the output file:
- * absolute paths for portability across machines, source-relative ones so the
- * generated file type-checks at all.
+ * Which of a schema's names are needed depends on how the declarations came out
+ * - `mergeSame` collapses a reference to the unified name - so the names are
+ * read back out of the rendered declarations rather than predicted.
+ */
+function crossFileImportLines(
+  results: ExtractResult[],
+  mapName: (schemaName: string) => MappedTypeName,
+  options: DeclarationOptions,
+  declarations: string,
+): string[] {
+  const { importSources } = options;
+  if (!importSources || importSources.size === 0) {
+    return [];
+  }
+
+  const namesByModule = new Map<string, Set<string>>();
+
+  for (const result of results) {
+    if (!result.importedFrom) continue;
+
+    const moduleSpecifier = importSources.get(result.schemaName);
+    if (!moduleSpecifier) continue;
+
+    const mapped = mapName(result.schemaName);
+    for (const typeName of new Set([mapped.unifiedName, mapped.inputName, mapped.outputName])) {
+      if (!new RegExp(`\\b${escapeRegExp(typeName)}\\b`).test(declarations)) continue;
+
+      let names = namesByModule.get(moduleSpecifier);
+      if (!names) {
+        names = new Set<string>();
+        namesByModule.set(moduleSpecifier, names);
+      }
+      names.add(typeName);
+    }
+  }
+
+  return [...namesByModule]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(
+      ([moduleSpecifier, names]) =>
+        `import type { ${[...names].sort().join(", ")} } from "${moduleSpecifier}";`,
+    );
+}
+
+/**
+ * Converts absolute `import("...")` paths in generated type content to relative paths.
  *
- * Bare specifiers (`zod`, `@scope/pkg`, `#/alias`) are package names or subpath
- * imports rather than file paths, and are left untouched.
+ * TypeScript's type printer may emit absolute file paths in `import()` type syntax
+ * (e.g., `import("/Users/foo/bar/src/types/plugin").SomeType`).
+ * These must be converted to relative paths so the output is portable across machines.
  *
  * @param content - The generated file content
  * @param outputFilePath - Absolute path to the output file
- * @param sourceFilePath - Absolute path to the schema source file the content was
- *   generated from. Required to rebase source-relative specifiers; without it
- *   they are left as-is.
- * @returns Content with import paths made relative to the output file
+ * @returns Content with absolute import paths replaced by relative paths
  */
-export function relativizeImportPaths(
-  content: string,
-  outputFilePath: string,
-  sourceFilePath?: string,
-): string {
+export function relativizeImportPaths(content: string, outputFilePath: string): string {
   const outputDir = dirname(outputFilePath);
-  const sourceDir = sourceFilePath ? dirname(sourceFilePath) : undefined;
 
   return content.replace(/import\("([^"]+)"\)/g, (_match, importPath: string) => {
-    let absolutePath: string;
-    if (isAbsolute(importPath)) {
-      absolutePath = importPath;
-    } else if (importPath.startsWith(".")) {
-      if (!sourceDir) {
-        return _match;
-      }
-      absolutePath = resolve(sourceDir, importPath);
-    } else {
+    if (!isAbsolute(importPath)) {
       return _match;
     }
-
-    // pathe's relative() always returns POSIX separators, so the emitted
-    // specifier stays valid on Windows too.
-    let rel = relative(outputDir, absolutePath);
+    let rel = relative(outputDir, importPath);
     if (!rel.startsWith(".")) {
       rel = "./" + rel;
     }
     return `import("${rel}")`;
   });
-}
-
-/**
- * Applies {@link relativizeImportPaths} to a single extraction result's type strings.
- *
- * Single output file mode (`--outFile`) merges results from several schema files
- * into one declaration file, after which the source file each type came from is
- * no longer known - so source-relative specifiers have to be rebased while it
- * still is.
- *
- * @param result - The extraction result to rewrite
- * @param outputFilePath - Absolute path to the output file
- * @param sourceFilePath - Absolute path to the schema source file the result came from
- * @returns A copy of the result with rebased import paths
- */
-export function relativizeResultImportPaths(
-  result: ExtractResult,
-  outputFilePath: string,
-  sourceFilePath: string,
-): ExtractResult {
-  return {
-    ...result,
-    input: relativizeImportPaths(result.input, outputFilePath, sourceFilePath),
-    output: relativizeImportPaths(result.output, outputFilePath, sourceFilePath),
-  };
 }

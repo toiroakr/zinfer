@@ -215,6 +215,268 @@ describe("runCLI", () => {
     expect(output).toContain('import("../src/shared/kind").Kind');
   });
 
+  describe("recursive schemas across output files", () => {
+    /**
+     * Copies the cross-file recursive fixtures into the work directory, each in
+     * its own subdirectory so the generated names come from `[dir]`.
+     */
+    function copyCrossFileFixtures(dir: string) {
+      const source = resolve(import.meta.dirname, "fixtures/cross-file-recursive");
+      mkdirSync(join(dir, "schemas/node"), { recursive: true });
+      mkdirSync(join(dir, "schemas/tree"), { recursive: true });
+      writeFileSync(
+        join(dir, "schemas/node/schema.ts"),
+        readFileSync(join(source, "node-schema.ts"), "utf-8"),
+      );
+      writeFileSync(
+        join(dir, "schemas/tree/schema.ts"),
+        readFileSync(join(source, "tree-schema.ts"), "utf-8").replace(
+          './node-schema"',
+          '../node/schema"',
+        ),
+      );
+    }
+
+    /**
+     * Creates a work directory with the fixtures in place, and enters it.
+     */
+    function setUpCrossFileWorkDir(): string {
+      const dir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+      symlinkSync(
+        resolve(import.meta.dirname, "../node_modules"),
+        join(dir, "node_modules"),
+        "junction",
+      );
+      copyCrossFileFixtures(dir);
+      process.chdir(dir);
+      return dir;
+    }
+
+    it("imports a recursive schema from the file that generates it", async () => {
+      workDir = setUpCrossFileWorkDir();
+
+      await runCLI(["schemas/**/schema.ts"], {
+        outDir: "types",
+        outPattern: "[dir].generated[ext]",
+        suffix: "Schema",
+        outputSuffix: "",
+        mergeSame: true,
+        withDescriptions: true,
+      });
+
+      const node = readFileSync(join(workDir, "types/node.generated.ts"), "utf-8");
+      // The recursion points straight at the type, with no inlined copy in
+      // between - and every level keeps its description.
+      expect(node).toContain(
+        [
+          "export type CrossFileNode = {",
+          "  /** The node name */",
+          "  name: string;",
+          "  children: {",
+          "    [x: string]: CrossFileNode;",
+          "  };",
+          "};",
+        ].join("\n"),
+      );
+      expect(node).toContain("export type CrossFileNodeInput = CrossFileNode;");
+
+      const tree = readFileSync(join(workDir, "types/tree.generated.ts"), "utf-8");
+      expect(tree).toContain('import type { CrossFileNode } from "./node.generated";');
+      expect(tree).toContain(
+        [
+          "export type CrossFileTree = {",
+          "  /** Root node */",
+          "  root: CrossFileNode;",
+          "  index: {",
+          "    [x: string]: CrossFileNode;",
+          "  };",
+          "};",
+        ].join("\n"),
+      );
+      expect(tree).not.toContain("any");
+    });
+
+    it("declares both directions when a recursive schema's input and output differ", async () => {
+      workDir = setUpCrossFileWorkDir();
+
+      await runCLI(["schemas/**/schema.ts"], {
+        outDir: "types",
+        outPattern: "[dir].generated[ext]",
+        suffix: "Schema",
+      });
+
+      const tree = readFileSync(join(workDir, "types/tree.generated.ts"), "utf-8");
+      expect(tree).toContain(
+        'import type { CrossFileNodeInput, CrossFileNodeOutput } from "./node.generated";',
+      );
+      expect(tree).toContain("root: CrossFileNodeInput;");
+      expect(tree).toContain("root: CrossFileNodeOutput;");
+    });
+
+    it("inlines instead of importing when two inputs share one output path", async () => {
+      workDir = setUpCrossFileWorkDir();
+      // Both schema files now land in the same directory, so `[dir]` maps them
+      // onto one output path and the second write replaces the first. A
+      // declaration that may not survive must not be referenced by name.
+      mkdirSync(join(workDir, "flat"), { recursive: true });
+      writeFileSync(
+        join(workDir, "flat/node.ts"),
+        readFileSync(join(workDir, "schemas/node/schema.ts"), "utf-8"),
+      );
+      writeFileSync(
+        join(workDir, "flat/tree.ts"),
+        readFileSync(join(workDir, "schemas/tree/schema.ts"), "utf-8").replace(
+          '../node/schema"',
+          './node"',
+        ),
+      );
+
+      await runCLI(["flat/*.ts"], {
+        outDir: "types",
+        outPattern: "[dir].generated[ext]",
+        suffix: "Schema",
+      });
+
+      const generated = readFileSync(join(workDir, "types/flat.generated.ts"), "utf-8");
+      expect(generated).not.toContain("import type {");
+      // The recursion point still keeps the shape the getter describes.
+      expect(generated).toContain("[x: string]: any;");
+    });
+
+    it("keeps a single output file self-contained, with no import to itself", async () => {
+      workDir = setUpCrossFileWorkDir();
+
+      await runCLI(["schemas/**/schema.ts"], { outFile: "types/all.ts", suffix: "Schema" });
+
+      const generated = readFileSync(join(workDir, "types/all.ts"), "utf-8");
+      expect(generated).not.toContain("import type {");
+      expect(generated).toContain("export type CrossFileNodeInput = {");
+      expect(generated).toContain("root: CrossFileNodeInput;");
+    });
+
+    it("still declares a schema another file imports when mergeSame collapses it", async () => {
+      workDir = setUpCrossFileWorkDir();
+
+      await runCLI(["schemas/**/schema.ts"], {
+        outFile: "types/all.ts",
+        suffix: "Schema",
+        outputSuffix: "",
+        mergeSame: true,
+      });
+
+      const generated = readFileSync(join(workDir, "types/all.ts"), "utf-8");
+      // The schema appears twice in the results - once declared here, once as
+      // the copy the importing file carries - and the declaration must survive.
+      expect(generated).toContain("export type CrossFileNode = {");
+      expect(generated).toContain("export type CrossFileNodeInput = CrossFileNode;");
+      expect(generated).toContain("root: CrossFileNode;");
+    });
+
+    it("keeps referencing by name when --schemas includes the referenced schema", async () => {
+      workDir = setUpCrossFileWorkDir();
+
+      // A `--schemas` filter must not disable cross-file referencing outright
+      // - only for a schema it excludes, whose own declaration wouldn't be
+      // generated either. Both schemas here are included, so referencing must
+      // work exactly as without the filter.
+      await runCLI(["schemas/**/schema.ts"], {
+        outDir: "types",
+        outPattern: "[dir].generated[ext]",
+        suffix: "Schema",
+        schemas: "CrossFileNodeSchema,CrossFileTreeSchema",
+      });
+
+      const tree = readFileSync(join(workDir, "types/tree.generated.ts"), "utf-8");
+      expect(tree).toContain("import type { CrossFileNodeInput, CrossFileNodeOutput }");
+      expect(tree).toContain("root: CrossFileNodeInput;");
+      expect(tree).not.toContain("any");
+    });
+
+    it("references an aliased cross-file import by the declaring file's own export name", async () => {
+      workDir = setUpCrossFileWorkDir();
+      // Re-import the same recursive schema under a local alias - the
+      // declaring file has no generated type named after that alias, only
+      // after its own export, which is what referencing it must use instead.
+      writeFileSync(
+        join(workDir, "schemas/tree/schema.ts"),
+        readFileSync(
+          resolve(import.meta.dirname, "fixtures/cross-file-recursive/aliased-tree-schema.ts"),
+          "utf-8",
+        ).replace('./node-schema"', '../node/schema"'),
+      );
+
+      await runCLI(["schemas/**/schema.ts"], {
+        outDir: "types",
+        outPattern: "[dir].generated[ext]",
+        suffix: "Schema",
+      });
+
+      const tree = readFileSync(join(workDir, "types/tree.generated.ts"), "utf-8");
+      expect(tree).toContain(
+        'import type { CrossFileNodeInput, CrossFileNodeOutput } from "./node.generated";',
+      );
+      expect(tree).toContain("root: CrossFileNodeInput;");
+      expect(tree).toContain("list: CrossFileNodeInput[];");
+      expect(tree).not.toContain("RenamedNodeSchema");
+      expect(tree).not.toContain("any");
+    });
+  });
+
+  describe("--outFile with a schema one file declares and another imports", () => {
+    /**
+     * Writes a schema file and a second file importing it, and enters the work
+     * directory. The imported schema shows up twice in a single output file's
+     * results: once as its own declaration, once as the importing file's copy.
+     * The declaring file is named so that it is processed first, putting its
+     * own (exported) entry ahead of the importing file's copy.
+     */
+    function setUpSharedSchemaWorkDir(): string {
+      const dir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+      symlinkSync(
+        resolve(import.meta.dirname, "../node_modules"),
+        join(dir, "node_modules"),
+        "junction",
+      );
+      mkdirSync(join(dir, "schemas"), { recursive: true });
+      writeFileSync(
+        join(dir, "schemas/a-leaf.ts"),
+        'import { z } from "zod";\n\nexport const LeafSchema = z.object({ id: z.string() });\n',
+      );
+      writeFileSync(
+        join(dir, "schemas/b-branch.ts"),
+        'import { z } from "zod";\nimport { LeafSchema } from "./a-leaf";\n\n' +
+          "export const BranchSchema = z.object({ leaf: LeafSchema });\n",
+      );
+      process.chdir(dir);
+      return dir;
+    }
+
+    it("keeps the declaration with mergeSame enabled", async () => {
+      workDir = setUpSharedSchemaWorkDir();
+
+      await runCLI(["schemas/*.ts"], {
+        outFile: "types/all.ts",
+        suffix: "Schema",
+        outputSuffix: "",
+        mergeSame: true,
+      });
+
+      const generated = readFileSync(join(workDir, "types/all.ts"), "utf-8");
+      expect(generated).toContain("export type Leaf = {");
+      expect(generated).toContain("export type LeafInput = Leaf;");
+    });
+
+    it("keeps the declaration with mergeSame disabled", async () => {
+      workDir = setUpSharedSchemaWorkDir();
+
+      await runCLI(["schemas/*.ts"], { outFile: "types/all.ts", suffix: "Schema" });
+
+      const generated = readFileSync(join(workDir, "types/all.ts"), "utf-8");
+      expect(generated).toContain("export type LeafInput = {");
+      expect(generated).toContain("export type LeafOutput = {");
+    });
+  });
+
   it("does not write a companion test file when a schema file has no exported schemas", async () => {
     workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
     symlinkSync(

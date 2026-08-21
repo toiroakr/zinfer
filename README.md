@@ -84,6 +84,7 @@ Options:
   --dry-run                  Preview without writing files
   --with-descriptions        Include Zod .describe() as TSDoc comments
   --generate-tests           Generate vitest type equality tests alongside type files
+  --inline-external-types    Inline a plain type an explicit z.ZodType<T> annotation reaches in another file, instead of referencing it
   -V, --version              Output the version number
   -h, --help                 Display help
 ```
@@ -132,6 +133,9 @@ export default defineConfig({
 
   // Output .describe() as TSDoc
   withDescriptions: true,
+
+  // Inline a plain type imported from another file instead of referencing it
+  inlineExternalTypes: false,
 });
 ```
 
@@ -328,6 +332,78 @@ export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 
 When an explicit type annotation (`z.ZodType<T>`) is present, that type name is used in the output.
 
+Annotating the getter itself lets TypeScript unfold one whole copy of the schema
+before it reaches the recursion. That copy is collapsed away, so the generated type
+holds the self-reference directly rather than an extra level of the same shape.
+
+### Recursive Schemas Across Files
+
+A recursive type has no faithful inline form, so a recursive schema imported from
+another file is referenced by name and imported from the file that declares its
+types:
+
+```typescript
+// out/tree.generated.ts
+import type { Node } from "./node.generated";
+
+export type Tree = {
+  root: Node;
+  index: {
+    [x: string]: Node;
+  };
+};
+```
+
+This needs the declaring file to be part of the same run and to get an output file of
+its own (`--outDir` / `--outPattern`, or `--outFile`, which puts both declarations in
+the one file and needs no import). A local import alias (`import { Node as N }`) makes
+no difference - the reference and import still use the declaring file's own export name,
+since that is the only name its generated file actually declares. `--schemas` only turns
+this off for a schema the filter itself excludes, since that schema's own declaration
+wouldn't be generated either; an output pattern that maps two schema files onto one path
+turns it off too, for the same reason. Whenever a reference cannot be made, the schema
+is inlined as far as it can be, with the recursion point kept as the index signature
+or array the getter describes instead of collapsing to a bare `any`.
+
+### Recursive Schemas Through a Non-Generated Intermediate
+
+A schema that is not exported gets no generated type of its own, so a reference to
+it is inlined. Its own references to schemas that ARE generated still resolve by
+name, even when the reference to the recursive schema is nested inside that inlined
+copy:
+
+```typescript
+export const NodeSchema = z.object({
+  name: z.string(),
+  get children() {
+    return z.record(z.string(), NodeSchema);
+  },
+});
+
+// Not exported - no type is generated for it
+const GroupSchema = z.object({
+  members: z.array(NodeSchema),
+});
+
+export const TreeSchema = z.object({
+  direct: NodeSchema,
+  viaGroup: GroupSchema,
+});
+```
+
+```typescript
+export type Tree = {
+  direct: Node;
+  viaGroup: {
+    members: Node[];
+  };
+};
+```
+
+No import is needed here, since `Node` is generated in this same file - unlike the
+cross-file case above, this works regardless of whether the intermediate's own file
+is part of the run.
+
 ## Library API
 
 ### extractZodTypes
@@ -484,6 +560,49 @@ Re-run with `--generate-tests` after modifying schemas to continuously verify ty
 - Descriptions: `.describe()`
 - Branded types: `.brand()`
 - Imported schemas: relative imports and subpath imports (package.json `imports` field, including the `#/*` form)
+
+## Inlining External Types (`--inline-external-types`)
+
+When a schema carries an explicit `z.ZodType<T>` annotation and `T` reaches a plain (non-Zod) `type`/`interface`/`enum` declared in another file, TypeScript prints an `import("...").Name` reference to it rather than expanding it - there is nothing else visible to print from that location. By default zinfer keeps that reference (rewritten to resolve correctly from wherever the output is written). Setting `--inline-external-types` replaces it with the referenced type's own structure instead, recursively, so the generated output carries no dependency on the original file layout - useful when generated files are moved, published, or read outside the project that declares those types.
+
+```typescript
+// field.types.ts
+export type FieldType = "uuid" | "string" | "number" | "boolean";
+export type FieldOutput = { type: FieldType; fields?: Record<string, FieldOutput> };
+
+// field.schema.ts
+import { z } from "zod";
+import type { FieldOutput } from "./field.types";
+
+export const FieldSchema: z.ZodType<FieldOutput> = z.lazy(() =>
+  z.object({
+    type: z.enum(["uuid", "string", "number", "boolean"]),
+    fields: z.record(z.string(), FieldSchema).optional(),
+  }),
+);
+```
+
+Without the flag, `FieldType` is referenced:
+
+```typescript
+export type FieldOutput = {
+  type: import("./field.types").FieldType;
+  fields?: Record<string, FieldOutput>;
+};
+```
+
+With `--inline-external-types`, it's expanded in place:
+
+```typescript
+export type FieldOutput = {
+  type: "uuid" | "string" | "number" | "boolean";
+  fields?: Record<string, FieldOutput>;
+};
+```
+
+The expansion follows references across as many files as needed. A reference that would recurse into itself - directly, or by cycling back through another file - is left as an `import(...)` at the point it would repeat; everything outside the cycle is still fully expanded. A same-file type that isn't exported has no importable name to fall back to, so a cycle through one is left as a bare (unresolved) identifier - the same known limitation `nonexported-explicit-type-schema.ts` documents for a local explicit annotation. Namespace imports (`import * as ns`), default-imported types, and generic instantiations (`import("...").Foo<Bar>`) aren't expanded either; each is left as the reference zinfer would otherwise print.
+
+This only applies to a plain type reached through an explicit `z.ZodType<T>` annotation - a Zod schema imported from another file is unaffected, and continues to be referenced by its own generated type name or inlined as already described elsewhere in this document.
 
 ## Subpath Imports
 
