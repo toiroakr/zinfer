@@ -84,7 +84,7 @@ Options:
   --dry-run                  Preview without writing files
   --with-descriptions        Include Zod .describe() as TSDoc comments
   --generate-tests           Generate vitest type equality tests alongside type files
-  --inline-external-types    Inline a plain type imported from another file instead of referencing it
+  --inline-external-types    Inline a plain type an explicit z.ZodType<T> annotation reaches in another file, instead of referencing it
   -V, --version              Output the version number
   -h, --help                 Display help
 ```

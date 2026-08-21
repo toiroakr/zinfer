@@ -40,6 +40,9 @@ const ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS = [
   "inline-external-types/nonexported-cycle/schema.ts",
   "inline-external-types/qualified/direct-schema.ts",
   "inline-external-types/qualified/schema.ts",
+  "inline-external-types/computed-enum/schema.ts",
+  "inline-external-types/dts-source/schema.ts",
+  "inline-external-types/package-specifier/schema.ts",
 ];
 // tsgo's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
 // Windows) that execFileSync cannot run directly without a shell; run its
@@ -1052,6 +1055,59 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // (it isn't, on its own) - just the accepted, documented limitation.
       expect(result?.input).toBe("{ middle: { hidden: { self?: Hidden; }; }; }");
     });
+
+    it("should never print a partial union when an enum member's value can't be statically resolved", () => {
+      // Kind.B is initialized from a function call, so ts-morph's
+      // getValue() can't compute it. Printing "a" | "c" (silently dropping
+      // B) would reject a value TypeScript itself accepts through Kind -
+      // narrower than the real enum is worse than not expanding at all.
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/computed-enum/schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "ComputedEnumSchema");
+
+      expect(result?.input).toBe("Kind");
+      expect(result?.input).not.toContain('"a"');
+    });
+
+    it("should resolve a reference to a type declared in a .d.ts file, not just a .ts one", () => {
+      // A .d.ts file's derived module specifier ("declared", not
+      // "declared.d") has to match what TypeScript's own printer
+      // synthesizes for it, or resolveModuleSourceFile()'s lookup misses -
+      // exercised through the bare-reference promotion path (holder.ts's
+      // own import of Declared), not just the top-level synthesis path.
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/dts-source/schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const result = results.find((r) => r.schemaName === "DtsSourceSchema");
+
+      expect(result?.input).toBe("{ declared: { value: string; }; }");
+    });
+
+    it("should not treat a bare package specifier as a filesystem path to probe", () => {
+      // "virtual-lib" is an ambient module (package-specifier/ambient.d.ts),
+      // not a relative or absolute path - import("virtual-lib") is exactly
+      // the form a real node_modules package would print. Resolving it
+      // against the filesystem (e.g. probing "virtual-lib.ts") could
+      // accidentally match an unrelated same-named local file; it must be
+      // left as the reference, not expanded, however the file is named.
+      //
+      // ambient.d.ts needs to be loaded into the shared project before
+      // schema.ts is (skipFileDependencyResolution means extractAll never
+      // pulls it in on its own) - getSchemaNames touches it for that,
+      // independent of it having no schemas of its own.
+      extractor.getSchemaNames(
+        resolve(fixturesDir, "inline-external-types/package-specifier/ambient.d.ts"),
+      );
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/package-specifier/schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const result = results.find((r) => r.schemaName === "PackageSpecifierSchema");
+
+      expect(result?.input).toBe('{ foo: import("virtual-lib").Foo; }');
+    });
   });
 
   createSchemaTest(extractor, "inline-external-types/chain/schema");
@@ -1090,6 +1146,15 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     {
       context: { inlineExternalTypes: true },
       snapshotName: "inline-external-types/qualified/schema-inlined",
+    },
+  );
+  createSchemaTest(
+    extractor,
+    "inline-external-types/dts-source/schema",
+    "should generate TypeScript declarations",
+    {
+      context: { inlineExternalTypes: true },
+      snapshotName: "inline-external-types/dts-source/schema-inlined",
     },
   );
 

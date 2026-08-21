@@ -18,7 +18,7 @@ import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver, type ImportedSchemaMap } from "./import-resolver.js";
 import { escapeRegExp } from "./regexp.js";
-import { resolve } from "pathe";
+import { resolve, isAbsolute } from "pathe";
 import { logDebugError } from "./logger.js";
 import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
 
@@ -850,19 +850,20 @@ export class ZodTypeExtractor {
 
   /**
    * Prints an enum declaration's members as a literal union, e.g.
-   * `"a" | "b"`. Returns undefined when the enum has no string/number
-   * members to print (leaving the caller's fallback in place).
+   * `"a" | "b"`. Returns undefined when the enum has no members, or when
+   * any member's value can't be statically resolved (e.g. initialized from
+   * a function call) - printing a union missing that member would be
+   * narrower than the enum itself and reject a value the enum actually
+   * allows, which is worse than not expanding it at all.
    */
   private printEnumAsLiteralUnion(enumDecl: EnumDeclaration): string | undefined {
-    const values = enumDecl
-      .getMembers()
-      .map((member) => {
-        const value = member.getValue();
-        if (typeof value === "string") return `"${value}"`;
-        if (typeof value === "number") return value.toString();
-        return null;
-      })
-      .filter((value): value is string => value !== null);
+    const values: string[] = [];
+    for (const member of enumDecl.getMembers()) {
+      const value = member.getValue();
+      if (typeof value === "string") values.push(`"${value}"`);
+      else if (typeof value === "number") values.push(value.toString());
+      else return undefined;
+    }
 
     return values.length > 0 ? values.join(" | ") : undefined;
   }
@@ -1179,14 +1180,22 @@ export class ZodTypeExtractor {
   }
 
   /**
-   * Resolves a printed `import("...")` module specifier (an absolute path
-   * without an extension) to the `SourceFile` it points at, trying each
-   * extension TypeScript itself would resolve. Loads the file into the
-   * shared project on demand so a type declared there can be read the same
-   * way as any file passed to `extractAll`.
+   * Resolves a printed `import("...")` module specifier to the `SourceFile`
+   * it points at, trying each extension TypeScript itself would resolve.
+   * Loads the file into the shared project on demand so a type declared
+   * there can be read the same way as any file passed to `extractAll`.
+   *
+   * Only an absolute specifier is probed as a filesystem path.
+   * `absolutizeImportPaths` already makes every relative specifier
+   * (`./...`) TypeScript prints absolute, so a non-absolute one here is a
+   * bare package specifier (`import("zod").Foo`) - treating `zod` as a
+   * relative filename could accidentally resolve to an unrelated same-named
+   * file the caller never intended to reach.
    */
   private resolveModuleSourceFile(modulePath: string): SourceFile | undefined {
-    for (const ext of [".ts", ".tsx", ".mts", ".cts"]) {
+    if (!isAbsolute(modulePath)) return undefined;
+
+    for (const ext of [".ts", ".tsx", ".mts", ".cts", ".d.ts", ".d.mts", ".d.cts"]) {
       const candidate = `${modulePath}${ext}`;
       const sourceFile =
         this.project.getSourceFile(candidate) ??
@@ -1461,7 +1470,7 @@ export class ZodTypeExtractor {
    * cycle-detection key.
    */
   private modulePathFor(sourceFile: SourceFile): string {
-    return sourceFile.getFilePath().replace(/\.(ts|tsx|mts|cts)$/, "");
+    return sourceFile.getFilePath().replace(/\.d\.(ts|mts|cts)$|\.(ts|tsx|mts|cts)$/, "");
   }
 }
 
