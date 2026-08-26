@@ -268,9 +268,10 @@ const INDEX_SIGNATURE_PLACEHOLDER = /^(\{\s*\[x: string\]:\s*)(?:any|unknown)(\s
  * Rewrites a recursive getter field's printed type, or returns undefined when
  * the type is neither a placeholder nor an inline copy of the schema.
  *
- * Only the recursion point itself is rewritten: a trailing `| undefined` on an
- * optional key, and a `readonly` modifier, describe the key rather than what it
- * holds, so both are carried over untouched.
+ * Only the recursion point itself is rewritten: a trailing `| null` and/or
+ * `| undefined` on an optional/nullable key, and a `readonly` modifier,
+ * describe the key rather than what it holds, so both are carried over
+ * untouched.
  */
 function rewriteRecursiveValue(
   value: string,
@@ -278,9 +279,9 @@ function rewriteRecursiveValue(
   info: GetterFieldInfo,
   collapsibleFields: string[],
 ): string | undefined {
-  const undefinedSuffix = /\s*\|\s*undefined\s*$/.exec(value);
-  const core = undefinedSuffix ? value.slice(0, undefinedSuffix.index) : value;
-  const suffix = undefinedSuffix ? value.slice(undefinedSuffix.index) : "";
+  const nullableOptionalSuffix = /(?:\s*\|\s*(?:null|undefined))+\s*$/.exec(value);
+  const core = nullableOptionalSuffix ? value.slice(0, nullableOptionalSuffix.index) : value;
+  const suffix = nullableOptionalSuffix ? value.slice(nullableOptionalSuffix.index) : "";
 
   const readonlyPrefix = /^readonly\s+/.exec(core)?.[0] ?? "";
   const bare = core.slice(readonlyPrefix.length).trim();
@@ -323,16 +324,17 @@ function buildReplacementType(
 /**
  * Checks whether a printed field type is nothing but a placeholder.
  *
- * An annotated optional getter prints its placeholder as `any | undefined`: the
- * annotation tells TypeScript the key may be absent even though it cannot tell
- * what the key holds. The `| undefined` carries no information the optional key
- * does not, so it is ignored here.
+ * An annotated optional getter prints its placeholder as `any | undefined`,
+ * and an annotated nullable-and-optional getter as `any | null | undefined`:
+ * the annotation tells TypeScript the key may be absent or null even though it
+ * cannot tell what the key holds. Neither suffix carries information the
+ * optional/nullable key does not, so both are ignored here.
  */
 function isAnyPlaceholder(value: string): boolean {
   const normalized = value
     .trim()
     .replace(/^readonly\s+/, "")
-    .replace(/\s*\|\s*undefined$/, "")
+    .replace(/(?:\s*\|\s*(?:null|undefined))+$/, "")
     .trim();
   return PLACEHOLDER.test(normalized) || INDEX_SIGNATURE_PLACEHOLDER.test(normalized);
 }
