@@ -199,6 +199,97 @@ describe("runCLI", () => {
     ).rejects.toThrow("--declaration");
   });
 
+  it("rejects --generate-tests combined with --brand-strategy local-symbol", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      'import { z } from "zod";\n\nexport const UserSchema = z.object({ id: z.string() });\n',
+    );
+    process.chdir(workDir);
+
+    await expect(
+      runCLI(["schema.ts"], {
+        outDir: workDir,
+        generateTests: true,
+        brandStrategy: "local-symbol",
+      }),
+    ).rejects.toThrow("--brand-strategy");
+  });
+
+  it("rejects a brandStrategy value that isn't zod-import or local-symbol (e.g. set via a config file)", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      'import { z } from "zod";\n\nexport const UserSchema = z.object({ id: z.string() });\n',
+    );
+    writeFileSync(
+      join(workDir, "zinfer.config.mjs"),
+      'export default { include: ["schema.ts"], outDir: ".", brandStrategy: "loclasymbol" };\n',
+    );
+    process.chdir(workDir);
+
+    await expect(runCLI([], {})).rejects.toThrow("--brand-strategy");
+  });
+
+  it("emits a self-contained unique symbol marker instead of importing zod when --brand-strategy local-symbol is set", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      'import { z } from "zod";\n\nexport const UserIdSchema = z.string().brand<"UserId">();\n',
+    );
+    process.chdir(workDir);
+
+    await runCLI(["schema.ts"], {
+      outDir: workDir,
+      suffix: "Schema",
+      brandStrategy: "local-symbol",
+    });
+
+    const output = readFileSync(join(workDir, "schema.types.ts"), "utf-8");
+    expect(output).not.toContain("zod");
+    expect(output).toContain("declare const __brand: unique symbol;");
+    expect(output).toContain('string & { readonly [__brand]: "UserId" }');
+  });
+
+  it("honors brandStrategy set via a config file", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      'import { z } from "zod";\n\nexport const UserIdSchema = z.string().brand<"UserId">();\n',
+    );
+    writeFileSync(
+      join(workDir, "zinfer.config.mjs"),
+      'export default { include: ["schema.ts"], outDir: ".", brandStrategy: "local-symbol" };\n',
+    );
+    process.chdir(workDir);
+
+    await runCLI([], {});
+
+    const output = readFileSync(join(workDir, "schema.types.ts"), "utf-8");
+    expect(output).not.toContain("zod");
+    expect(output).toContain("declare const __brand: unique symbol;");
+  });
+
   /**
    * Writes a schema whose type annotation references a type declared in a
    * *different* directory than the schema itself. TypeScript's type printer
