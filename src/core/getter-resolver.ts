@@ -301,7 +301,8 @@ function rewriteRecursiveValue(
   // unknown, so the printed braces are kept exactly as they are.
   const indexSignature = INDEX_SIGNATURE_PLACEHOLDER.exec(bare);
   if (indexSignature) {
-    return readonlyPrefix + indexSignature[1] + typeName + indexSignature[2] + suffix;
+    const replacement = indexSignature[1] + typeName + indexSignature[2];
+    return readonlyPrefix + restoreMissingNull(replacement, info, suffix) + suffix;
   }
 
   if (isInlinedRecursiveCopy(bare, collapsibleFields)) {

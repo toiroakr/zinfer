@@ -325,5 +325,30 @@ describe("GetterResolver", () => {
 
       expect(result).toBe("{ name: string; children: Node[] | null; }");
     });
+
+    it("should append a missing | null for a nullable index-signature placeholder", () => {
+      // Defensive coverage for the index-signature branch, mirroring the fix
+      // applied to the bare-placeholder and inlined-copy branches: a
+      // getter's AST can say isNullable even when the printed index
+      // signature's own suffix doesn't carry `| null`.
+      const getterFields = new Map([
+        [
+          "children",
+          {
+            refSchema: "Node",
+            isArray: false,
+            isRecord: true,
+            isOptional: false,
+            isNullable: true,
+            isSelfRef: true,
+          },
+        ],
+      ]);
+
+      const typeStr = "{ name: string; children: { [x: string]: any; }; }";
+      const result = resolver.resolveAnyTypes(typeStr, getterFields, "Node");
+
+      expect(result).toBe("{ name: string; children: { [x: string]: Node; } | null; }");
+    });
   });
 });
