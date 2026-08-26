@@ -10,6 +10,16 @@ export type TreeNodeOutput = {
   children?: TreeNodeOutput[] | undefined;
 };
 
+export type NullableTreeNodeInput = {
+  value: string;
+  children?: NullableTreeNodeInput[] | null | undefined;
+};
+
+export type NullableTreeNodeOutput = {
+  value: string;
+  children?: NullableTreeNodeOutput[] | null | undefined;
+};
+
 export type NestedRecordInput = {
   name: string;
   items: {

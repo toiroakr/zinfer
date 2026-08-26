@@ -8,6 +8,14 @@ export const TreeNodeSchema = z.object({
   },
 });
 
+// Getter-based recursive schema through a nullable-and-optional array chain
+export const NullableTreeNodeSchema = z.object({
+  value: z.string(),
+  get children() {
+    return z.array(NullableTreeNodeSchema).nullable().optional();
+  },
+});
+
 // Getter-based recursive schema with record
 export const NestedRecordSchema = z.object({
   name: z.string(),

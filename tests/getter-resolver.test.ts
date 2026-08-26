@@ -212,5 +212,41 @@ describe("GetterResolver", () => {
 
       expect(result).toBe("{ value: string; child?: Node; }");
     });
+
+    it("should replace a nullable-and-optional array placeholder (any[] | null | undefined)", () => {
+      // .array(Self).nullable().optional() prints as `any[] | null | undefined`,
+      // not just `any[]` - the `| null` sits between the placeholder and the
+      // trailing `| undefined`.
+      const getterFields = new Map([
+        [
+          "children",
+          { refSchema: "Node", isArray: true, isRecord: false, isOptional: true, isSelfRef: true },
+        ],
+      ]);
+
+      const typeStr = "{ name: string; children?: any[] | null | undefined; }";
+      const result = resolver.resolveAnyTypes(typeStr, getterFields, "Node");
+
+      expect(result).toBe("{ name: string; children?: Node[] | null | undefined; }");
+    });
+
+    it("should collapse an inlined copy whose recursion point is nullable", () => {
+      // An annotated getter that unfolds one level can leave the inner
+      // recursion point printed as `any[] | null | undefined` - the same
+      // suffix that has to be recognised as a placeholder for the inline
+      // copy detection to kick in.
+      const getterFields = new Map([
+        [
+          "children",
+          { refSchema: "Node", isArray: true, isRecord: false, isOptional: true, isSelfRef: true },
+        ],
+      ]);
+
+      const typeStr =
+        "{ name: string; children: { name: string; children: any[] | null | undefined; }[] | null; }";
+      const result = resolver.resolveAnyTypes(typeStr, getterFields, "Node");
+
+      expect(result).toBe("{ name: string; children: Node[] | null; }");
+    });
   });
 });

@@ -52,6 +52,16 @@ export type RecursiveArrayOutput = {
   children: RecursiveArrayOutput[];
 };
 
+export type NullableRecursiveArrayInput = {
+  name: string;
+  children: NullableRecursiveArrayInput[];
+};
+
+export type NullableRecursiveArrayOutput = {
+  name: string;
+  children: NullableRecursiveArrayOutput[] | null;
+};
+
 export type LeafRecordInput = {
   leaves: {
     [x: string]: {
