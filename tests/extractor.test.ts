@@ -332,6 +332,56 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "should generate TypeScript declarations with brand information",
   );
 
+  describe("brand-schema.ts (brandStrategy: local-symbol)", () => {
+    it("should emit a self-contained unique symbol marker instead of importing zod's BRAND", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "brand-schema.ts"));
+      const output = generateDeclarationFile(results, mapName, { brandStrategy: "local-symbol" });
+
+      expect(output).not.toContain("zod");
+      expect(output).toContain("export declare const __brand: unique symbol;");
+      expect(output).toContain('string & { readonly [__brand]: "UserId" }');
+    });
+
+    it("should not merge a branded input/output pair, and still emit exactly one shared symbol, under mergeSame", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "brand-schema.ts"));
+      const output = generateDeclarationFile(results, mapName, {
+        mergeSame: true,
+        brandStrategy: "local-symbol",
+      });
+
+      // A branded output is never structurally identical to its (unbranded)
+      // input, so mergeSame must not unify them into a single type here.
+      expect(output).toContain("export type UserIdInput = string;");
+      expect(output).toContain(
+        'export type UserIdOutput = string & { readonly [__brand]: "UserId" };',
+      );
+      expect(output.match(/export declare const __brand: unique symbol;/g)).toHaveLength(1);
+    });
+
+    it("should not emit an unused local-symbol marker when generating input-only declarations", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "brand-schema.ts"));
+      const output = generateDeclarationFile(results, mapName, {
+        inputOnly: true,
+        brandStrategy: "local-symbol",
+      });
+
+      expect(output).not.toContain("declare const __brand");
+      expect(output).not.toContain("readonly [__brand]");
+    });
+  });
+
+  describe("brand-lookalike-literal-schema.ts (brandStrategy: local-symbol)", () => {
+    it("should not rewrite a plain string literal that merely contains the text BRAND<", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "brand-lookalike-literal-schema.ts"),
+      );
+      const output = generateDeclarationFile(results, mapName, { brandStrategy: "local-symbol" });
+
+      expect(output).toContain('kind: "BRAND<Fake>";');
+      expect(output).not.toContain("__brand");
+    });
+  });
+
   describe("array-brand-schema.ts", () => {
     it("should brand the array element instead of the whole array", () => {
       const results = extractor.extractAll(resolve(fixturesDir, "array-brand-schema.ts"));
@@ -363,6 +413,16 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
       expect(result?.output).toBe('{ tags: (string & BRAND<"Tag">)[]; } & BRAND<"Wrapper">');
       expect(result?.input).toBe("{ tags: string[]; }");
+    });
+
+    it("should reuse a single shared symbol for multiple distinct brands under brandStrategy local-symbol", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "object-brand-schema.ts"));
+      const output = generateDeclarationFile(results, mapName, { brandStrategy: "local-symbol" });
+
+      expect(output).toContain('readonly [__brand]: "Tag"');
+      expect(output).toContain('readonly [__brand]: "Wrapper"');
+      // Exactly one shared symbol declaration, not one per brand tag.
+      expect(output.match(/export declare const __brand: unique symbol;/g)).toHaveLength(1);
     });
   });
 

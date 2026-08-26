@@ -133,4 +133,11 @@ export interface DeclarationOptions {
    * import instead of leaving the name undeclared.
    */
   importSources?: ReadonlyMap<string, string>;
+  /**
+   * How a `.brand()` marker is represented in the generated output.
+   * `"zod-import"` (default) prints `BRAND<"Tag">` and imports `BRAND` from
+   * zod. `"local-symbol"` prints a self-contained `unique symbol`-keyed
+   * property instead, so the generated file never imports zod.
+   */
+  brandStrategy?: "zod-import" | "local-symbol";
 }

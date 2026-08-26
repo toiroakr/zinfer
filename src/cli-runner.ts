@@ -4,6 +4,7 @@ import {
   ZodTypeExtractor,
   generateDeclarationFile,
   relativizeImportPaths,
+  containsBrandMarker,
   NameMapper,
   FileResolver,
   DescriptionExtractor,
@@ -46,6 +47,7 @@ export interface CLIOptions {
   generateTests?: boolean;
   verbose?: boolean;
   inlineExternalTypes?: boolean;
+  brandStrategy?: "zod-import" | "local-symbol";
 }
 
 /**
@@ -118,6 +120,7 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
     inputOnly: config.inputOnly,
     outputOnly: config.outputOnly,
     mergeSame: config.mergeSame,
+    brandStrategy: config.brandStrategy,
   };
 
   // Types are only referenced across files when every matched file actually
@@ -188,6 +191,7 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
         outputPath,
         testPath,
         nameMapper,
+        config.brandStrategy,
       );
 
       if (testContent) {
@@ -263,6 +267,7 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
           testPath,
           results,
           nameMapper,
+          config.brandStrategy,
         );
 
         if (testContent) {
@@ -449,6 +454,7 @@ function mergeCliWithConfig(cliOptions: CLIOptions, fileConfig: ZinferConfig): Z
   if (cliOptions.generateTests !== undefined) merged.generateTests = cliOptions.generateTests;
   if (cliOptions.inlineExternalTypes !== undefined)
     merged.inlineExternalTypes = cliOptions.inlineExternalTypes;
+  if (cliOptions.brandStrategy !== undefined) merged.brandStrategy = cliOptions.brandStrategy;
 
   return merged;
 }
@@ -482,6 +488,20 @@ function validateOptions(config: ZinferConfig): void {
       "--suffix",
       "Empty suffix is not allowed",
       "Provide a non-empty suffix value or omit the option",
+    );
+  }
+
+  // commander's .choices() rejects an invalid CLI flag value before this ever
+  // runs, but a config file is untyped JS/JSON and can carry any string.
+  if (
+    config.brandStrategy !== undefined &&
+    config.brandStrategy !== "zod-import" &&
+    config.brandStrategy !== "local-symbol"
+  ) {
+    throw new InvalidOptionError(
+      "--brand-strategy",
+      `Invalid value "${config.brandStrategy}"`,
+      'Use "zod-import" or "local-symbol"',
     );
   }
 
@@ -676,6 +696,7 @@ function createTestSchemas(results: ExtractResult[], nameMapper: NameMapper): Te
       schemaName: result.schemaName,
       inputTypeName: nameMapper.map(result.schemaName).inputName,
       outputTypeName: nameMapper.map(result.schemaName).outputName,
+      hasBrand: containsBrandMarker(result.output),
     }));
 }
 
@@ -687,6 +708,7 @@ function generateTestFileForSingleOutput(
   typesPath: string,
   testPath: string,
   nameMapper: NameMapper,
+  brandStrategy: DeclarationOptions["brandStrategy"],
 ): string {
   const testFiles: TestFileInfo[] = [];
   const testDir = dirname(testPath);
@@ -703,7 +725,7 @@ function generateTestFileForSingleOutput(
     });
   }
 
-  return generateTypeTests(testFiles);
+  return generateTypeTests(testFiles, { brandStrategy });
 }
 
 /**
@@ -715,6 +737,7 @@ function generateTestFileForPerFile(
   testPath: string,
   results: ExtractResult[],
   nameMapper: NameMapper,
+  brandStrategy: DeclarationOptions["brandStrategy"],
 ): string {
   const schemas = createTestSchemas(results, nameMapper);
   if (schemas.length === 0) {
@@ -723,14 +746,17 @@ function generateTestFileForPerFile(
 
   const testDir = dirname(testPath);
 
-  return generateTypeTests([
-    {
-      schemaFilePath: getRelativePath(testDir, schemaFile),
-      typesFilePath: getRelativePath(testDir, typesPath),
-      importPrefix: generateImportPrefix(basename(schemaFile, ".ts")),
-      schemas,
-    },
-  ]);
+  return generateTypeTests(
+    [
+      {
+        schemaFilePath: getRelativePath(testDir, schemaFile),
+        typesFilePath: getRelativePath(testDir, typesPath),
+        importPrefix: generateImportPrefix(basename(schemaFile, ".ts")),
+        schemas,
+      },
+    ],
+    { brandStrategy },
+  );
 }
 
 /**

@@ -350,12 +350,16 @@ export function formatAsDeclaration(
   typeName: MappedTypeName,
   options: DeclarationOptions = {},
 ): string {
-  const { inputOnly, outputOnly, mergeSame } = options;
+  const { inputOnly, outputOnly, mergeSame, brandStrategy } = options;
   const lines: string[] = [];
   const indent = "  ";
 
-  const inputFormatted = prettifyType(result.input, indent, result.fieldDescriptions);
-  const outputFormatted = prettifyType(result.output, indent, result.fieldDescriptions);
+  const rawInput =
+    brandStrategy === "local-symbol" ? localizeBrandMarkers(result.input) : result.input;
+  const rawOutput =
+    brandStrategy === "local-symbol" ? localizeBrandMarkers(result.output) : result.output;
+  const inputFormatted = prettifyType(rawInput, indent, result.fieldDescriptions);
+  const outputFormatted = prettifyType(rawOutput, indent, result.fieldDescriptions);
 
   // Schema-level TSDoc comment
   const schemaComment = result.description
@@ -585,6 +589,152 @@ export function formatMultipleAsDeclarations(
 }
 
 /**
+ * Local-symbol marker name for the `"local-symbol"` brand strategy. A single
+ * `export declare const __brand: unique symbol;` is emitted once per
+ * generated file and reused by every branded type it declares - the nominal
+ * distinction between brands comes from the tag's string literal, not from
+ * the symbol's identity, the same way zod's own `BRAND` marker works. It is
+ * exported so a `--generate-tests` companion file can reference `typeof
+ * __brand` to verify the marker against `z.output<>`.
+ */
+const LOCAL_BRAND_SYMBOL = "__brand";
+
+/** Matches a TypeScript identifier character: letters, digits, `_`, or `$`. */
+const WORD_CHAR = /[A-Za-z0-9_$]/;
+
+/**
+ * Whether the character at `index` is escaped, i.e. preceded by an odd
+ * number of consecutive backslashes. An even count (including zero) means
+ * those backslashes escape each other in pairs and `index` itself is not
+ * escaped - e.g. in `"a\\"` (a, one escaped backslash, close quote) the
+ * closing quote is preceded by two backslashes and is *not* escaped.
+ */
+function isEscaped(typeStr: string, index: number): boolean {
+  let count = 0;
+  let i = index - 1;
+  while (i >= 0 && typeStr[i] === "\\") {
+    count++;
+    i--;
+  }
+  return count % 2 === 1;
+}
+
+/**
+ * Rewrites every printed `BRAND<Tag>` marker to a self-contained
+ * symbol-keyed property, so the output never needs to import zod's `BRAND`.
+ *
+ * Scans with string-literal awareness so a schema whose own literal type
+ * happens to contain the text `BRAND<` (e.g. `z.literal("BRAND<Fake>")`,
+ * printed as the string literal type `"BRAND<Fake>"`) is left untouched -
+ * only an unquoted `BRAND<` at a word boundary is a real marker to rewrite.
+ */
+function localizeBrandMarkers(typeStr: string): string {
+  let result = "";
+  let cursor = 0;
+  let inString = false;
+  let stringChar = "";
+
+  while (cursor < typeStr.length) {
+    const char = typeStr[cursor];
+
+    if ((char === '"' || char === "'" || char === "`") && !isEscaped(typeStr, cursor)) {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+      }
+      result += char;
+      cursor++;
+      continue;
+    }
+
+    const atWordBoundary = cursor === 0 || !WORD_CHAR.test(typeStr[cursor - 1]);
+    if (!inString && atWordBoundary && typeStr.startsWith("BRAND<", cursor)) {
+      const tagStart = cursor + "BRAND<".length;
+      const tagEnd = findBrandTagEnd(typeStr, tagStart);
+      const tag = typeStr.slice(tagStart, tagEnd);
+      result += `{ readonly [${LOCAL_BRAND_SYMBOL}]: ${tag} }`;
+      cursor = tagEnd + 1;
+      continue;
+    }
+
+    result += char;
+    cursor++;
+  }
+
+  return result;
+}
+
+/**
+ * Finds the `>` that closes a `BRAND<...>` marker's tag, skipping over a `>`
+ * that occurs inside the tag's own string literal (e.g. a tag like `"a>b"`).
+ */
+function findBrandTagEnd(typeStr: string, tagStart: number): number {
+  let depth = 0;
+  let inString = false;
+  let stringChar = "";
+
+  for (let i = tagStart; i < typeStr.length; i++) {
+    const char = typeStr[i];
+
+    if ((char === '"' || char === "'" || char === "`") && !isEscaped(typeStr, i)) {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (char === "<") {
+      depth++;
+    } else if (char === ">") {
+      if (depth === 0) return i;
+      depth--;
+    }
+  }
+
+  return typeStr.length;
+}
+
+/**
+ * Checks whether a printed type contains an actual `BRAND<` marker, as
+ * opposed to a plain string literal that merely contains that text (e.g.
+ * `z.literal("BRAND<Fake>")`, printed as the string literal type
+ * `"BRAND<Fake>"`). Shares `localizeBrandMarkers`'s string-literal-aware
+ * scan rather than a plain regex, for the same reason.
+ */
+export function containsBrandMarker(typeStr: string): boolean {
+  let inString = false;
+  let stringChar = "";
+
+  for (let cursor = 0; cursor < typeStr.length; cursor++) {
+    const char = typeStr[cursor];
+
+    if ((char === '"' || char === "'" || char === "`") && !isEscaped(typeStr, cursor)) {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+      }
+      continue;
+    }
+
+    const atWordBoundary = cursor === 0 || !WORD_CHAR.test(typeStr[cursor - 1]);
+    if (!inString && atWordBoundary && typeStr.startsWith("BRAND<", cursor)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Checks if any result's *emitted* type(s) contain a printed brand marker.
  * Only scans exported results (generateDeclarationFile skips non-exported
  * ones entirely) and, within those, only the input/output side(s) that will
@@ -594,10 +744,10 @@ function hasBrands(results: ExtractResult[], options: DeclarationOptions = {}): 
   const { inputOnly, outputOnly, mergeSame } = options;
   return results.some((r) => {
     if (!r.isExported) return false;
-    if (mergeSame && r.input === r.output) return /\bBRAND</.test(r.input);
-    if (outputOnly) return /\bBRAND</.test(r.output);
-    if (inputOnly) return /\bBRAND</.test(r.input);
-    return /\bBRAND</.test(r.input) || /\bBRAND</.test(r.output);
+    if (mergeSame && r.input === r.output) return containsBrandMarker(r.input);
+    if (outputOnly) return containsBrandMarker(r.output);
+    if (inputOnly) return containsBrandMarker(r.input);
+    return containsBrandMarker(r.input) || containsBrandMarker(r.output);
   });
 }
 
@@ -621,9 +771,13 @@ export function generateDeclarationFile(
   lines.push("// Generated by zinfer - Do not edit manually");
   lines.push("");
 
-  // Add BRAND import if any result has brands
+  // Add a brand marker declaration if any result has brands
   if (hasBrands(results, options)) {
-    lines.push('import type { BRAND } from "zod";');
+    if (options.brandStrategy === "local-symbol") {
+      lines.push(`export declare const ${LOCAL_BRAND_SYMBOL}: unique symbol;`);
+    } else {
+      lines.push('import type { BRAND } from "zod";');
+    }
     lines.push("");
   }
 

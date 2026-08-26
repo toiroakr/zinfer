@@ -1,10 +1,25 @@
 import { describe, it, expect, afterEach } from "vitest";
+import { z } from "zod";
 import { execFileSync } from "child_process";
 import { execPath } from "process";
 import { resolve, join } from "pathe";
-import { readFileSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync, rmSync } from "fs";
+import {
+  readFileSync,
+  mkdirSync,
+  mkdtempSync,
+  symlinkSync,
+  writeFileSync,
+  rmSync,
+  realpathSync,
+} from "fs";
 import { tmpdir } from "os";
 import { runCLI } from "../src/cli-runner.js";
+
+// zod v3's getter-based recursion infers differently than v4's (see
+// extractor.test.ts's lazy-schema.ts comment), independent of anything
+// zinfer does - a recursive+branded schema is only exercised end-to-end
+// under v4.
+const isZodV4 = typeof z.looseObject === "function";
 
 const cliPath = resolve(import.meta.dirname, "../src/cli.ts");
 // The .bin/jiti entry is a POSIX shell script (a .cmd shim on Windows) that
@@ -12,6 +27,13 @@ const cliPath = resolve(import.meta.dirname, "../src/cli.ts");
 // point through the Node executable instead, which works on every platform.
 const jitiCliPath = resolve(import.meta.dirname, "../node_modules/jiti/lib/jiti-cli.mjs");
 const packageJsonPath = resolve(import.meta.dirname, "../package.json");
+// tsgo's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
+// Windows) that execFileSync cannot run directly without a shell; run its
+// real JS entry point through the Node executable instead.
+const tsgoPath = resolve(
+  import.meta.dirname,
+  "../node_modules/@typescript/native-preview/bin/tsgo",
+);
 
 describe("cli --version", () => {
   it("should report the version from package.json instead of a hardcoded value", () => {
@@ -197,6 +219,265 @@ describe("runCLI", () => {
     await expect(
       runCLI(["schema.ts"], { outDir: workDir, declaration: true, generateTests: true }),
     ).rejects.toThrow("--declaration");
+  });
+
+  it("generates a companion test that actually type-checks for --generate-tests with --brand-strategy local-symbol", async () => {
+    // realpath'd immediately: the companion-test import path (unlike the main
+    // generated types file's, which goes through relativizeImportPaths) isn't
+    // normalized against the macOS /tmp -> /private/tmp symlink, so a raw
+    // tmpdir() path here can produce a spurious "Cannot find module" below -
+    // a pre-existing gap unrelated to brandStrategy, sidestepped rather than
+    // fixed here.
+    workDir = realpathSync(mkdtempSync(join(tmpdir(), "zinfer-cli-runner-")));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    // Exercises a root-level primitive brand and a whole-object brand
+    // combined with a brand nested inside an array field - the shapes
+    // __ZinferCanonBrand has to walk correctly. A recursive (self-referential)
+    // branded schema is covered separately (zod v3's getter-based recursion
+    // infers differently than v4's, independent of brandStrategy).
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      `import { z } from "zod";
+
+export const UserIdSchema = z.string().brand<"UserId">();
+
+export const WrapperSchema = z
+  .object({ tags: z.array(z.string().brand<"Tag">()) })
+  .brand<"Wrapper">();
+`,
+    );
+    process.chdir(workDir);
+
+    await runCLI(["schema.ts"], {
+      outDir: workDir,
+      generateTests: true,
+      brandStrategy: "local-symbol",
+    });
+
+    const testContent = readFileSync(join(workDir, "schema.types.test.ts"), "utf-8");
+    expect(testContent).toContain("__ZinferCanonBrand");
+    expect(testContent).toContain("__ZinferZodBrandKey");
+
+    execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+      cwd: workDir,
+      stdio: "pipe",
+      encoding: "utf-8",
+    });
+
+    // Non-vacuousness check: the canonicalizing assertion above must still
+    // be capable of failing. Corrupt one brand's tag in the already-verified
+    // generated output and confirm the same companion test now fails to
+    // type-check - proof the comparison isn't silently accepting anything.
+    const typesContent = readFileSync(join(workDir, "schema.types.ts"), "utf-8");
+    writeFileSync(join(workDir, "schema.types.ts"), typesContent.replace('"UserId"', '"WrongTag"'));
+
+    expect(() =>
+      execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+        cwd: workDir,
+        stdio: "pipe",
+        encoding: "utf-8",
+      }),
+    ).toThrow();
+  });
+
+  it.skipIf(!isZodV4)(
+    "type-checks a companion test for a brand nested inside a recursive (self-referential) schema",
+    async () => {
+      workDir = realpathSync(mkdtempSync(join(tmpdir(), "zinfer-cli-runner-")));
+      symlinkSync(
+        resolve(import.meta.dirname, "../node_modules"),
+        join(workDir, "node_modules"),
+        "junction",
+      );
+      writeFileSync(
+        join(workDir, "schema.ts"),
+        `import { z } from "zod";
+
+export const TreeNodeSchema = z.object({
+  value: z.string().brand<"NodeId">(),
+  get children() {
+    return z.array(TreeNodeSchema).optional();
+  },
+});
+`,
+      );
+      process.chdir(workDir);
+
+      await runCLI(["schema.ts"], {
+        outDir: workDir,
+        generateTests: true,
+        brandStrategy: "local-symbol",
+      });
+
+      execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+        cwd: workDir,
+        stdio: "pipe",
+        encoding: "utf-8",
+      });
+    },
+  );
+
+  it("type-checks a companion test combining two branded source files via --outFile local-symbol", async () => {
+    // Two source files' branded schemas land in one combined types file, so
+    // the companion test imports __brand from that one module twice, each
+    // under a different file-scoped alias - confirm that compiles.
+    workDir = realpathSync(mkdtempSync(join(tmpdir(), "zinfer-cli-runner-")));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "a.ts"),
+      'import { z } from "zod";\n\nexport const AIdSchema = z.string().brand<"AId">();\n',
+    );
+    writeFileSync(
+      join(workDir, "b.ts"),
+      'import { z } from "zod";\n\nexport const BIdSchema = z.string().brand<"BId">();\n',
+    );
+    process.chdir(workDir);
+
+    await runCLI(["a.ts", "b.ts"], {
+      outFile: join(workDir, "all.ts"),
+      generateTests: true,
+      brandStrategy: "local-symbol",
+    });
+
+    execFileSync(execPath, [tsgoPath, "--noEmit", "all.test.ts"], {
+      cwd: workDir,
+      stdio: "pipe",
+      encoding: "utf-8",
+    });
+  });
+
+  it("type-checks a companion test for a brand on an object containing a tuple field, and still catches a positional (not just element-type) mismatch", async () => {
+    // Collapsing a tuple to a same-element-type array during canonicalization
+    // would hide a positional swap: [string, number] vs [number, string]
+    // canonicalize to the same (string | number)[] either way. This schema
+    // keeps the tuple nested inside the branded object (rather than branding
+    // the tuple itself), since a directly branded tuple hits a separate,
+    // pre-existing bug where zinfer's own normalization expands a tuple's
+    // full Array.prototype interface once a symbol key is present at that
+    // level - unrelated to brandStrategy, out of scope here.
+    workDir = realpathSync(mkdtempSync(join(tmpdir(), "zinfer-cli-runner-")));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      `import { z } from "zod";
+
+export const CoordWrapperSchema = z
+  .object({ coord: z.tuple([z.string(), z.number()]) })
+  .brand<"Wrapper">();
+`,
+    );
+    process.chdir(workDir);
+
+    await runCLI(["schema.ts"], {
+      outDir: workDir,
+      generateTests: true,
+      brandStrategy: "local-symbol",
+    });
+
+    execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+      cwd: workDir,
+      stdio: "pipe",
+      encoding: "utf-8",
+    });
+
+    // Non-vacuousness check: swap the tuple's element order in the
+    // already-verified generated output and confirm the companion test now
+    // fails to type-check - proof the comparison verifies tuple positions,
+    // not just the set of element types.
+    const typesContent = readFileSync(join(workDir, "schema.types.ts"), "utf-8");
+    writeFileSync(
+      join(workDir, "schema.types.ts"),
+      typesContent.replace("coord: [string, number];", "coord: [number, string];"),
+    );
+
+    expect(() =>
+      execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+        cwd: workDir,
+        stdio: "pipe",
+        encoding: "utf-8",
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a brandStrategy value that isn't zod-import or local-symbol (e.g. set via a config file)", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      'import { z } from "zod";\n\nexport const UserSchema = z.object({ id: z.string() });\n',
+    );
+    writeFileSync(
+      join(workDir, "zinfer.config.mjs"),
+      'export default { include: ["schema.ts"], outDir: ".", brandStrategy: "loclasymbol" };\n',
+    );
+    process.chdir(workDir);
+
+    await expect(runCLI([], {})).rejects.toThrow("--brand-strategy");
+  });
+
+  it("emits a self-contained unique symbol marker instead of importing zod when --brand-strategy local-symbol is set", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      'import { z } from "zod";\n\nexport const UserIdSchema = z.string().brand<"UserId">();\n',
+    );
+    process.chdir(workDir);
+
+    await runCLI(["schema.ts"], {
+      outDir: workDir,
+      suffix: "Schema",
+      brandStrategy: "local-symbol",
+    });
+
+    const output = readFileSync(join(workDir, "schema.types.ts"), "utf-8");
+    expect(output).not.toContain("zod");
+    expect(output).toContain("export declare const __brand: unique symbol;");
+    expect(output).toContain('string & { readonly [__brand]: "UserId" }');
+  });
+
+  it("honors brandStrategy set via a config file", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      'import { z } from "zod";\n\nexport const UserIdSchema = z.string().brand<"UserId">();\n',
+    );
+    writeFileSync(
+      join(workDir, "zinfer.config.mjs"),
+      'export default { include: ["schema.ts"], outDir: ".", brandStrategy: "local-symbol" };\n',
+    );
+    process.chdir(workDir);
+
+    await runCLI([], {});
+
+    const output = readFileSync(join(workDir, "schema.types.ts"), "utf-8");
+    expect(output).not.toContain("zod");
+    expect(output).toContain("export declare const __brand: unique symbol;");
   });
 
   /**
