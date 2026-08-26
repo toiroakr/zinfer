@@ -60,6 +60,23 @@ export const RecursiveArraySchema = z.object({
   },
 });
 
+export interface NullableRecursiveArrayShape {
+  name: string;
+  children: NullableRecursiveArrayShape[] | null;
+}
+
+/**
+ * Self-reference through a nullable array, annotated - the annotation still
+ * lets TypeScript unfold one copy before the recursion point, now with a
+ * `| null` union sitting on that placeholder.
+ */
+export const NullableRecursiveArraySchema = z.object({
+  name: z.string().describe("The nullable array node name"),
+  get children(): z.ZodNullable<z.ZodType<NullableRecursiveArrayShape[]>> {
+    return z.array(NullableRecursiveArraySchema).nullable();
+  },
+});
+
 const LeafSchema = z.object({
   label: z.string().describe("The leaf label"),
 });

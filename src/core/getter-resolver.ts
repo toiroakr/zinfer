@@ -269,9 +269,9 @@ const INDEX_SIGNATURE_PLACEHOLDER = /^(\{\s*\[x: string\]:\s*)(?:any|unknown)(\s
  * the type is neither a placeholder nor an inline copy of the schema.
  *
  * Only the recursion point itself is rewritten: a trailing `| null` and/or
- * `| undefined` on an optional/nullable key, and a `readonly` modifier,
- * describe the key rather than what it holds, so both are carried over
- * untouched.
+ * `| undefined` union (from `.nullable()`/`.optional()` on the value), and a
+ * `readonly` modifier (on the key), describe something other than the
+ * recursion point's own shape, so both are carried over untouched.
  */
 function rewriteRecursiveValue(
   value: string,
@@ -326,9 +326,10 @@ function buildReplacementType(
  *
  * An annotated optional getter prints its placeholder as `any | undefined`,
  * and an annotated nullable-and-optional getter as `any | null | undefined`:
- * the annotation tells TypeScript the key may be absent or null even though it
- * cannot tell what the key holds. Neither suffix carries information the
- * optional/nullable key does not, so both are ignored here.
+ * the key may be absent (`.optional()`) and/or the value may be `null`
+ * (`.nullable()`), even though TypeScript cannot tell what the value itself
+ * holds. Neither suffix carries information about the placeholder's own
+ * shape, so both are ignored here.
  */
 function isAnyPlaceholder(value: string): boolean {
   const normalized = value
