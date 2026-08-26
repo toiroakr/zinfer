@@ -354,6 +354,63 @@ export const TreeNodeSchema = z.object({
     });
   });
 
+  it("type-checks a companion test for a brand on an object containing a tuple field, and still catches a positional (not just element-type) mismatch", async () => {
+    // Collapsing a tuple to a same-element-type array during canonicalization
+    // would hide a positional swap: [string, number] vs [number, string]
+    // canonicalize to the same (string | number)[] either way. This schema
+    // keeps the tuple nested inside the branded object (rather than branding
+    // the tuple itself), since a directly branded tuple hits a separate,
+    // pre-existing bug where zinfer's own normalization expands a tuple's
+    // full Array.prototype interface once a symbol key is present at that
+    // level - unrelated to brandStrategy, out of scope here.
+    workDir = realpathSync(mkdtempSync(join(tmpdir(), "zinfer-cli-runner-")));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      `import { z } from "zod";
+
+export const CoordWrapperSchema = z
+  .object({ coord: z.tuple([z.string(), z.number()]) })
+  .brand<"Wrapper">();
+`,
+    );
+    process.chdir(workDir);
+
+    await runCLI(["schema.ts"], {
+      outDir: workDir,
+      generateTests: true,
+      brandStrategy: "local-symbol",
+    });
+
+    execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+      cwd: workDir,
+      stdio: "pipe",
+      encoding: "utf-8",
+    });
+
+    // Non-vacuousness check: swap the tuple's element order in the
+    // already-verified generated output and confirm the companion test now
+    // fails to type-check - proof the comparison verifies tuple positions,
+    // not just the set of element types.
+    const typesContent = readFileSync(join(workDir, "schema.types.ts"), "utf-8");
+    writeFileSync(
+      join(workDir, "schema.types.ts"),
+      typesContent.replace("coord: [string, number];", "coord: [number, string];"),
+    );
+
+    expect(() =>
+      execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+        cwd: workDir,
+        stdio: "pipe",
+        encoding: "utf-8",
+      }),
+    ).toThrow();
+  });
+
   it("rejects a brandStrategy value that isn't zod-import or local-symbol (e.g. set via a config file)", async () => {
     workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
     symlinkSync(

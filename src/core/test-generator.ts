@@ -203,14 +203,21 @@ type __ZinferZodBrandKey = __ZinferSafeGet<typeof __zinferZod, "$brand"> extends
   ? __ZinferSafeGet<typeof __zinferZod, "BRAND">
   : __ZinferSafeGet<typeof __zinferZod, "$brand">;
 type __ZinferBrandTag<V> = V extends string | number | boolean | symbol | bigint ? V : keyof V;
-// Known limitation: a fixed-length tuple is widened to a same-element-type
-// array here (both sides alike), so a schema branded through a tuple field
-// only has its element types verified as a set, not per-position - a wrong
-// element order would not be caught. Attempts at a positional fix ran into
-// TypeScript inferring inconsistently once a tuple is intersected with the
-// brand's marker property; left as a documented gap rather than risk a
-// fragile fix, since no branded tuple is exercised by this package's own
-// schemas.
+// A fixed-length tuple can't go through the same [infer U] collapse a plain
+// array does - that would widen it to a same-element-type array and lose
+// which element is at which position, hiding a genuine positional mismatch.
+// Rebuilt index by index instead (T[N] works even once T is intersected
+// with the brand's marker property, unlike destructuring it via
+// [infer H, ...infer R], which does not), then the marker is intersected
+// back in separately, the same way a plain object's is.
+type __ZinferBuildTuple<
+  T extends readonly unknown[],
+  S extends symbol,
+  N extends number,
+  Acc extends readonly unknown[] = [],
+> = Acc["length"] extends N
+  ? Acc
+  : __ZinferBuildTuple<T, S, N, [...Acc, __ZinferCanonBrand<T[Acc["length"]], S>]>;
 type __ZinferCanonBrand<T, S extends symbol> = T extends
   | Date
   | RegExp
@@ -222,8 +229,15 @@ type __ZinferCanonBrand<T, S extends symbol> = T extends
   | Promise<any>
   | Function
   ? T
-  : T extends readonly (infer U)[]
-    ? __ZinferCanonBrand<U, S>[]
+  : T extends readonly any[]
+    ? (number extends T["length"]
+        ? T extends readonly (infer U)[]
+          ? __ZinferCanonBrand<U, S>[]
+          : never
+        : T extends readonly unknown[]
+          ? __ZinferBuildTuple<T, S, T["length"]> &
+              (S extends keyof T ? { __zinferBrandTag: __ZinferBrandTag<T[S]> } : {})
+          : never)
     : T extends object
       ? { [K in keyof T as K extends S ? never : K]: __ZinferCanonBrand<T[K], S> } & (S extends
           keyof T

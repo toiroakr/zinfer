@@ -64,6 +64,12 @@ describe("generateTypeTests (brandStrategy: local-symbol)", () => {
     expect(output).toContain("__brand as BrandSchema__brand");
   });
 
+  it("emits __ZinferBuildTuple so a branded tuple's element positions are verified rather than widened to a same-element-type array", () => {
+    const output = generateTypeTests([baseFile], { brandStrategy: "local-symbol" });
+
+    expect(output).toContain("__ZinferBuildTuple");
+  });
+
   it("does not emit the canonicalization utility when no schema has a brand", () => {
     const noBrandFile: TestFileInfo = {
       ...baseFile,
@@ -75,6 +81,7 @@ describe("generateTypeTests (brandStrategy: local-symbol)", () => {
 
     expect(output).not.toContain("__ZinferCanonBrand");
     expect(output).not.toContain("__ZinferZodBrandKey");
+    expect(output).not.toContain("__ZinferBuildTuple");
     expect(output).not.toContain("__brand");
   });
 
@@ -83,6 +90,7 @@ describe("generateTypeTests (brandStrategy: local-symbol)", () => {
 
     expect(output).not.toContain("__ZinferCanonBrand");
     expect(output).not.toContain("__ZinferZodBrandKey");
+    expect(output).not.toContain("__ZinferBuildTuple");
     expect(output).toContain(
       "expectTypeOf<BrandSchemaUserIdOutput>().toEqualTypeOf<z.output<typeof BrandSchemaUserIdSchema>>();",
     );
