@@ -49,9 +49,9 @@ export interface TestGeneratorOptions {
   /**
    * The `brandStrategy` the types were generated with. Only affects a
    * schema whose `hasBrand` is set: under `"local-symbol"`, its output
-   * assertion is generated against zod's `$brand` via a canonicalizing
-   * comparison instead of plain `toEqualTypeOf`, since a local-symbol marker
-   * is intentionally a different shape from zod's own `BRAND`.
+   * assertion is generated against zod's own brand marker via a
+   * canonicalizing comparison instead of plain `toEqualTypeOf`, since a
+   * local-symbol marker is intentionally a different shape from zod's own.
    */
   brandStrategy?: "zod-import" | "local-symbol";
 }
@@ -165,8 +165,8 @@ export class TestGenerator {
    * Generates core import statements.
    *
    * @param usesLocalSymbolBrand - Whether any schema being tested needs the
-   *   brand-canonicalizing comparison, which additionally requires zod's
-   *   `$brand` symbol and the `__ZinferCanonBrand` utility type this defines.
+   *   brand-canonicalizing comparison, which additionally requires the
+   *   `__ZinferCanonBrand` utility type this defines.
    */
   private generateCoreImports(usesLocalSymbolBrand: boolean): string {
     if (!usesLocalSymbolBrand) {
@@ -175,7 +175,8 @@ import type { z } from "zod";`;
     }
 
     return `import { describe, it, expectTypeOf } from "vitest";
-import { $brand, type z } from "zod";
+import * as __zinferZod from "zod";
+import type { z } from "zod";
 
 // A local-symbol brand marker is intentionally a different shape from
 // zod's own BRAND, so comparing it to z.output<> directly can never hold.
@@ -185,7 +186,14 @@ import { $brand, type z } from "zod";
 // tag before comparing - zinfer's own marker is readonly, zod's is not, and
 // that alone must not fail the comparison - recursively, so a brand nested
 // at any depth, including inside a self-referential schema, is still
-// verified.
+// verified. The zod-side brand symbol is picked up by name rather than
+// assumed, since it is exported as \`$brand\` on some zod versions and as
+// \`BRAND\` (both a value and a type) on others, across the zod
+// peerDependencies range this package supports.
+type __ZinferSafeGet<T, K extends PropertyKey> = K extends keyof T ? T[K] : never;
+type __ZinferZodBrandKey = __ZinferSafeGet<typeof __zinferZod, "$brand"> extends never
+  ? __ZinferSafeGet<typeof __zinferZod, "BRAND">
+  : __ZinferSafeGet<typeof __zinferZod, "$brand">;
 type __ZinferBrandTag<V> = V extends string | number | boolean | symbol | bigint ? V : keyof V;
 type __ZinferCanonBrand<T, S extends symbol> = T extends
   | Date
@@ -288,7 +296,7 @@ ${tests}
 
     const outputAssertion =
       this.options.brandStrategy === "local-symbol" && schema.hasBrand
-        ? `expectTypeOf<__ZinferCanonBrand<${prefixedOutput}, typeof ${prefix}__brand>>().toEqualTypeOf<__ZinferCanonBrand<z.output<typeof ${prefixedSchema}>, typeof $brand>>();`
+        ? `expectTypeOf<__ZinferCanonBrand<${prefixedOutput}, typeof ${prefix}__brand>>().toEqualTypeOf<__ZinferCanonBrand<z.output<typeof ${prefixedSchema}>, __ZinferZodBrandKey>>();`
         : `expectTypeOf<${prefixedOutput}>().toEqualTypeOf<z.output<typeof ${prefixedSchema}>>();`;
 
     return `    it("${schema.schemaName} input matches z.input", () => {

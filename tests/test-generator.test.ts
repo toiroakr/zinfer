@@ -40,7 +40,7 @@ describe("generateTypeTests (brandStrategy: local-symbol)", () => {
       "__ZinferCanonBrand<BrandSchemaUserIdOutput, typeof BrandSchema__brand>",
     );
     expect(output).toContain(
-      "__ZinferCanonBrand<z.output<typeof BrandSchemaUserIdSchema>, typeof $brand>",
+      "__ZinferCanonBrand<z.output<typeof BrandSchemaUserIdSchema>, __ZinferZodBrandKey>",
     );
   });
 
@@ -52,14 +52,15 @@ describe("generateTypeTests (brandStrategy: local-symbol)", () => {
     );
   });
 
-  it("imports $brand from zod and the aliased local __brand symbol only when a schema actually has a brand", () => {
+  it("imports the aliased local __brand symbol, and derives the zod-side brand key without importing a specific zod export, only when a schema actually has a brand", () => {
     const output = generateTypeTests([baseFile], { brandStrategy: "local-symbol" });
 
-    expect(output).toContain("$brand");
+    expect(output).toContain("__ZinferZodBrandKey");
+    expect(output).not.toMatch(/\bimport\s*\{[^}]*\$brand/);
     expect(output).toContain("__brand as BrandSchema__brand");
   });
 
-  it("does not import $brand or emit the canonicalization utility when no schema has a brand", () => {
+  it("does not emit the canonicalization utility when no schema has a brand", () => {
     const noBrandFile: TestFileInfo = {
       ...baseFile,
       schemas: [
@@ -68,16 +69,16 @@ describe("generateTypeTests (brandStrategy: local-symbol)", () => {
     };
     const output = generateTypeTests([noBrandFile], { brandStrategy: "local-symbol" });
 
-    expect(output).not.toContain("$brand");
     expect(output).not.toContain("__ZinferCanonBrand");
+    expect(output).not.toContain("__ZinferZodBrandKey");
     expect(output).not.toContain("__brand");
   });
 
-  it("does not import $brand or use the canonicalizing assertion under the default zod-import strategy, even for a branded schema", () => {
+  it("does not emit the canonicalizing assertion under the default zod-import strategy, even for a branded schema", () => {
     const output = generateTypeTests([baseFile]);
 
-    expect(output).not.toContain("$brand");
     expect(output).not.toContain("__ZinferCanonBrand");
+    expect(output).not.toContain("__ZinferZodBrandKey");
     expect(output).toContain(
       "expectTypeOf<BrandSchemaUserIdOutput>().toEqualTypeOf<z.output<typeof BrandSchemaUserIdSchema>>();",
     );

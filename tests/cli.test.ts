@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
+import { z } from "zod";
 import { execFileSync } from "child_process";
 import { execPath } from "process";
 import { resolve, join } from "pathe";
@@ -13,6 +14,12 @@ import {
 } from "fs";
 import { tmpdir } from "os";
 import { runCLI } from "../src/cli-runner.js";
+
+// zod v3's getter-based recursion infers differently than v4's (see
+// extractor.test.ts's lazy-schema.ts comment), independent of anything
+// zinfer does - a recursive+branded schema is only exercised end-to-end
+// under v4.
+const isZodV4 = typeof z.looseObject === "function";
 
 const cliPath = resolve(import.meta.dirname, "../src/cli.ts");
 // The .bin/jiti entry is a POSIX shell script (a .cmd shim on Windows) that
@@ -227,10 +234,11 @@ describe("runCLI", () => {
       join(workDir, "node_modules"),
       "junction",
     );
-    // Exercises a root-level primitive brand, a whole-object brand combined
-    // with a brand nested inside an array field, and a brand nested inside a
-    // recursive (self-referential) getter - the shapes __ZinferCanonBrand
-    // has to walk correctly.
+    // Exercises a root-level primitive brand and a whole-object brand
+    // combined with a brand nested inside an array field - the shapes
+    // __ZinferCanonBrand has to walk correctly. A recursive (self-referential)
+    // branded schema is covered separately (zod v3's getter-based recursion
+    // infers differently than v4's, independent of brandStrategy).
     writeFileSync(
       join(workDir, "schema.ts"),
       `import { z } from "zod";
@@ -240,13 +248,6 @@ export const UserIdSchema = z.string().brand<"UserId">();
 export const WrapperSchema = z
   .object({ tags: z.array(z.string().brand<"Tag">()) })
   .brand<"Wrapper">();
-
-export const TreeNodeSchema = z.object({
-  value: z.string().brand<"NodeId">(),
-  get children() {
-    return z.array(TreeNodeSchema).optional();
-  },
-});
 `,
     );
     process.chdir(workDir);
@@ -259,7 +260,7 @@ export const TreeNodeSchema = z.object({
 
     const testContent = readFileSync(join(workDir, "schema.types.test.ts"), "utf-8");
     expect(testContent).toContain("__ZinferCanonBrand");
-    expect(testContent).toContain("$brand");
+    expect(testContent).toContain("__ZinferZodBrandKey");
 
     execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
       cwd: workDir,
@@ -282,6 +283,43 @@ export const TreeNodeSchema = z.object({
       }),
     ).toThrow();
   });
+
+  it.skipIf(!isZodV4)(
+    "type-checks a companion test for a brand nested inside a recursive (self-referential) schema",
+    async () => {
+      workDir = realpathSync(mkdtempSync(join(tmpdir(), "zinfer-cli-runner-")));
+      symlinkSync(
+        resolve(import.meta.dirname, "../node_modules"),
+        join(workDir, "node_modules"),
+        "junction",
+      );
+      writeFileSync(
+        join(workDir, "schema.ts"),
+        `import { z } from "zod";
+
+export const TreeNodeSchema = z.object({
+  value: z.string().brand<"NodeId">(),
+  get children() {
+    return z.array(TreeNodeSchema).optional();
+  },
+});
+`,
+      );
+      process.chdir(workDir);
+
+      await runCLI(["schema.ts"], {
+        outDir: workDir,
+        generateTests: true,
+        brandStrategy: "local-symbol",
+      });
+
+      execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+        cwd: workDir,
+        stdio: "pipe",
+        encoding: "utf-8",
+      });
+    },
+  );
 
   it("type-checks a companion test combining two branded source files via --outFile local-symbol", async () => {
     // Two source files' branded schemas land in one combined types file, so
