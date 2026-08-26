@@ -9,6 +9,7 @@ export {
   formatAsDeclaration,
   formatMultipleAsDeclarations,
   generateDeclarationFile,
+  containsBrandMarker,
   type PrintOptions,
   SchemaDetector,
   NameMapper,

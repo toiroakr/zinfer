@@ -89,15 +89,23 @@ export function generateImportPrefix(filePath: string): string {
 
 /**
  * Creates TestSchemaInfo from schema name and mapped type names.
+ *
+ * @param hasBrand - Whether this schema's output carries a `.brand()`
+ *   marker. Required for a correct output assertion under
+ *   `brandStrategy: "local-symbol"` (see `TestSchemaInfo.hasBrand`) - pass
+ *   `containsBrandMarker(result.output)` from the corresponding
+ *   `ExtractResult`.
  */
 export function createTestSchemaInfo(
   schemaName: string,
   mappedNames: MappedTypeName,
+  hasBrand?: boolean,
 ): TestSchemaInfo {
   return {
     schemaName,
     inputTypeName: mappedNames.inputName,
     outputTypeName: mappedNames.outputName,
+    hasBrand,
   };
 }
 

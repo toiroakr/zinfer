@@ -599,6 +599,26 @@ export function formatMultipleAsDeclarations(
  */
 const LOCAL_BRAND_SYMBOL = "__brand";
 
+/** Matches a TypeScript identifier character (`\w` is close enough: letters, digits, `_`). */
+const WORD_CHAR = /[A-Za-z0-9_]/;
+
+/**
+ * Whether the character at `index` is escaped, i.e. preceded by an odd
+ * number of consecutive backslashes. An even count (including zero) means
+ * those backslashes escape each other in pairs and `index` itself is not
+ * escaped - e.g. in `"a\\"` (a, one escaped backslash, close quote) the
+ * closing quote is preceded by two backslashes and is *not* escaped.
+ */
+function isEscaped(typeStr: string, index: number): boolean {
+  let count = 0;
+  let i = index - 1;
+  while (i >= 0 && typeStr[i] === "\\") {
+    count++;
+    i--;
+  }
+  return count % 2 === 1;
+}
+
 /**
  * Rewrites every printed `BRAND<Tag>` marker to a self-contained
  * symbol-keyed property, so the output never needs to import zod's `BRAND`.
@@ -606,7 +626,7 @@ const LOCAL_BRAND_SYMBOL = "__brand";
  * Scans with string-literal awareness so a schema whose own literal type
  * happens to contain the text `BRAND<` (e.g. `z.literal("BRAND<Fake>")`,
  * printed as the string literal type `"BRAND<Fake>"`) is left untouched -
- * only an unquoted `BRAND<` is a real marker to rewrite.
+ * only an unquoted `BRAND<` at a word boundary is a real marker to rewrite.
  */
 function localizeBrandMarkers(typeStr: string): string {
   let result = "";
@@ -616,9 +636,8 @@ function localizeBrandMarkers(typeStr: string): string {
 
   while (cursor < typeStr.length) {
     const char = typeStr[cursor];
-    const prevChar = typeStr[cursor - 1];
 
-    if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+    if ((char === '"' || char === "'" || char === "`") && !isEscaped(typeStr, cursor)) {
       if (!inString) {
         inString = true;
         stringChar = char;
@@ -630,7 +649,8 @@ function localizeBrandMarkers(typeStr: string): string {
       continue;
     }
 
-    if (!inString && typeStr.startsWith("BRAND<", cursor)) {
+    const atWordBoundary = cursor === 0 || !WORD_CHAR.test(typeStr[cursor - 1]);
+    if (!inString && atWordBoundary && typeStr.startsWith("BRAND<", cursor)) {
       const tagStart = cursor + "BRAND<".length;
       const tagEnd = findBrandTagEnd(typeStr, tagStart);
       const tag = typeStr.slice(tagStart, tagEnd);
@@ -657,9 +677,8 @@ function findBrandTagEnd(typeStr: string, tagStart: number): number {
 
   for (let i = tagStart; i < typeStr.length; i++) {
     const char = typeStr[i];
-    const prevChar = typeStr[i - 1];
 
-    if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+    if ((char === '"' || char === "'" || char === "`") && !isEscaped(typeStr, i)) {
       if (!inString) {
         inString = true;
         stringChar = char;
@@ -695,9 +714,8 @@ export function containsBrandMarker(typeStr: string): boolean {
 
   for (let cursor = 0; cursor < typeStr.length; cursor++) {
     const char = typeStr[cursor];
-    const prevChar = typeStr[cursor - 1];
 
-    if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+    if ((char === '"' || char === "'" || char === "`") && !isEscaped(typeStr, cursor)) {
       if (!inString) {
         inString = true;
         stringChar = char;
@@ -707,7 +725,8 @@ export function containsBrandMarker(typeStr: string): boolean {
       continue;
     }
 
-    if (!inString && typeStr.startsWith("BRAND<", cursor)) {
+    const atWordBoundary = cursor === 0 || !WORD_CHAR.test(typeStr[cursor - 1]);
+    if (!inString && atWordBoundary && typeStr.startsWith("BRAND<", cursor)) {
       return true;
     }
   }

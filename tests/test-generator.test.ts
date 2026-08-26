@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { generateTypeTests, type TestFileInfo } from "../src/core/test-generator.js";
+import {
+  generateTypeTests,
+  createTestSchemaInfo,
+  type TestFileInfo,
+} from "../src/core/test-generator.js";
 
 const baseFile: TestFileInfo = {
   schemaFilePath: "../fixtures/brand-schema",
@@ -82,5 +86,33 @@ describe("generateTypeTests (brandStrategy: local-symbol)", () => {
     expect(output).toContain(
       "expectTypeOf<BrandSchemaUserIdOutput>().toEqualTypeOf<z.output<typeof BrandSchemaUserIdSchema>>();",
     );
+  });
+});
+
+describe("createTestSchemaInfo", () => {
+  it("threads an explicit hasBrand through to the returned TestSchemaInfo", () => {
+    const info = createTestSchemaInfo(
+      "UserIdSchema",
+      {
+        originalName: "UserIdSchema",
+        inputName: "UserIdInput",
+        outputName: "UserIdOutput",
+        unifiedName: "UserIdOutput",
+      },
+      true,
+    );
+
+    expect(info.hasBrand).toBe(true);
+  });
+
+  it("leaves hasBrand undefined when not passed (defaults to the plain toEqualTypeOf assertion)", () => {
+    const info = createTestSchemaInfo("PlainSchema", {
+      originalName: "PlainSchema",
+      inputName: "PlainInput",
+      outputName: "PlainOutput",
+      unifiedName: "PlainOutput",
+    });
+
+    expect(info.hasBrand).toBeUndefined();
   });
 });
