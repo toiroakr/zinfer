@@ -599,8 +599,8 @@ export function formatMultipleAsDeclarations(
  */
 const LOCAL_BRAND_SYMBOL = "__brand";
 
-/** Matches a TypeScript identifier character (`\w` is close enough: letters, digits, `_`). */
-const WORD_CHAR = /[A-Za-z0-9_]/;
+/** Matches a TypeScript identifier character: letters, digits, `_`, or `$`. */
+const WORD_CHAR = /[A-Za-z0-9_$]/;
 
 /**
  * Whether the character at `index` is escaped, i.e. preceded by an odd

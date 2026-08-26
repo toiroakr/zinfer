@@ -32,4 +32,8 @@ describe("containsBrandMarker", () => {
   it("requires a word boundary before BRAND< (e.g. does not match inside a longer identifier)", () => {
     expect(containsBrandMarker("FOOBRAND<Tag>")).toBe(false);
   });
+
+  it("treats $ as an identifier character too, since it's valid in a TypeScript identifier", () => {
+    expect(containsBrandMarker("FOO$BRAND<Tag>")).toBe(false);
+  });
 });
