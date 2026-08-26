@@ -11,8 +11,10 @@ export interface GetterFieldInfo {
   isArray: boolean;
   /** Whether the reference is wrapped in z.record() */
   isRecord: boolean;
-  /** Whether the field is optional (.optional() or .nullable()) */
+  /** Whether the field is optional (.optional()) */
   isOptional: boolean;
+  /** Whether the field is nullable (.nullable()) */
+  isNullable: boolean;
   /** Whether this is a self-reference */
   isSelfRef: boolean;
 }
@@ -92,6 +94,7 @@ export class GetterResolver {
     let isArray = false;
     let isRecord = false;
     let isOptional = false;
+    let isNullable = false;
     let refSchema: string | null = null;
 
     // Unwrap method chains like .optional(), .nullable(), .array()
@@ -107,7 +110,8 @@ export class GetterResolver {
 
         // Check for .optional() or .nullable() on a schema
         if (methodName === "optional" || methodName === "nullable") {
-          isOptional = true;
+          if (methodName === "optional") isOptional = true;
+          else isNullable = true;
           currentExpr = baseExpr;
           continue;
         }
@@ -157,6 +161,7 @@ export class GetterResolver {
       isArray,
       isRecord,
       isOptional,
+      isNullable,
       isSelfRef: refSchema === schemaName,
     };
   }
@@ -288,7 +293,8 @@ function rewriteRecursiveValue(
 
   if (PLACEHOLDER.test(bare)) {
     const printedArray = bare.endsWith("[]");
-    return readonlyPrefix + buildReplacementType(typeName, info, printedArray) + suffix;
+    const replacement = buildReplacementType(typeName, info, printedArray);
+    return readonlyPrefix + restoreMissingNull(replacement, info, suffix) + suffix;
   }
 
   // An index signature the getter's AST already explains: only its value is
@@ -299,10 +305,29 @@ function rewriteRecursiveValue(
   }
 
   if (isInlinedRecursiveCopy(bare, collapsibleFields)) {
-    return readonlyPrefix + buildReplacementType(typeName, info) + suffix;
+    const replacement = buildReplacementType(typeName, info);
+    return readonlyPrefix + restoreMissingNull(replacement, info, suffix) + suffix;
   }
 
   return undefined;
+}
+
+/**
+ * Appends `| null` to a rebuilt recursion-point type when the getter's AST
+ * says `.nullable()` but the suffix already carried over from the printed
+ * placeholder does not mention `null`.
+ *
+ * On an annotated getter's Input side, Zod 4's `ZodType<Output, Input =
+ * unknown>` default means `.nullable()` prints as bare `unknown` - TypeScript
+ * collapses `unknown | null` down to `unknown` - so there is no `| null` left
+ * in the placeholder text for `rewriteRecursiveValue` to preserve. Only the
+ * AST still knows the value is nullable, so it has to be added back in here.
+ */
+function restoreMissingNull(replacement: string, info: GetterFieldInfo, suffix: string): string {
+  if (info.isNullable && !/\bnull\b/.test(suffix)) {
+    return `${replacement} | null`;
+  }
+  return replacement;
 }
 
 /**

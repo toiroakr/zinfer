@@ -54,7 +54,7 @@ export type RecursiveArrayOutput = {
 
 export type NullableRecursiveArrayInput = {
   name: string;
-  children: NullableRecursiveArrayInput[];
+  children: NullableRecursiveArrayInput[] | null;
 };
 
 export type NullableRecursiveArrayOutput = {

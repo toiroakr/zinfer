@@ -78,6 +78,7 @@ describe("GetterResolver", () => {
             isArray: true,
             isRecord: false,
             isOptional: true,
+            isNullable: false,
             isSelfRef: true,
           },
         ],
@@ -98,6 +99,7 @@ describe("GetterResolver", () => {
             isArray: false,
             isRecord: true,
             isOptional: false,
+            isNullable: false,
             isSelfRef: true,
           },
         ],
@@ -115,7 +117,14 @@ describe("GetterResolver", () => {
       const getterFields = new Map([
         [
           "children",
-          { refSchema: "Node", isArray: false, isRecord: true, isOptional: false, isSelfRef: true },
+          {
+            refSchema: "Node",
+            isArray: false,
+            isRecord: true,
+            isOptional: false,
+            isNullable: false,
+            isSelfRef: true,
+          },
         ],
       ]);
 
@@ -132,7 +141,14 @@ describe("GetterResolver", () => {
       const getterFields = new Map([
         [
           "children",
-          { refSchema: "Node", isArray: false, isRecord: true, isOptional: false, isSelfRef: true },
+          {
+            refSchema: "Node",
+            isArray: false,
+            isRecord: true,
+            isOptional: false,
+            isNullable: false,
+            isSelfRef: true,
+          },
         ],
       ]);
 
@@ -147,7 +163,14 @@ describe("GetterResolver", () => {
       const getterFields = new Map([
         [
           "children",
-          { refSchema: "Node", isArray: false, isRecord: true, isOptional: true, isSelfRef: true },
+          {
+            refSchema: "Node",
+            isArray: false,
+            isRecord: true,
+            isOptional: true,
+            isNullable: false,
+            isSelfRef: true,
+          },
         ],
       ]);
 
@@ -164,7 +187,14 @@ describe("GetterResolver", () => {
       const getterFields = new Map([
         [
           "children",
-          { refSchema: "Node", isArray: false, isRecord: true, isOptional: false, isSelfRef: true },
+          {
+            refSchema: "Node",
+            isArray: false,
+            isRecord: true,
+            isOptional: false,
+            isNullable: false,
+            isSelfRef: true,
+          },
         ],
       ]);
 
@@ -188,6 +218,7 @@ describe("GetterResolver", () => {
             isArray: false,
             isRecord: false,
             isOptional: false,
+            isNullable: false,
             isSelfRef: false,
           },
         ],
@@ -203,7 +234,14 @@ describe("GetterResolver", () => {
       const getterFields = new Map([
         [
           "child",
-          { refSchema: "Node", isArray: false, isRecord: false, isOptional: true, isSelfRef: true },
+          {
+            refSchema: "Node",
+            isArray: false,
+            isRecord: false,
+            isOptional: true,
+            isNullable: false,
+            isSelfRef: true,
+          },
         ],
       ]);
 
@@ -220,7 +258,14 @@ describe("GetterResolver", () => {
       const getterFields = new Map([
         [
           "children",
-          { refSchema: "Node", isArray: true, isRecord: false, isOptional: true, isSelfRef: true },
+          {
+            refSchema: "Node",
+            isArray: true,
+            isRecord: false,
+            isOptional: true,
+            isNullable: true,
+            isSelfRef: true,
+          },
         ],
       ]);
 
@@ -238,12 +283,44 @@ describe("GetterResolver", () => {
       const getterFields = new Map([
         [
           "children",
-          { refSchema: "Node", isArray: true, isRecord: false, isOptional: true, isSelfRef: true },
+          {
+            refSchema: "Node",
+            isArray: true,
+            isRecord: false,
+            isOptional: true,
+            isNullable: true,
+            isSelfRef: true,
+          },
         ],
       ]);
 
       const typeStr =
         "{ name: string; children: { name: string; children: any[] | null | undefined; }[] | null; }";
+      const result = resolver.resolveAnyTypes(typeStr, getterFields, "Node");
+
+      expect(result).toBe("{ name: string; children: Node[] | null; }");
+    });
+
+    it("should append a missing | null for an annotated nullable getter's Input placeholder", () => {
+      // An annotated getter's Input side collapses through Zod 4's
+      // `ZodType<Output, Input = unknown>` default - `unknown | null` prints
+      // as bare `unknown`, losing the `.nullable()` info that only the AST
+      // (via isNullable) still knows about.
+      const getterFields = new Map([
+        [
+          "children",
+          {
+            refSchema: "Node",
+            isArray: true,
+            isRecord: false,
+            isOptional: false,
+            isNullable: true,
+            isSelfRef: true,
+          },
+        ],
+      ]);
+
+      const typeStr = "{ name: string; children: unknown; }";
       const result = resolver.resolveAnyTypes(typeStr, getterFields, "Node");
 
       expect(result).toBe("{ name: string; children: Node[] | null; }");
