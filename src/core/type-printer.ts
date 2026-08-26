@@ -602,24 +602,48 @@ const LOCAL_BRAND_SYMBOL = "__brand";
 /**
  * Rewrites every printed `BRAND<Tag>` marker to a self-contained
  * symbol-keyed property, so the output never needs to import zod's `BRAND`.
+ *
+ * Scans with string-literal awareness so a schema whose own literal type
+ * happens to contain the text `BRAND<` (e.g. `z.literal("BRAND<Fake>")`,
+ * printed as the string literal type `"BRAND<Fake>"`) is left untouched -
+ * only an unquoted `BRAND<` is a real marker to rewrite.
  */
 function localizeBrandMarkers(typeStr: string): string {
   let result = "";
   let cursor = 0;
+  let inString = false;
+  let stringChar = "";
 
-  for (;;) {
-    const start = typeStr.indexOf("BRAND<", cursor);
-    if (start === -1) {
-      return result + typeStr.slice(cursor);
+  while (cursor < typeStr.length) {
+    const char = typeStr[cursor];
+    const prevChar = typeStr[cursor - 1];
+
+    if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+      }
+      result += char;
+      cursor++;
+      continue;
     }
 
-    result += typeStr.slice(cursor, start);
-    const tagStart = start + "BRAND<".length;
-    const tagEnd = findBrandTagEnd(typeStr, tagStart);
-    const tag = typeStr.slice(tagStart, tagEnd);
-    result += `{ readonly [${LOCAL_BRAND_SYMBOL}]: ${tag} }`;
-    cursor = tagEnd + 1;
+    if (!inString && typeStr.startsWith("BRAND<", cursor)) {
+      const tagStart = cursor + "BRAND<".length;
+      const tagEnd = findBrandTagEnd(typeStr, tagStart);
+      const tag = typeStr.slice(tagStart, tagEnd);
+      result += `{ readonly [${LOCAL_BRAND_SYMBOL}]: ${tag} }`;
+      cursor = tagEnd + 1;
+      continue;
+    }
+
+    result += char;
+    cursor++;
   }
+
+  return result;
 }
 
 /**
@@ -659,6 +683,39 @@ function findBrandTagEnd(typeStr: string, tagStart: number): number {
 }
 
 /**
+ * Checks whether a printed type contains an actual `BRAND<` marker, as
+ * opposed to a plain string literal that merely contains that text (e.g.
+ * `z.literal("BRAND<Fake>")`, printed as the string literal type
+ * `"BRAND<Fake>"`). Shares `localizeBrandMarkers`'s string-literal-aware
+ * scan rather than a plain regex, for the same reason.
+ */
+export function containsBrandMarker(typeStr: string): boolean {
+  let inString = false;
+  let stringChar = "";
+
+  for (let cursor = 0; cursor < typeStr.length; cursor++) {
+    const char = typeStr[cursor];
+    const prevChar = typeStr[cursor - 1];
+
+    if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (!inString && typeStr.startsWith("BRAND<", cursor)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Checks if any result's *emitted* type(s) contain a printed brand marker.
  * Only scans exported results (generateDeclarationFile skips non-exported
  * ones entirely) and, within those, only the input/output side(s) that will
@@ -668,10 +725,10 @@ function hasBrands(results: ExtractResult[], options: DeclarationOptions = {}): 
   const { inputOnly, outputOnly, mergeSame } = options;
   return results.some((r) => {
     if (!r.isExported) return false;
-    if (mergeSame && r.input === r.output) return /\bBRAND</.test(r.input);
-    if (outputOnly) return /\bBRAND</.test(r.output);
-    if (inputOnly) return /\bBRAND</.test(r.input);
-    return /\bBRAND</.test(r.input) || /\bBRAND</.test(r.output);
+    if (mergeSame && r.input === r.output) return containsBrandMarker(r.input);
+    if (outputOnly) return containsBrandMarker(r.output);
+    if (inputOnly) return containsBrandMarker(r.input);
+    return containsBrandMarker(r.input) || containsBrandMarker(r.output);
   });
 }
 

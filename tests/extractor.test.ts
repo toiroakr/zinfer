@@ -370,6 +370,18 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("brand-lookalike-literal-schema.ts (brandStrategy: local-symbol)", () => {
+    it("should not rewrite a plain string literal that merely contains the text BRAND<", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "brand-lookalike-literal-schema.ts"),
+      );
+      const output = generateDeclarationFile(results, mapName, { brandStrategy: "local-symbol" });
+
+      expect(output).toContain('kind: "BRAND<Fake>";');
+      expect(output).not.toContain("__brand");
+    });
+  });
+
   describe("array-brand-schema.ts", () => {
     it("should brand the array element instead of the whole array", () => {
       const results = extractor.extractAll(resolve(fixturesDir, "array-brand-schema.ts"));

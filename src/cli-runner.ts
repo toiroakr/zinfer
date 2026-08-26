@@ -4,6 +4,7 @@ import {
   ZodTypeExtractor,
   generateDeclarationFile,
   relativizeImportPaths,
+  containsBrandMarker,
   NameMapper,
   FileResolver,
   DescriptionExtractor,
@@ -695,7 +696,7 @@ function createTestSchemas(results: ExtractResult[], nameMapper: NameMapper): Te
       schemaName: result.schemaName,
       inputTypeName: nameMapper.map(result.schemaName).inputName,
       outputTypeName: nameMapper.map(result.schemaName).outputName,
-      hasBrand: /\bBRAND</.test(result.output),
+      hasBrand: containsBrandMarker(result.output),
     }));
 }
 

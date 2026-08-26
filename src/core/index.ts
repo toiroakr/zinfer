@@ -8,6 +8,7 @@ export {
   formatMultipleAsDeclarations,
   generateDeclarationFile,
   relativizeImportPaths,
+  containsBrandMarker,
   type PrintOptions,
 } from "./type-printer.js";
 

@@ -195,6 +195,14 @@ type __ZinferZodBrandKey = __ZinferSafeGet<typeof __zinferZod, "$brand"> extends
   ? __ZinferSafeGet<typeof __zinferZod, "BRAND">
   : __ZinferSafeGet<typeof __zinferZod, "$brand">;
 type __ZinferBrandTag<V> = V extends string | number | boolean | symbol | bigint ? V : keyof V;
+// Known limitation: a fixed-length tuple is widened to a same-element-type
+// array here (both sides alike), so a schema branded through a tuple field
+// only has its element types verified as a set, not per-position - a wrong
+// element order would not be caught. Attempts at a positional fix ran into
+// TypeScript inferring inconsistently once a tuple is intersected with the
+// brand's marker property; left as a documented gap rather than risk a
+// fragile fix, since no branded tuple is exercised by this package's own
+// schemas.
 type __ZinferCanonBrand<T, S extends symbol> = T extends
   | Date
   | RegExp
