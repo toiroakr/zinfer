@@ -190,6 +190,7 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
         outputPath,
         testPath,
         nameMapper,
+        config.brandStrategy,
       );
 
       if (testContent) {
@@ -265,6 +266,7 @@ export async function runCLI(files: string[], options: CLIOptions): Promise<void
           testPath,
           results,
           nameMapper,
+          config.brandStrategy,
         );
 
         if (testContent) {
@@ -521,18 +523,6 @@ function validateOptions(config: ZinferConfig): void {
       "Generate tests without -d/--declaration, or generate .d.ts output without --generate-tests",
     );
   }
-
-  // The generated test asserts full type equality against z.output<>/z.input<>,
-  // which always carries zod's own BRAND<Tag> for a branded schema. A
-  // local-symbol marker is intentionally a different (self-contained) shape,
-  // so that equality can never hold.
-  if (config.generateTests && config.brandStrategy === "local-symbol") {
-    throw new InvalidOptionError(
-      "--generate-tests",
-      "Cannot be used with --brand-strategy local-symbol",
-      "Generate tests with the default --brand-strategy zod-import, or drop --generate-tests",
-    );
-  }
 }
 
 /**
@@ -705,6 +695,7 @@ function createTestSchemas(results: ExtractResult[], nameMapper: NameMapper): Te
       schemaName: result.schemaName,
       inputTypeName: nameMapper.map(result.schemaName).inputName,
       outputTypeName: nameMapper.map(result.schemaName).outputName,
+      hasBrand: /\bBRAND</.test(result.output),
     }));
 }
 
@@ -716,6 +707,7 @@ function generateTestFileForSingleOutput(
   typesPath: string,
   testPath: string,
   nameMapper: NameMapper,
+  brandStrategy: DeclarationOptions["brandStrategy"],
 ): string {
   const testFiles: TestFileInfo[] = [];
   const testDir = dirname(testPath);
@@ -732,7 +724,7 @@ function generateTestFileForSingleOutput(
     });
   }
 
-  return generateTypeTests(testFiles);
+  return generateTypeTests(testFiles, { brandStrategy });
 }
 
 /**
@@ -744,6 +736,7 @@ function generateTestFileForPerFile(
   testPath: string,
   results: ExtractResult[],
   nameMapper: NameMapper,
+  brandStrategy: DeclarationOptions["brandStrategy"],
 ): string {
   const schemas = createTestSchemas(results, nameMapper);
   if (schemas.length === 0) {
@@ -752,14 +745,17 @@ function generateTestFileForPerFile(
 
   const testDir = dirname(testPath);
 
-  return generateTypeTests([
-    {
-      schemaFilePath: getRelativePath(testDir, schemaFile),
-      typesFilePath: getRelativePath(testDir, typesPath),
-      importPrefix: generateImportPrefix(basename(schemaFile, ".ts")),
-      schemas,
-    },
-  ]);
+  return generateTypeTests(
+    [
+      {
+        schemaFilePath: getRelativePath(testDir, schemaFile),
+        typesFilePath: getRelativePath(testDir, typesPath),
+        importPrefix: generateImportPrefix(basename(schemaFile, ".ts")),
+        schemas,
+      },
+    ],
+    { brandStrategy },
+  );
 }
 
 /**

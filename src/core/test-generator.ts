@@ -18,6 +18,12 @@ export interface TestSchemaInfo {
   inputTypeName: string;
   /** Generated output type name (e.g., "UserOutput") */
   outputTypeName: string;
+  /**
+   * Whether this schema's *output* carries a `.brand()` marker. Brands never
+   * touch the input side, so this only changes how the output assertion is
+   * generated.
+   */
+  hasBrand?: boolean;
 }
 
 /**
@@ -40,6 +46,14 @@ export interface TestFileInfo {
 export interface TestGeneratorOptions {
   /** Whether to include a file header comment */
   includeHeader?: boolean;
+  /**
+   * The `brandStrategy` the types were generated with. Only affects a
+   * schema whose `hasBrand` is set: under `"local-symbol"`, its output
+   * assertion is generated against zod's `$brand` via a canonicalizing
+   * comparison instead of plain `toEqualTypeOf`, since a local-symbol marker
+   * is intentionally a different shape from zod's own `BRAND`.
+   */
+  brandStrategy?: "zod-import" | "local-symbol";
 }
 
 /**
@@ -96,6 +110,7 @@ export class TestGenerator {
   constructor(options: TestGeneratorOptions = {}) {
     this.options = {
       includeHeader: options.includeHeader ?? true,
+      brandStrategy: options.brandStrategy ?? "zod-import",
     };
   }
 
@@ -110,6 +125,10 @@ export class TestGenerator {
       return "";
     }
 
+    const usesLocalSymbolBrand =
+      this.options.brandStrategy === "local-symbol" &&
+      files.some((f) => f.schemas.some((s) => s.hasBrand));
+
     const parts: string[] = [];
 
     // Header comment
@@ -119,12 +138,12 @@ export class TestGenerator {
     }
 
     // Core imports
-    parts.push(this.generateCoreImports());
+    parts.push(this.generateCoreImports(usesLocalSymbolBrand));
     parts.push("");
 
     // File-specific imports
     for (const file of files) {
-      parts.push(this.generateFileImports(file));
+      parts.push(this.generateFileImports(file, usesLocalSymbolBrand));
       parts.push("");
     }
 
@@ -144,18 +163,62 @@ export class TestGenerator {
 
   /**
    * Generates core import statements.
+   *
+   * @param usesLocalSymbolBrand - Whether any schema being tested needs the
+   *   brand-canonicalizing comparison, which additionally requires zod's
+   *   `$brand` symbol and the `__ZinferCanonBrand` utility type this defines.
    */
-  private generateCoreImports(): string {
-    return `import { describe, it, expectTypeOf } from "vitest";
+  private generateCoreImports(usesLocalSymbolBrand: boolean): string {
+    if (!usesLocalSymbolBrand) {
+      return `import { describe, it, expectTypeOf } from "vitest";
 import type { z } from "zod";`;
+    }
+
+    return `import { describe, it, expectTypeOf } from "vitest";
+import { $brand, type z } from "zod";
+
+// A local-symbol brand marker is intentionally a different shape from
+// zod's own BRAND, so comparing it to z.output<> directly can never hold.
+// This canonicalizes both sides' brand-marker property (whichever unique
+// symbol keys it, and whether the tag is a bare literal or zod's own
+// { [Tag]: true } encoding) down to a common, always-non-readonly shape and
+// tag before comparing - zinfer's own marker is readonly, zod's is not, and
+// that alone must not fail the comparison - recursively, so a brand nested
+// at any depth, including inside a self-referential schema, is still
+// verified.
+type __ZinferBrandTag<V> = V extends string | number | boolean | symbol | bigint ? V : keyof V;
+type __ZinferCanonBrand<T, S extends symbol> = T extends
+  | Date
+  | RegExp
+  | Error
+  | Map<any, any>
+  | Set<any>
+  | WeakMap<any, any>
+  | WeakSet<any>
+  | Promise<any>
+  | Function
+  ? T
+  : T extends readonly (infer U)[]
+    ? __ZinferCanonBrand<U, S>[]
+    : T extends object
+      ? { [K in keyof T as K extends S ? never : K]: __ZinferCanonBrand<T[K], S> } & (S extends
+          keyof T
+          ? { __zinferBrandTag: __ZinferBrandTag<T[S]> }
+          : {})
+      : T;`;
   }
 
   /**
    * Generates import statements for a single file.
+   *
+   * @param usesLocalSymbolBrand - Whether the local `__brand` symbol needs
+   *   importing for this file (only when it has a branded schema under
+   *   `brandStrategy: "local-symbol"`).
    */
-  private generateFileImports(file: TestFileInfo): string {
+  private generateFileImports(file: TestFileInfo, usesLocalSymbolBrand: boolean): string {
     const lines: string[] = [];
     const fileLabel = removeExtension(basename(file.schemaFilePath));
+    const fileNeedsLocalBrand = usesLocalSymbolBrand && file.schemas.some((s) => s.hasBrand);
 
     lines.push(`// --- ${fileLabel} ---`);
 
@@ -174,6 +237,9 @@ import type { z } from "zod";`;
       `${s.inputTypeName} as ${file.importPrefix}${s.inputTypeName}`,
       `${s.outputTypeName} as ${file.importPrefix}${s.outputTypeName}`,
     ]);
+    if (fileNeedsLocalBrand) {
+      typeImports.push(`__brand as ${file.importPrefix}__brand`);
+    }
 
     if (typeImports.length <= 2) {
       lines.push(`import type { ${typeImports.join(", ")} } from "${typesPath}";`);
@@ -220,12 +286,17 @@ ${tests}
     const prefixedInput = `${prefix}${schema.inputTypeName}`;
     const prefixedOutput = `${prefix}${schema.outputTypeName}`;
 
+    const outputAssertion =
+      this.options.brandStrategy === "local-symbol" && schema.hasBrand
+        ? `expectTypeOf<__ZinferCanonBrand<${prefixedOutput}, typeof ${prefix}__brand>>().toEqualTypeOf<__ZinferCanonBrand<z.output<typeof ${prefixedSchema}>, typeof $brand>>();`
+        : `expectTypeOf<${prefixedOutput}>().toEqualTypeOf<z.output<typeof ${prefixedSchema}>>();`;
+
     return `    it("${schema.schemaName} input matches z.input", () => {
       expectTypeOf<${prefixedInput}>().toEqualTypeOf<z.input<typeof ${prefixedSchema}>>();
     });
 
     it("${schema.schemaName} output matches z.output", () => {
-      expectTypeOf<${prefixedOutput}>().toEqualTypeOf<z.output<typeof ${prefixedSchema}>>();
+      ${outputAssertion}
     });`;
   }
 }

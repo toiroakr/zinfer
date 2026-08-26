@@ -590,10 +590,12 @@ export function formatMultipleAsDeclarations(
 
 /**
  * Local-symbol marker name for the `"local-symbol"` brand strategy. A single
- * `declare const __brand: unique symbol;` is emitted once per generated file
- * and reused by every branded type it declares - the nominal distinction
- * between brands comes from the tag's string literal, not from the symbol's
- * identity, the same way zod's own `BRAND` marker works.
+ * `export declare const __brand: unique symbol;` is emitted once per
+ * generated file and reused by every branded type it declares - the nominal
+ * distinction between brands comes from the tag's string literal, not from
+ * the symbol's identity, the same way zod's own `BRAND` marker works. It is
+ * exported so a `--generate-tests` companion file can reference `typeof
+ * __brand` to verify the marker against `z.output<>`.
  */
 const LOCAL_BRAND_SYMBOL = "__brand";
 
@@ -696,7 +698,7 @@ export function generateDeclarationFile(
   // Add a brand marker declaration if any result has brands
   if (hasBrands(results, options)) {
     if (options.brandStrategy === "local-symbol") {
-      lines.push(`declare const ${LOCAL_BRAND_SYMBOL}: unique symbol;`);
+      lines.push(`export declare const ${LOCAL_BRAND_SYMBOL}: unique symbol;`);
     } else {
       lines.push('import type { BRAND } from "zod";');
     }

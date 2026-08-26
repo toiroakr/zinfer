@@ -301,7 +301,7 @@ Branded types are applied only to output types. Input types do not include brand
 By default (`--brand-strategy zod-import`), a branded type imports `BRAND` from zod, as shown above. Pass `--brand-strategy local-symbol` when the generated output must never import zod - for example, when the generated files are re-exported through a public package API and consumers should never need zod in their own type-check graph. It emits a self-contained `unique symbol` marker instead:
 
 ```typescript
-declare const __brand: unique symbol;
+export declare const __brand: unique symbol;
 
 export type UserIdSchemaInput = string;
 
@@ -318,9 +318,9 @@ export type UserSchemaOutput = {
 };
 ```
 
-The `__brand` symbol is declared once per generated file and reused by every branded type in it - two brands stay nominally distinct because their tag (`"UserId"` above) differs, not because of the symbol's identity, the same way zod's own `BRAND` marker works.
+The `__brand` symbol is declared once per generated file, exported, and reused by every branded type in it - two brands stay nominally distinct because their tag (`"UserId"` above) differs, not because of the symbol's identity, the same way zod's own `BRAND` marker works.
 
-`--brand-strategy local-symbol` cannot be combined with `--generate-tests`: the generated equality test asserts `expectTypeOf<Generated>().toEqualTypeOf<z.output<typeof Schema>>()`, and a local-symbol marker is intentionally a different shape from zod's own `BRAND<Tag>`, so that assertion could never pass.
+`--brand-strategy local-symbol` works with `--generate-tests` too. A local-symbol marker is intentionally a different shape from zod's own `BRAND<Tag>` (and zinfer's is `readonly`, zod's is not), so a branded schema's output test can't use the plain `toEqualTypeOf<z.output<typeof Schema>>()` assertion the way an unbranded one does; instead the generated companion test canonicalizes both sides' brand-marker property - whichever unique symbol keys it, whether the tag is a bare literal or zod's own `{ [Tag]: true }` encoding, and regardless of the `readonly` mismatch - down to a common shape and tag before comparing, recursively, so a brand nested at any depth (inside an array, a record, or a self-referential schema) is still verified against the real inferred type.
 
 ## Circular Reference Support
 

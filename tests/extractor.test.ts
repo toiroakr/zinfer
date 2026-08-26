@@ -338,7 +338,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       const output = generateDeclarationFile(results, mapName, { brandStrategy: "local-symbol" });
 
       expect(output).not.toContain("zod");
-      expect(output).toContain("declare const __brand: unique symbol;");
+      expect(output).toContain("export declare const __brand: unique symbol;");
       expect(output).toContain('string & { readonly [__brand]: "UserId" }');
     });
 
@@ -355,7 +355,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       expect(output).toContain(
         'export type UserIdOutput = string & { readonly [__brand]: "UserId" };',
       );
-      expect(output.match(/declare const __brand: unique symbol;/g)).toHaveLength(1);
+      expect(output.match(/export declare const __brand: unique symbol;/g)).toHaveLength(1);
     });
 
     it("should not emit an unused local-symbol marker when generating input-only declarations", () => {
@@ -410,7 +410,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       expect(output).toContain('readonly [__brand]: "Tag"');
       expect(output).toContain('readonly [__brand]: "Wrapper"');
       // Exactly one shared symbol declaration, not one per brand tag.
-      expect(output.match(/declare const __brand: unique symbol;/g)).toHaveLength(1);
+      expect(output.match(/export declare const __brand: unique symbol;/g)).toHaveLength(1);
     });
   });
 
