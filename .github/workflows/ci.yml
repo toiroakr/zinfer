@@ -53,11 +53,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # zinfer's tsc --noEmit (as opposed to tsgo) does not pass at the
-          # typescript peerDependencies floor (TS18048 in
-          # description-extractor.ts/extractor.ts, absent at the pinned
-          # typescript devDependency version), so strictTsc stays false for
-          # its rows below. Only vinfer's floor is clean under both checkers.
+          # strictTsc gates the "Typecheck (tsc)" step below. It's false only
+          # for zinfer rows that actually move the typescript devDependency
+          # down to its peer floor (the "typescript" and "combined" rows):
+          # at typescript@5.0.2, tsc --noEmit (unlike tsgo) fails with
+          # TS18048 in description-extractor.ts/extractor.ts, an error
+          # absent at the pinned typescript devDependency version. zinfer's
+          # "zod" row leaves typescript pinned, so it stays strict; vinfer's
+          # floor is clean under both checkers at every row.
           - package: zinfer
             name: zod
             # typescript stays at the devDependencies-pinned version for this row.
