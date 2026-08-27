@@ -121,7 +121,9 @@ jobs:
             echo "content<<$DELIM"
             echo "---"
             printf '%s\n' "$CHANGED_PACKAGES" | while IFS= read -r pkg; do
-              [ -n "$pkg" ] && printf '"%s": patch\n' "$pkg"
+              if [ -n "$pkg" ]; then
+                printf '"%s": patch\n' "$pkg"
+              fi
             done
             echo "---"
             echo ""
