@@ -67,16 +67,40 @@ jobs:
 
           # Only the dependency ranges we publish are visible to consumers.
           # devDependencies, packageManager, aqua and GitHub Actions bumps are
-          # invisible to them and don't need a changeset.
+          # invisible to them and don't need a changeset. This is a monorepo,
+          # so each workspace package is checked independently; a Renovate PR
+          # can touch one or both.
           FILTER='{dependencies, peerDependencies, optionalDependencies}'
-          git show "${BASE_SHA}:package.json" | jq -S "$FILTER" > /tmp/base-runtime-deps.json
-          jq -S "$FILTER" package.json > /tmp/head-runtime-deps.json
+          CHANGED_PACKAGES=""
+          for pkg_json in packages/*/package.json; do
+            if git show "${BASE_SHA}:${pkg_json}" > /tmp/base-pkg.json 2>/dev/null; then
+              jq -S "$FILTER" /tmp/base-pkg.json > /tmp/base-runtime-deps.json
+            else
+              echo '{}' | jq -S "$FILTER" > /tmp/base-runtime-deps.json
+            fi
+            jq -S "$FILTER" "$pkg_json" > /tmp/head-runtime-deps.json
 
-          if diff -u /tmp/base-runtime-deps.json /tmp/head-runtime-deps.json; then
+            if ! diff -u /tmp/base-runtime-deps.json /tmp/head-runtime-deps.json; then
+              PKG_NAME=$(jq -r .name "$pkg_json")
+              CHANGED_PACKAGES="${CHANGED_PACKAGES}${PKG_NAME}"$'\n'
+            fi
+          done
+
+          if [ -z "$CHANGED_PACKAGES" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No runtime dependency changes; no changeset needed."
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
+            # Random delimiter: package names come from the PR-controlled
+            # checkout, so a fixed delimiter could in principle be smuggled
+            # in via a "name" field to terminate the heredoc early and
+            # inject extra $GITHUB_OUTPUT lines.
+            PKGS_DELIM="ghapkgs_${RANDOM}${RANDOM}${RANDOM}"
+            {
+              echo "packages<<$PKGS_DELIM"
+              printf '%s' "$CHANGED_PACKAGES"
+              echo "$PKGS_DELIM"
+            } >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build changeset content
@@ -84,18 +108,21 @@ jobs:
         id: content
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
+          CHANGED_PACKAGES: ${{ steps.runtime.outputs.packages }}
         run: |
           set -eo pipefail
-          PKG_NAME=$(jq -r .name package.json)
-          # Random delimiter: PR_TITLE flows into this heredoc and is
-          # renovate-generated from a dependency/package name, so a fixed
-          # delimiter string could in principle be smuggled in to terminate
-          # the heredoc early and inject extra $GITHUB_OUTPUT lines.
+          # Random delimiter: PR_TITLE and CHANGED_PACKAGES both flow into
+          # this heredoc from PR-controlled content (PR title / package.json
+          # "name" fields), so a fixed delimiter string could in principle be
+          # smuggled in to terminate the heredoc early and inject extra
+          # $GITHUB_OUTPUT lines.
           DELIM="ghadelim_${RANDOM}${RANDOM}${RANDOM}"
           {
             echo "content<<$DELIM"
             echo "---"
-            printf '"%s": patch\n' "$PKG_NAME"
+            printf '%s\n' "$CHANGED_PACKAGES" | while IFS= read -r pkg; do
+              [ -n "$pkg" ] && printf '"%s": patch\n' "$pkg"
+            done
             echo "---"
             echo ""
             printf '%s\n' "$PR_TITLE"

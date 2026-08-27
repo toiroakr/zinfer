@@ -1,0 +1,24 @@
+{
+  "name": "zinfer-monorepo",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "typecheck:tsc": "pnpm -r typecheck:tsc",
+    "lint": "pnpm -r lint",
+    "format": "pnpm -r format",
+    "format:check": "pnpm -r format:check",
+    "knip": "pnpm -r knip",
+    "changeset": "changeset",
+    "release": "pnpm -r build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "3.0.1",
+    "lefthook": "2.1.10",
+    "oxfmt": "0.64.0",
+    "oxlint": "1.79.0"
+  },
+  "packageManager": "pnpm@11.22.0"
+}

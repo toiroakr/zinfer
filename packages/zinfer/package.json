@@ -12,7 +12,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/toiroakr/zinfer.git"
+    "url": "https://github.com/toiroakr/zinfer.git",
+    "directory": "packages/zinfer"
   },
   "bin": {
     "zinfer": "./bin/zinfer"
@@ -38,8 +39,6 @@
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "knip": "knip",
-    "changeset": "changeset",
-    "release": "pnpm build && changeset publish",
     "generate:type-tests": "node ./dist/cli.js 'tests/fixtures/*.ts' --outDir tests/__file_snapshots__ --outPattern '[name].ts' --generate-tests --suffix Schema"
   },
   "dependencies": {
@@ -50,11 +49,9 @@
     "ts-morph": "^28.0.0"
   },
   "devDependencies": {
-    "@changesets/cli": "3.0.1",
     "@types/node": "25.9.5",
     "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "knip": "6.32.2",
-    "lefthook": "2.1.10",
     "oxfmt": "0.64.0",
     "oxlint": "1.79.0",
     "typescript": "7.0.2",
@@ -64,6 +61,5 @@
   "peerDependencies": {
     "typescript": ">=5.0.0",
     "zod": ">=3.25.76"
-  },
-  "packageManager": "pnpm@11.22.0"
+  }
 }
