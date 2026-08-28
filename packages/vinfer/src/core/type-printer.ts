@@ -2,6 +2,7 @@ import { relative, dirname, basename, join, isAbsolute } from "pathe";
 import { existsSync, realpathSync } from "fs";
 import { VALIBOT_PRINTED_TYPE_NAMES } from "./valibot-bindings.js";
 import { isEscaped } from "./string-scan.js";
+import { escapeRegExp } from "./regexp.js";
 import type {
   ExtractResult,
   MappedTypeName,
@@ -415,13 +416,6 @@ export function formatAsDeclaration(
  * @param options - Declaration options
  * @returns TypeScript type declarations string
  */
-/**
- * Escapes special characters in a string for use in a RegExp.
- */
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 /**
  * Matches the empty position just before or after a run of identifier
  * characters, without requiring one side to actually be an identifier

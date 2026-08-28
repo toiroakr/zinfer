@@ -21,6 +21,7 @@ import { ImportResolver } from "./import-resolver.js";
 import { ValibotBindings } from "./valibot-bindings.js";
 import { logDebugError } from "./logger.js";
 import { isEscaped } from "./string-scan.js";
+import { escapeRegExp } from "./regexp.js";
 import type {
   ExtractResult,
   FileExtractResult,
@@ -684,7 +685,7 @@ export class ValibotTypeExtractor {
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
       if (explicitType && this.isLocallyDeclaredType(sourceFile, explicitType)) {
-        const escapedTypeName = this.escapeRegExp(explicitType);
+        const escapedTypeName = escapeRegExp(explicitType);
         const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
         input = input.replace(typeNamePattern, `${schemaName}Input`);
         output = output.replace(typeNamePattern, `${schemaName}Output`);
@@ -750,7 +751,7 @@ export class ValibotTypeExtractor {
 
     // A recursive schema names itself, and nothing declares that name here, so
     // only the approximation can be inlined.
-    if (new RegExp(`\\b${this.escapeRegExp(`${refSchema}${kind}`)}\\b`).test(candidate)) {
+    if (new RegExp(`\\b${escapeRegExp(`${refSchema}${kind}`)}\\b`).test(candidate)) {
       return approximation;
     }
 
@@ -1387,13 +1388,6 @@ export class ValibotTypeExtractor {
         typeAlias.remove();
       }
     }
-  }
-
-  /**
-   * Escapes special characters in a string for use in a RegExp.
-   */
-  private escapeRegExp(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   /**
