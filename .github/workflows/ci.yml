@@ -35,16 +35,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm -r typecheck
       - name: Lint
-        run: pnpm lint
+        run: pnpm -r lint
       - name: Format
-        run: pnpm format:check
+        run: pnpm -r format:check
       - name: Test
-        run: pnpm test
+        run: pnpm -r test
 
   peer-floor:
-    name: Peer floor (${{ matrix.name }})
+    name: Peer floor (${{ matrix.package }} / ${{ matrix.name }})
     runs-on: ubuntu-slim
     timeout-minutes: 10
     permissions:
@@ -53,17 +53,48 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: zod
+          # strictTsc gates the "Typecheck (tsc)" step below. It's false only
+          # for zinfer rows that actually move the typescript devDependency
+          # down to its peer floor (the "typescript" and "combined" rows):
+          # at typescript@5.0.2, tsc --noEmit (unlike tsgo) fails with
+          # TS18048 in description-extractor.ts/extractor.ts, an error
+          # absent at the pinned typescript devDependency version. zinfer's
+          # "zod" row leaves typescript pinned, so it stays strict; vinfer's
+          # floor is clean under both checkers at every row.
+          - package: zinfer
+            name: zod
             # typescript stays at the devDependencies-pinned version for this row.
             packages: zod@3.25.76
-          - name: typescript
+            strictTsc: true
+          - package: zinfer
+            name: typescript
             # 5.0.0 was never published on npm; 5.0.2 is the first release satisfying
             # peerDependencies.typescript's ">=5.0.0". zod stays at the pinned version here.
             packages: typescript@5.0.2
-          - name: combined
+            strictTsc: false
+          - package: zinfer
+            name: combined
             # Both peerDependencies lower bounds installed together, since consumers can
             # be at both floors simultaneously.
             packages: zod@3.25.76 typescript@5.0.2
+            strictTsc: false
+          - package: vinfer
+            name: valibot
+            # typescript stays at the devDependencies-pinned version for this row.
+            packages: valibot@1.1.0
+            strictTsc: true
+          - package: vinfer
+            name: typescript
+            # 5.0.0 was never published on npm; 5.0.2 is the first release satisfying
+            # peerDependencies.typescript's ">=5.0.0". valibot stays at the pinned version here.
+            packages: typescript@5.0.2
+            strictTsc: true
+          - package: vinfer
+            name: combined
+            # Both peerDependencies lower bounds installed together, since consumers can
+            # be at both floors simultaneously.
+            packages: valibot@1.1.0 typescript@5.0.2
+            strictTsc: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -80,8 +111,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Install peerDependencies lower bound
-        run: pnpm add -D ${{ matrix.packages }}
-      - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm --filter ${{ matrix.package }} add -D ${{ matrix.packages }}
+      - name: Typecheck (tsgo)
+        run: pnpm --filter ${{ matrix.package }} run typecheck
+      - name: Typecheck (tsc)
+        if: matrix.strictTsc
+        run: pnpm --filter ${{ matrix.package }} run typecheck:tsc
       - name: Test
-        run: pnpm test
+        run: pnpm --filter ${{ matrix.package }} run test
