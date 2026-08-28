@@ -30,7 +30,7 @@
     "provenance": true
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup && dts-bundle-generator --config dts-bundle-generator.config.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsgo --noEmit",
@@ -51,9 +51,12 @@
   "devDependencies": {
     "@types/node": "25.9.5",
     "@typescript/native-preview": "7.0.0-dev.20260707.2",
+    "@zinfer-monorepo/core": "workspace:*",
+    "dts-bundle-generator": "^9.5.1",
     "knip": "6.32.2",
     "oxfmt": "0.64.0",
     "oxlint": "1.79.0",
+    "tsup": "^8.0.0",
     "typescript": "7.0.2",
     "vitest": "4.1.11",
     "zod": "4.4.3"

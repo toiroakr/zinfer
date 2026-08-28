@@ -1,53 +1,9 @@
-import { existsSync } from "fs";
-import { readFile } from "fs/promises";
-import { resolve, basename } from "pathe";
-import { pathToFileURL } from "url";
+import { defineConfig as sharedDefineConfig, type InferConfig } from "@zinfer-monorepo/core";
 
 /**
  * Configuration options that can be specified in config file.
  */
-export interface ZinferConfig {
-  /** File paths or glob patterns to process */
-  include?: string[];
-  /** Glob patterns to exclude */
-  exclude?: string[];
-  /** Path to tsconfig.json */
-  project?: string;
-  /** Schema names to extract (if not specified, all are extracted) */
-  schemas?: string[];
-  /** Output only input types */
-  inputOnly?: boolean;
-  /** Output only output types */
-  outputOnly?: boolean;
-  /** Single type if input===output */
-  mergeSame?: boolean;
-  /** Remove suffix from schema names */
-  suffix?: string;
-  /** Suffix for input type names */
-  inputSuffix?: string;
-  /** Suffix for output type names */
-  outputSuffix?: string;
-  /** Custom name mappings */
-  map?: Record<string, string>;
-  /** Output directory */
-  outDir?: string;
-  /** Single output file */
-  outFile?: string;
-  /** Output file naming pattern */
-  outPattern?: string;
-  /** Generate .d.ts files */
-  declaration?: boolean;
-  /** Include Zod .describe() as TSDoc comments */
-  withDescriptions?: boolean;
-  /** Generate vitest type equality tests alongside type files */
-  generateTests?: boolean;
-  /**
-   * Replace the `import("...")` reference an explicit `z.ZodType<T>`
-   * annotation's `T` synthesizes for a plain type declared in another file
-   * with that type's own structure, instead of leaving the generated
-   * output pointing back at it.
-   */
-  inlineExternalTypes?: boolean;
+export interface ZinferConfig extends InferConfig {
   /**
    * How a `.brand()` marker is represented in the generated output.
    * `"zod-import"` (default) prints `BRAND<"Tag">` and imports `BRAND` from
@@ -55,150 +11,6 @@ export interface ZinferConfig {
    * property instead, so the generated file never imports zod.
    */
   brandStrategy?: "zod-import" | "local-symbol";
-}
-
-/**
- * Result of loading config.
- */
-export interface ConfigLoadResult {
-  /** The loaded configuration */
-  config: ZinferConfig;
-  /** Path to the config file (if found) */
-  configPath?: string;
-}
-
-/**
- * Config file names to search for, in order of priority.
- */
-const CONFIG_FILES = [
-  "zinfer.config.ts",
-  "zinfer.config.mts",
-  "zinfer.config.js",
-  "zinfer.config.mjs",
-];
-
-/**
- * Loads zinfer configuration from config file or package.json.
- */
-export class ConfigLoader {
-  /**
-   * Loads configuration from an explicit file path.
-   *
-   * @param configPath - Path to a config file, or a package.json to read the "zinfer" field from
-   * @returns Configuration and config file path
-   * @throws Error if the path does not exist
-   */
-  async loadFrom(configPath: string): Promise<ConfigLoadResult> {
-    if (!existsSync(configPath)) {
-      throw new Error(`Config file not found: ${configPath}`);
-    }
-
-    if (basename(configPath) === "package.json") {
-      const config = await this.loadFromPackageJson(configPath, { throwOnError: true });
-      return { config: config ?? {}, configPath };
-    }
-
-    const config = await this.loadConfigFile(configPath, { throwOnError: true });
-    return { config, configPath };
-  }
-
-  /**
-   * Loads configuration from the specified directory.
-   *
-   * @param cwd - Directory to search for config files
-   * @returns Configuration and config file path
-   */
-  async load(cwd: string): Promise<ConfigLoadResult> {
-    // Try config files first
-    for (const configFile of CONFIG_FILES) {
-      const configPath = resolve(cwd, configFile);
-      if (existsSync(configPath)) {
-        const config = await this.loadConfigFile(configPath);
-        return { config, configPath };
-      }
-    }
-
-    // Try package.json
-    const packageJsonPath = resolve(cwd, "package.json");
-    if (existsSync(packageJsonPath)) {
-      const config = await this.loadFromPackageJson(packageJsonPath);
-      if (config) {
-        return { config, configPath: packageJsonPath };
-      }
-    }
-
-    // No config found, return empty config
-    return { config: {} };
-  }
-
-  /**
-   * Loads configuration from a TypeScript/JavaScript config file.
-   *
-   * @param options.throwOnError - Rethrow load failures instead of warning and
-   * returning an empty config. Used for an explicitly requested path (`loadFrom`),
-   * where silently continuing with no configuration would produce wrong output;
-   * not used for auto-discovered well-known filenames, where a config file is optional.
-   */
-  private async loadConfigFile(
-    configPath: string,
-    options?: { throwOnError?: boolean },
-  ): Promise<ZinferConfig> {
-    try {
-      const fileUrl = pathToFileURL(configPath).href;
-      const module = await import(fileUrl);
-      return module.default || module;
-    } catch (error) {
-      if (options?.throwOnError) {
-        throw new Error(`Failed to load config from ${configPath}: ${(error as Error).message}`);
-      }
-      console.warn(`Warning: Failed to load config from ${configPath}:`, (error as Error).message);
-      return {};
-    }
-  }
-
-  /**
-   * Loads configuration from package.json's "zinfer" field.
-   *
-   * @param options.throwOnError - Rethrow read/parse failures instead of
-   * warning and returning null. Used for an explicitly requested path
-   * (`loadFrom`), matching `loadConfigFile`'s throwOnError; not used for
-   * auto-discovered package.json, where a config file is optional.
-   */
-  private async loadFromPackageJson(
-    packageJsonPath: string,
-    options?: { throwOnError?: boolean },
-  ): Promise<ZinferConfig | null> {
-    let content: string;
-    try {
-      content = await readFile(packageJsonPath, "utf-8");
-    } catch (error) {
-      if (options?.throwOnError) {
-        throw new Error(
-          `Failed to load config from ${packageJsonPath}: ${(error as Error).message}`,
-        );
-      }
-      // File read error (permissions, not found, etc.) - silently return null
-      // since package.json config is optional
-      return null;
-    }
-
-    try {
-      const packageJson = JSON.parse(content);
-
-      if (packageJson.zinfer && typeof packageJson.zinfer === "object") {
-        return packageJson.zinfer as ZinferConfig;
-      }
-
-      return null;
-    } catch (error) {
-      if (options?.throwOnError) {
-        throw new Error(`Failed to parse ${packageJsonPath}: ${(error as Error).message}`);
-      }
-      // JSON parse error - warn the user since this is likely a syntax error
-      console.warn(`Warning: Failed to parse ${packageJsonPath}: ${(error as Error).message}`);
-      return null;
-    }
-  }
 }
 
 /**
@@ -212,12 +24,11 @@ export class ConfigLoader {
  *
  * export default defineConfig({
  *   include: ['src/** /*.schema.ts'],
- *   outDir: './types',
- *   mergeSame: true,
+ *   outDir: 'src/types',
  *   suffix: 'Schema',
  * });
  * ```
  */
 export function defineConfig(config: ZinferConfig): ZinferConfig {
-  return config;
+  return sharedDefineConfig(config);
 }

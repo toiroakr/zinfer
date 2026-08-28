@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { NameMapper } from "../src/core/name-mapper.js";
+import { NameMapper } from "../src/name-mapper.js";
 
 describe("NameMapper", () => {
   it("should use empty string suffix when inputSuffix is empty", () => {

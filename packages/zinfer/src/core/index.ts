@@ -1,4 +1,11 @@
-export { ZodTypeExtractor, type ExtractOptions, type ExtractContext } from "./extractor.js";
+export { ZodTypeExtractor } from "./extractor.js";
+
+export {
+  runCLI,
+  computeImportableFiles,
+  type CLIOptionsBase,
+  type CliBindings,
+} from "@zinfer-monorepo/core";
 
 export {
   formatResult,
@@ -20,16 +27,9 @@ export { FileResolver } from "./file-resolver.js";
 
 export { DescriptionExtractor } from "./description-extractor.js";
 
-export {
-  NoSchemasFoundError,
-  NoFilesMatchedError,
-  InvalidOptionError,
-  formatError,
-} from "./errors.js";
+export { InvalidOptionError, formatError } from "./errors.js";
 
-export { setVerbose, logVerbose, logProgress } from "./logger.js";
-
-export { ConfigLoader, defineConfig, type ZinferConfig } from "./config-loader.js";
+export { defineConfig, type ZinferConfig } from "./config-loader.js";
 
 export {
   TestGenerator,
@@ -43,6 +43,8 @@ export {
 } from "./test-generator.js";
 
 export type {
+  ExtractOptions,
+  ExtractContext,
   ExtractResult,
   FileExtractResult,
   DetectedSchema,

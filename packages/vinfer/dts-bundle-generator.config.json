@@ -1,0 +1,19 @@
+{
+  "compilationOptions": {
+    "preferredConfigPath": "./tsconfig.json"
+  },
+  "entries": [
+    {
+      "filePath": "./src/index.ts",
+      "outFile": "./dist/index.d.ts",
+      "noCheck": true,
+      "output": { "exportReferencedTypes": false }
+    },
+    {
+      "filePath": "./src/cli.ts",
+      "outFile": "./dist/cli.d.ts",
+      "noCheck": true,
+      "output": { "exportReferencedTypes": false }
+    }
+  ]
+}
