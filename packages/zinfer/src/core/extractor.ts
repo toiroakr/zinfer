@@ -10,6 +10,7 @@ import {
 } from "ts-morph";
 import {
   NORMALIZE_TYPE_DEFINITION,
+  NORMALIZE_TYPE_NAMES,
   createTempTypeAlias,
   normalizeBrandQualifiers,
 } from "./normalizer.js";
@@ -21,7 +22,13 @@ import { escapeRegExp } from "./regexp.js";
 import { resolve, isAbsolute } from "pathe";
 import { realpathSync } from "fs";
 import { logDebugError } from "./logger.js";
-import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
+import type {
+  ExtractResult,
+  FileExtractResult,
+  DetectedSchema,
+  ExtractOptions,
+  ExtractContext,
+} from "./types.js";
 
 // Re-export ExtractResult for backward compatibility
 export type { ExtractResult } from "./types.js";
@@ -71,57 +78,6 @@ interface LocalTypeReference {
    * a cycle through it has no resolvable form at all.
    */
   hasValidFallback: boolean;
-}
-
-/**
- * Options for type extraction.
- */
-export interface ExtractOptions {
-  /** Absolute or relative path to the TypeScript file containing the Zod schema */
-  filePath: string;
-  /** Name of the exported Zod schema (e.g., "UserSchema") */
-  schemaName: string;
-  /** Optional path to tsconfig.json for project configuration */
-  tsconfigPath?: string;
-}
-
-/**
- * Extra context that lets extraction reach beyond the file being processed.
- */
-export interface ExtractContext {
-  /**
-   * Absolute paths of the files that get generated types of their own.
-   *
-   * A recursive schema imported from one of them is referenced by name rather
-   * than inlined - an inline copy of a recursive type can only ever be an
-   * approximation - leaving the caller to `import type` it. Schemas from files
-   * outside this set are inlined as before.
-   *
-   * Paths are compared canonicalized, so a caller's separators do not have to
-   * match the spelling TypeScript reports for the same file.
-   */
-  importableFiles?: ReadonlySet<string>;
-  /**
-   * Schema names actually generated for this run (e.g. from `--schemas`).
-   * A schema outside this set is never declared by its own file either, so
-   * referencing it by name would point at a declaration that doesn't exist -
-   * it is inlined instead. Undefined means every schema in an importable file
-   * is generated.
-   */
-  generatedSchemaNames?: ReadonlySet<string>;
-  /**
-   * When an explicit `z.ZodType<T>` annotation's `T` reaches a plain
-   * (non-schema) type declared in another file, TypeScript's printer
-   * synthesizes an `import("...").Name` reference to it rather than
-   * expanding it in place - there is nothing else to point at from this
-   * print location. Setting this replaces that reference with the
-   * referenced type's own structure instead, recursively, so the generated
-   * output carries no dependency on the original file layout. A reference
-   * that would recurse into itself (directly or through another file) is
-   * left as `import(...)` at the point it would cycle - see
-   * `inlineExternalTypeReferences`.
-   */
-  inlineExternalTypes?: boolean;
 }
 
 /**
@@ -748,7 +704,7 @@ export class ZodTypeExtractor {
    * Removes the __Normalize type definition from a source file.
    */
   private cleanupNormalizeType(sourceFile: SourceFile): void {
-    for (const name of ["__Normalize", "__NormalizeTuple"]) {
+    for (const name of NORMALIZE_TYPE_NAMES) {
       const typeAlias = sourceFile.getTypeAlias(name);
       if (typeAlias) {
         typeAlias.remove();

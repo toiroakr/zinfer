@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { resolve } from "path";
 import { Project } from "ts-morph";
 import { ImportResolver } from "../src/core/import-resolver.js";
+import { SchemaDetector } from "../src/core/schema-detector.js";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
 
@@ -10,7 +11,7 @@ describe("ImportResolver", () => {
   let project: Project;
 
   beforeEach(() => {
-    resolver = new ImportResolver();
+    resolver = new ImportResolver(new SchemaDetector());
     project = new Project({
       tsConfigFilePath: resolve(import.meta.dirname, "..", "tsconfig.json"),
     });

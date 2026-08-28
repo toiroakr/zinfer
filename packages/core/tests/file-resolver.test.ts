@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { resolve } from "pathe";
-import { FileResolver } from "../src/core/file-resolver.js";
+import { FileResolver } from "../src/file-resolver.js";
 
 const testsDir = resolve(import.meta.dirname);
 const resolver = new FileResolver();

@@ -1,6 +1,13 @@
 export { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias } from "./normalizer.js";
 
-export { ValibotTypeExtractor, type ExtractOptions, type ExtractContext } from "./extractor.js";
+export { ValibotTypeExtractor } from "./extractor.js";
+
+export {
+  runCLI,
+  computeImportableFiles,
+  type CLIOptionsBase,
+  type CliBindings,
+} from "@zinfer-monorepo/core";
 
 export {
   formatResult,
@@ -23,22 +30,9 @@ export { FileResolver } from "./file-resolver.js";
 
 export { DescriptionExtractor } from "./description-extractor.js";
 
-export {
-  VinferError,
-  NoSchemasFoundError,
-  NoFilesMatchedError,
-  InvalidOptionError,
-  formatError,
-} from "./errors.js";
+export { InvalidOptionError, formatError } from "./errors.js";
 
-export { setVerbose, logVerbose, logDebugError, logProgress } from "./logger.js";
-
-export {
-  ConfigLoader,
-  defineConfig,
-  type VinferConfig,
-  type ConfigLoadResult,
-} from "./config-loader.js";
+export { defineConfig, type VinferConfig } from "./config-loader.js";
 
 export {
   TestGenerator,
@@ -52,6 +46,8 @@ export {
 } from "./test-generator.js";
 
 export type {
+  ExtractOptions,
+  ExtractContext,
   ExtractResult,
   FileExtractResult,
   DetectedSchema,

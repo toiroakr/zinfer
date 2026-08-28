@@ -597,8 +597,18 @@ describe("runCLI", () => {
 
     it("rejects --generate-tests without a file output", async () => {
       await expect(run(["schemas/basic-schema.ts"], { generateTests: true })).rejects.toThrow(
-        /--generate-tests requires --outDir or --outFile/,
+        /Invalid option "--generate-tests": Requires file output/,
       );
+    });
+
+    it("rejects --generate-tests together with --declaration", async () => {
+      await expect(
+        run(["schemas/basic-schema.ts"], {
+          generateTests: true,
+          outDir: "types",
+          declaration: true,
+        }),
+      ).rejects.toThrow(/Cannot be used with --declaration/);
     });
 
     it("rejects --generate-tests together with --brand-strategy local-symbol", async () => {

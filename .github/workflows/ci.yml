@@ -34,6 +34,13 @@ jobs:
           node-version: 24.19.0
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Build
+        # zinfer/vinfer resolve @zinfer-monorepo/core (a private, unpublished
+        # workspace package bundled into their own dist at publish time)
+        # through node_modules, which only works once core's own dist/
+        # exists. `pnpm -r` builds in dependency order, so this also builds
+        # core before zinfer/vinfer without needing to name it explicitly.
+        run: pnpm -r build
       - name: Typecheck
         run: pnpm -r typecheck
       - name: Lint
@@ -110,6 +117,11 @@ jobs:
           node-version: 24.19.0
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Build core
+        # ${{ matrix.package }} resolves @zinfer-monorepo/core through
+        # node_modules; only its own typecheck/test steps below need it
+        # built, not ${{ matrix.package }}'s own dist.
+        run: pnpm --filter @zinfer-monorepo/core build
       - name: Install peerDependencies lower bound
         run: pnpm --filter ${{ matrix.package }} add -D ${{ matrix.packages }}
       - name: Typecheck (tsgo)

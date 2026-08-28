@@ -4,3 +4,13 @@ packages:
 allowBuilds:
   esbuild: true
   lefthook: true
+
+overrides:
+  # dts-bundle-generator/rollup-plugin-dts (used to bundle packages/core's
+  # types into zinfer/vinfer's published dist) crash against the workspace's
+  # pinned typescript@7.x native-preview package: it doesn't implement
+  # `ts.sys`, which these tools' declaration-bundling code reads eagerly.
+  # Force just their own nested `typescript` dependency to a classic 5.x
+  # release; zinfer/vinfer/core's own typecheck/build keep using the
+  # workspace's pinned typescript@7.x untouched.
+  dts-bundle-generator>typescript: ^5.7.3

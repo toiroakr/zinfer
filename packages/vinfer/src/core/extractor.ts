@@ -21,7 +21,13 @@ import { ImportResolver } from "./import-resolver.js";
 import { ValibotBindings } from "./valibot-bindings.js";
 import { logDebugError } from "./logger.js";
 import { isEscaped } from "./string-scan.js";
-import type { ExtractResult, FileExtractResult, DetectedSchema } from "./types.js";
+import type {
+  ExtractResult,
+  FileExtractResult,
+  DetectedSchema,
+  ExtractOptions,
+  ExtractContext,
+} from "./types.js";
 
 // Re-export ExtractResult for backward compatibility
 export type { ExtractResult } from "./types.js";
@@ -315,46 +321,6 @@ function modulePathFor(sourceFile: SourceFile): string {
     /\.d\.(ts|mts|cts)$|\.(ts|tsx|mts|cts)$/,
     "",
   );
-}
-
-/**
- * Options for type extraction.
- */
-export interface ExtractOptions {
-  /** Absolute or relative path to the TypeScript file containing the Valibot schema */
-  filePath: string;
-  /** Name of the exported Valibot schema (e.g., "UserSchema") */
-  schemaName: string;
-  /** Optional path to tsconfig.json for project configuration */
-  tsconfigPath?: string;
-}
-
-/**
- * Extra context that lets extraction reach beyond the file being processed.
- */
-export interface ExtractContext {
-  /**
-   * Absolute paths of the files that get generated types of their own.
-   *
-   * A recursive schema imported from one of them is referenced by name rather
-   * than inlined - an inline copy of a recursive type can only ever be an
-   * approximation - leaving the caller to `import type` it. Schemas from files
-   * outside this set are inlined as before.
-   */
-  importableFiles?: ReadonlySet<string>;
-  /**
-   * When an explicit `v.GenericSchema<T>` annotation's `T` reaches a plain
-   * (non-schema) type declared in another file, TypeScript's printer
-   * synthesizes an `import("...").Name` reference to it rather than
-   * expanding it in place - there is nothing else to point at from this
-   * print location. Setting this replaces that reference with the
-   * referenced type's own structure instead, recursively, so the generated
-   * output carries no dependency on the original file layout. A reference
-   * that would recurse into itself (directly or through another file) is
-   * left as `import(...)` at the point it would cycle - see
-   * `inlineExternalTypeReferences`.
-   */
-  inlineExternalTypes?: boolean;
 }
 
 /**
