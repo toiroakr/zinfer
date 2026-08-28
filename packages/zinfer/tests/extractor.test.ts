@@ -46,6 +46,7 @@ const ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS = [
   "inline-external-types/typeof-query/direct-schema.ts",
   "inline-external-types/typeof-query/schema.ts",
   "inline-external-types/method-collision/schema.ts",
+  "inline-external-types/generic-method-collision/schema.ts",
 ];
 // tsgo's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
 // Windows) that execFileSync cannot run directly without a shell; run its
@@ -1212,6 +1213,24 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
       expect(result?.input).toBe("{ holder: { Box(): string; value: { value: string; }; }; }");
     });
+
+    it("should never rewrite a generic method's own name, even when it collides with an in-scope type name", () => {
+      // Box<T>(): T is a generic method signature - its name "Box" is not a
+      // type reference, even though an imported type is also named Box.
+      // Substituting it would corrupt the method into invalid syntax
+      // (`{ value: string }<T>(): T`). Before the fix, the method-name
+      // guard only recognized a non-generic `Box(): ...` (checking for `(`
+      // immediately after the name), so a generic method's own name fell
+      // through to the qualified/generic branch and got rewritten into
+      // `import("...").Box<T>(): T`.
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/generic-method-collision/schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const result = results.find((r) => r.schemaName === "GenericMethodCollisionSchema");
+
+      expect(result?.input).toBe("{ holder: { Box<T>(): T; value: { value: string; }; }; }");
+    });
   });
 
   createSchemaTest(extractor, "inline-external-types/chain/schema");
@@ -1221,6 +1240,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   createSchemaTest(extractor, "inline-external-types/typeof-query/direct-schema");
   createSchemaTest(extractor, "inline-external-types/typeof-query/schema");
   createSchemaTest(extractor, "inline-external-types/method-collision/schema");
+  createSchemaTest(extractor, "inline-external-types/generic-method-collision/schema");
 
   // The tests above assert on individual substrings of the raw extracted
   // type; none of them get run through tsgo. These mirror createSchemaTest
@@ -1280,6 +1300,15 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     {
       context: { inlineExternalTypes: true },
       snapshotName: "inline-external-types/method-collision/schema-inlined",
+    },
+  );
+  createSchemaTest(
+    extractor,
+    "inline-external-types/generic-method-collision/schema",
+    "should generate TypeScript declarations",
+    {
+      context: { inlineExternalTypes: true },
+      snapshotName: "inline-external-types/generic-method-collision/schema-inlined",
     },
   );
 
