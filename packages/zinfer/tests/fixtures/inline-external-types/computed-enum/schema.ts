@@ -1,4 +1,7 @@
 import { z } from "zod";
-import { Kind } from "./kind";
+import type { Holder } from "./holder";
 
-export const ComputedEnumSchema: z.ZodType<Kind, Kind> = z.any();
+// Holder is visible here (imported directly), so the printer expands its
+// own structure in place - printing the Kind field, which isn't visible
+// from here, as import("./kind").Kind.
+export const ComputedEnumSchema: z.ZodType<Holder, Holder> = z.any();

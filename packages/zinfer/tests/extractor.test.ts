@@ -48,6 +48,7 @@ const ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS = [
   "inline-external-types/typeof-query/schema.ts",
   "inline-external-types/method-collision/schema.ts",
   "inline-external-types/generic-method-collision/schema.ts",
+  "inline-external-types/suffix-wrap/schema.ts",
 ];
 // tsgo's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
 // Windows) that execFileSync cannot run directly without a shell; run its
@@ -260,6 +261,27 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "should generate TypeScript declarations with intersections",
   );
   createSchemaTest(extractor, "enum-schema", "should generate TypeScript declarations with enums");
+
+  describe("computed-enum-schema.ts", () => {
+    it("leaves an enum unexpanded rather than dropping an unresolvable member's value", () => {
+      // The only fixture that reaches resolveType()'s own enum branch: it
+      // needs a bare identifier that `sourceFile.getEnum()` can look up, so
+      // the enum has to be *declared* in the schema's own file (an imported
+      // one is never found there, whatever the printed text looks like).
+      // Status.Pending is initialized from a function call, so ts-morph's
+      // getValue() can't compute it - printEnumAsLiteralUnion gives up on
+      // the whole enum rather than narrow it to `0 | 2`, which would reject
+      // Pending, a value TypeScript itself accepts through Status. Left as
+      // the bare enum name instead, which cannot be printed self-contained
+      // here since the enum isn't exported - a known limitation, not
+      // asserted against.
+      const results = extractor.extractAll(resolve(fixturesDir, "computed-enum-schema.ts"));
+      const status = results.find((r) => r.schemaName === "StatusSchema");
+
+      expect(status?.input).toBe("Status");
+      expect(status?.output).toBe("Status");
+    });
+  });
   createSchemaTest(
     extractor,
     "utility-types-schema",
@@ -1204,12 +1226,23 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // getValue() can't compute it. Printing "a" | "c" (silently dropping
       // B) would reject a value TypeScript itself accepts through Kind -
       // narrower than the real enum is worse than not expanding at all.
+      //
+      // Kind is reached as a *field* of Holder (never as the whole
+      // annotated type) so the printer synthesizes import("./kind").Kind
+      // for it, which is what --inline-external-types resolves through
+      // resolveExternalTypeReference -> printEnumAsLiteralUnion. Annotating
+      // the schema with Kind directly instead only ever printed the bare
+      // identifier "Kind", which resolveType() looks up as a same-file enum
+      // (schema.ts merely imports it) and therefore never expands at all -
+      // that shape is covered by computed-enum-schema.ts, on its own
+      // same-file code path.
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/computed-enum/schema.ts"),
+        { inlineExternalTypes: true },
       );
       const result = results.find((r) => r.schemaName === "ComputedEnumSchema");
 
-      expect(result?.input).toBe("Kind");
+      expect(result?.input).toMatch(/import\(".*kind"\)\.Kind/);
       expect(result?.input).not.toContain('"a"');
     });
 
@@ -1310,6 +1343,22 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
       expect(result?.input).toBe("{ holder: { Box<T>(): T; value: { value: string; }; }; }");
     });
+
+    it("should wrap an expanded function type in parens before an array suffix, not just a union or intersection", () => {
+      // Callback is visible in holder.ts, so expanding Holder's own
+      // declaration prints "callbacks: Callback[]" - a bare identifier
+      // that promoteBareTypeReferences expands to Callback's own
+      // function-type structure. Without wrapping, "(value: string) =>
+      // string[]" would mean a function returning string[], not an array
+      // of such functions.
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/suffix-wrap/schema.ts"),
+        { inlineExternalTypes: true },
+      );
+      const result = results.find((r) => r.schemaName === "SuffixWrapSchema");
+
+      expect(result?.input).toBe("{ callbacks: ((value: string) => string)[]; }");
+    });
   });
 
   createSchemaTest(extractor, "inline-external-types/chain/schema");
@@ -1388,6 +1437,15 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     {
       context: { inlineExternalTypes: true },
       snapshotName: "inline-external-types/generic-method-collision/schema-inlined",
+    },
+  );
+  createSchemaTest(
+    extractor,
+    "inline-external-types/suffix-wrap/schema",
+    "should generate TypeScript declarations",
+    {
+      context: { inlineExternalTypes: true },
+      snapshotName: "inline-external-types/suffix-wrap/schema-inlined",
     },
   );
 

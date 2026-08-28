@@ -1049,7 +1049,7 @@ export class ValibotTypeExtractor {
     originalText: string,
     visiting: Set<string>,
   ): string {
-    const key = `${targetFile.getFilePath()}#${typeName}`;
+    const key = `${modulePathFor(targetFile)}#${typeName}`;
     if (visiting.has(key)) return originalText;
 
     visiting.add(key);
@@ -1218,7 +1218,7 @@ export class ValibotTypeExtractor {
     word: string,
     visiting: Set<string>,
   ): string {
-    const key = `${reference.file.getFilePath()}#${reference.exportedName}`;
+    const key = `${reference.modulePath}#${reference.exportedName}`;
     const fallback = this.referenceFallbackText(reference, word);
 
     if (visiting.has(key)) return fallback;

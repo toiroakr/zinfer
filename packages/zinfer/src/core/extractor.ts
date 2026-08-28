@@ -923,7 +923,7 @@ export class ZodTypeExtractor {
     try {
       const expanded = this.resolveExternalTypeReference(targetFile, typeName, visiting);
       if (expanded === undefined) return originalText;
-      return this.hasTopLevelUnionOrIntersection(expanded) ? `(${expanded})` : expanded;
+      return this.needsParensBeforeSuffix(expanded) ? `(${expanded})` : expanded;
     } finally {
       visiting.delete(key);
     }
@@ -1077,7 +1077,7 @@ export class ZodTypeExtractor {
    * own type-parameter list (`Name<T>(): ...`), i.e. whether the matching
    * `>` is immediately followed by `(`.
    *
-   * Mirrors `hasTopLevelUnionOrIntersection`'s bracket handling: a `>` that
+   * Mirrors `needsParensBeforeSuffix`'s bracket handling: a `>` that
    * closes an arrow type's `=>` rather than a `<` doesn't count, and a quote
    * inside the type-parameter list (e.g. a literal type) doesn't confuse the
    * scan.
@@ -1132,7 +1132,7 @@ export class ZodTypeExtractor {
         visiting,
       );
       if (expanded === undefined) return fallback;
-      return this.hasTopLevelUnionOrIntersection(expanded) ? `(${expanded})` : expanded;
+      return this.needsParensBeforeSuffix(expanded) ? `(${expanded})` : expanded;
     } finally {
       visiting.delete(key);
     }
@@ -1224,11 +1224,22 @@ export class ZodTypeExtractor {
   }
 
   /**
-   * Whether `typeText` has a `|` or `&` outside any bracket/quote nesting -
-   * a top-level union or intersection that would bind incorrectly if the
-   * caller appends a suffix like `[]` without wrapping it in parens first.
+   * Whether `typeText` needs wrapping in parens before the caller appends a
+   * suffix like `[]` or an indexed access directly after it, because doing
+   * so unparenthesized would bind to only part of the type or change its
+   * meaning outright:
+   *
+   * - A top-level `|` or `&` (union/intersection) - `A | B[]` reads as
+   *   `A | (B[])`, not `(A | B)[]`.
+   * - A top-level `?` (a conditional type, `T extends U ? A : B`) - the same
+   *   binding problem, and a bare `?` never otherwise appears at depth 0 in
+   *   printed type text (an optional property/tuple element's `?` is always
+   *   inside the `{...}`/`[...]` that owns it).
+   * - A top-level `=>` (a function type) - `(x: X) => Y[]` means a function
+   *   returning `Y[]`, not an array of such functions; the parameter list's
+   *   own `(...)` is already balanced by the time this is reached.
    */
-  private hasTopLevelUnionOrIntersection(typeText: string): boolean {
+  private needsParensBeforeSuffix(typeText: string): boolean {
     let depth = 0;
     let quote: string | undefined;
 
@@ -1249,9 +1260,14 @@ export class ZodTypeExtractor {
       } else if (char === ">") {
         // The `>` of an arrow function type's `=>` never opened a matching
         // `<` - counting it would desync depth tracking for the rest of the
-        // string, hiding (or inventing) a top-level union/intersection.
-        if (typeText[i - 1] !== "=") depth--;
-      } else if (depth === 0 && (char === "|" || char === "&")) {
+        // string, hiding (or inventing) a top-level construct that needs
+        // wrapping. Recognized as its own signal just below instead.
+        if (typeText[i - 1] === "=") {
+          if (depth === 0) return true;
+        } else {
+          depth--;
+        }
+      } else if (depth === 0 && (char === "|" || char === "&" || char === "?")) {
         return true;
       }
     }

@@ -817,7 +817,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       // instantiation of the imported GenericBox, which would strand it
       // after an import("...").GenericBox rewrite. The constraint's own
       // arrow-function type carries a `>` that never opened a matching `<`
-      // (the same case hasTopLevelUnionOrIntersection excludes), so this
+      // (the same case needsParensBeforeSuffix excludes), so this
       // also verifies the balanced-<...> scan isn't fooled by it into
       // ending early. The `boxed` field is a genuine generic instantiation
       // of GenericBox (unlike the method signature above it), so it stays
