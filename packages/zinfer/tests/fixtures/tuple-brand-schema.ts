@@ -9,7 +9,7 @@ export const TagListSchema = z.array(z.string()).brand<"TagList">();
 
 export const FrozenPairSchema = z.tuple([z.string(), z.number()]).readonly().brand<"FrozenPair">();
 
-export const HeadedListSchema = z.tuple([z.string()], z.number()).brand<"HeadedList">();
+export const HeadedListSchema = z.tuple([z.string()]).rest(z.number()).brand<"HeadedList">();
 
 // A branded tuple nested inside an object, alongside an unbranded one.
 export const ShapeSchema = z.object({
