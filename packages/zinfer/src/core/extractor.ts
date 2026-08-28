@@ -916,7 +916,7 @@ export class ZodTypeExtractor {
     originalText: string,
     visiting: Set<string>,
   ): string {
-    const key = `${targetFile.getFilePath()}#${typeName}`;
+    const key = `${this.modulePathFor(targetFile)}#${typeName}`;
     if (visiting.has(key)) return originalText;
 
     visiting.add(key);
@@ -1119,7 +1119,7 @@ export class ZodTypeExtractor {
     word: string,
     visiting: Set<string>,
   ): string {
-    const key = `${reference.file.getFilePath()}#${reference.exportedName}`;
+    const key = `${this.modulePathFor(reference.file)}#${reference.exportedName}`;
     const fallback = this.referenceFallbackText(reference, word);
 
     if (visiting.has(key)) return fallback;
