@@ -7,6 +7,12 @@ export const CoordSchema = v.pipe(v.tuple([v.number(), v.number()]), v.brand("Co
 
 export const TagListSchema = v.pipe(v.array(v.string()), v.brand("TagList"));
 
+export const FrozenPairSchema = v.pipe(
+  v.tuple([v.string(), v.number()]),
+  v.readonly(),
+  v.brand("FrozenPair"),
+);
+
 export const HeadedListSchema = v.pipe(
   v.tupleWithRest([v.string()], v.number()),
   v.brand("HeadedList"),

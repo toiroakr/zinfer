@@ -257,7 +257,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
   );
 
   describe("tuple-brand-schema.ts", () => {
-    it("should keep the brand on a tuple, a variadic tuple and an array", () => {
+    it("should keep the brand on a tuple, a readonly tuple, a variadic tuple and an array", () => {
       const results = extractor.extractAll(resolve(fixturesDir, "tuple-brand-schema.ts"));
       const outputOf = (name: string) => results.find((r) => r.schemaName === name)?.output;
 
@@ -267,6 +267,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       // literal - and a branded array silently lost its brand.
       expect(outputOf("CoordSchema")).toBe('[number, number] & Brand<"Coord">');
       expect(outputOf("TagListSchema")).toBe('string[] & Brand<"TagList">');
+      expect(outputOf("FrozenPairSchema")).toBe('readonly [string, number] & Brand<"FrozenPair">');
       expect(outputOf("HeadedListSchema")).toBe('[string, ...number[]] & Brand<"HeadedList">');
     });
 

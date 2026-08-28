@@ -5,12 +5,14 @@ import { describe, it, expectTypeOf } from "vitest";
 import type * as v from "valibot";
 
 // --- tuple-brand-schema ---
-import { CoordSchema as TupleBrandSchemaCoordSchema, TagListSchema as TupleBrandSchemaTagListSchema, HeadedListSchema as TupleBrandSchemaHeadedListSchema, ShapeSchema as TupleBrandSchemaShapeSchema } from "../fixtures/tuple-brand-schema";
+import { CoordSchema as TupleBrandSchemaCoordSchema, TagListSchema as TupleBrandSchemaTagListSchema, FrozenPairSchema as TupleBrandSchemaFrozenPairSchema, HeadedListSchema as TupleBrandSchemaHeadedListSchema, ShapeSchema as TupleBrandSchemaShapeSchema } from "../fixtures/tuple-brand-schema";
 import type {
   CoordInput as TupleBrandSchemaCoordInput,
   CoordOutput as TupleBrandSchemaCoordOutput,
   TagListInput as TupleBrandSchemaTagListInput,
   TagListOutput as TupleBrandSchemaTagListOutput,
+  FrozenPairInput as TupleBrandSchemaFrozenPairInput,
+  FrozenPairOutput as TupleBrandSchemaFrozenPairOutput,
   HeadedListInput as TupleBrandSchemaHeadedListInput,
   HeadedListOutput as TupleBrandSchemaHeadedListOutput,
   ShapeInput as TupleBrandSchemaShapeInput,
@@ -33,6 +35,14 @@ describe("Type equality tests", () => {
 
     it("TagListSchema output matches v.InferOutput", () => {
       expectTypeOf<TupleBrandSchemaTagListOutput>().toEqualTypeOf<v.InferOutput<typeof TupleBrandSchemaTagListSchema>>();
+    });
+
+    it("FrozenPairSchema input matches v.InferInput", () => {
+      expectTypeOf<TupleBrandSchemaFrozenPairInput>().toEqualTypeOf<v.InferInput<typeof TupleBrandSchemaFrozenPairSchema>>();
+    });
+
+    it("FrozenPairSchema output matches v.InferOutput", () => {
+      expectTypeOf<TupleBrandSchemaFrozenPairOutput>().toEqualTypeOf<v.InferOutput<typeof TupleBrandSchemaFrozenPairSchema>>();
     });
 
     it("HeadedListSchema input matches v.InferInput", () => {

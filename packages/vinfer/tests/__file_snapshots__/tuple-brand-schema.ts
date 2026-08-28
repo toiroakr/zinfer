@@ -10,6 +10,10 @@ export type TagListInput = string[];
 
 export type TagListOutput = string[] & Brand<"TagList">;
 
+export type FrozenPairInput = [string, number];
+
+export type FrozenPairOutput = readonly [string, number] & Brand<"FrozenPair">;
+
 export type HeadedListInput = [string, ...number[]];
 
 export type HeadedListOutput = [string, ...number[]] & Brand<"HeadedList">;
