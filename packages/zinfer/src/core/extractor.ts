@@ -916,7 +916,7 @@ export class ZodTypeExtractor {
     originalText: string,
     visiting: Set<string>,
   ): string {
-    const key = `${targetFile.getFilePath()}#${typeName}`;
+    const key = `${this.modulePathFor(targetFile)}#${typeName}`;
     if (visiting.has(key)) return originalText;
 
     visiting.add(key);
@@ -1119,7 +1119,7 @@ export class ZodTypeExtractor {
     word: string,
     visiting: Set<string>,
   ): string {
-    const key = `${reference.file.getFilePath()}#${reference.exportedName}`;
+    const key = `${reference.modulePath}#${reference.exportedName}`;
     const fallback = this.referenceFallbackText(reference, word);
 
     if (visiting.has(key)) return fallback;
@@ -1486,9 +1486,27 @@ export class ZodTypeExtractor {
    * synthesized `import("...")` type and what `resolveModuleSourceFile`
    * resolves back from - so a type reached either way lands on the same
    * cycle-detection key.
+   *
+   * realpath'd for the same reason `absolutizeImportPaths` realpath's its
+   * source directory: on a symlinked working directory (e.g. macOS's `/var`
+   * -> `/private/var` tmpdir), the file was added to the project at
+   * whatever path was handed in - not necessarily realpath'd - and leaving
+   * it as-is here would produce an absolute path on a different symlink
+   * base than the rest of a printed type, corrupting `resolveModuleSourceFile`'s
+   * filesystem lookup and the cycle-detection keys built from it.
+   *
+   * `realpathSync` returns OS-native separators, which are backslashes on
+   * Windows - embedding that directly into an `import("...")` string would
+   * produce an invalid module specifier (and a mis-escaped string literal).
+   * Routed through pathe's `resolve()`, the same normalization
+   * `absolutizeImportPaths` already relies on for its own realpath'd
+   * `sourceDir`, to always land on the forward-slash form.
    */
   private modulePathFor(sourceFile: SourceFile): string {
-    return sourceFile.getFilePath().replace(/\.d\.(ts|mts|cts)$|\.(ts|tsx|mts|cts)$/, "");
+    return resolve(realpathSync(sourceFile.getFilePath())).replace(
+      /\.d\.(ts|mts|cts)$|\.(ts|tsx|mts|cts)$/,
+      "",
+    );
   }
 }
 
