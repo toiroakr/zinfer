@@ -1,5 +1,15 @@
 # zinfer
 
+## 0.3.4
+
+### Patch Changes
+
+- fe83221: Move zinfer and vinfer into a single pnpm monorepo (toiroakr/zinfer, at
+  packages/zinfer and packages/vinfer). No runtime or CLI behavior changes.
+  `repository.url`/`repository.directory` in package.json are updated to point
+  at the new monorepo location, which `publishConfig.provenance` validates
+  against on publish.
+
 ## 0.3.3
 
 ### Patch Changes
