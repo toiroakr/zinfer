@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { containsBrandMarker } from "../src/core/type-printer.js";
+import { containsBrandMarker, formatResult } from "../src/core/type-printer.js";
 
 describe("containsBrandMarker", () => {
   it("detects a real brand marker", () => {
@@ -35,5 +35,27 @@ describe("containsBrandMarker", () => {
 
   it("treats $ as an identifier character too, since it's valid in a TypeScript identifier", () => {
     expect(containsBrandMarker("FOO$BRAND<Tag>")).toBe(false);
+  });
+});
+
+describe("formatResult - string literal boundary tracking", () => {
+  it("does not get stuck inside a string literal ending in an escaped backslash (even backslash count before the closing quote)", () => {
+    // Same pathological literal as containsBrandMarker's equivalent test:
+    // `"a\\"` (a, one escaped backslash, close quote) is printed with two
+    // literal backslash characters before the closing quote - an even count,
+    // so that quote genuinely closes the string. A scanner that treats *any*
+    // backslash-preceded quote as escaped would stay "inside" the string past
+    // this point and never format the field that follows.
+    const output = formatResult({
+      schemaName: "Test",
+      input: '{ note: "a\\\\"; other: string; }',
+      output: '{ note: "a\\\\"; other: string; }',
+      isExported: true,
+    });
+
+    // A scanner stuck "inside" the string never sees the field separator or
+    // the closing brace as real syntax again, so `other` and the closing `}`
+    // stay glued to the end of the string instead of getting their own lines.
+    expect(output).toContain("\n  other: string;\n}");
   });
 });
