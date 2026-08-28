@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import { resolve, basename } from "pathe";
+import { resolve, basename, join } from "pathe";
 import { z } from "zod";
 import { ZodTypeExtractor, type ExtractContext } from "../src/core/extractor.js";
 import { generateDeclarationFile, relativizeImportPaths } from "../src/core/type-printer.js";
@@ -7,7 +7,8 @@ import { createNameMapper } from "../src/core/name-mapper.js";
 import { DescriptionExtractor } from "../src/core/description-extractor.js";
 import { execFileSync } from "child_process";
 import { execPath } from "process";
-import { readdirSync } from "fs";
+import { readdirSync, mkdtempSync, symlinkSync, writeFileSync, rmSync, realpathSync } from "fs";
+import { tmpdir } from "os";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
 const snapshotsDir = resolve(import.meta.dirname, "__file_snapshots__");
@@ -496,6 +497,43 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       expect(output).not.toMatch(/BarInput\s*=\s*BarInput/);
       expect(output).not.toMatch(/BarOutput\s*=\s*BarOutput/);
       expect(output).not.toMatch(/=\s*LocalInterface;/);
+    });
+
+    it("should qualify a locally declared class through the file's realpath, not the symlinked path it was loaded through", () => {
+      // qualifyLocalTypeReference builds `import("${modulePathFor(sourceFile)}")`
+      // directly from the entry file's own SourceFile - unlike every other
+      // absolute import(...) text extractAll produces, which goes through
+      // absolutizeImportPaths's realpathSync. On a symlinked working
+      // directory (e.g. macOS's `/var` -> `/private/var` tmpdir), the entry
+      // file is added to the ts-morph Project at whatever path extractAll
+      // was called with - not necessarily realpath'd - so an un-realpath'd
+      // modulePathFor produced an import(...) anchored to the symlink
+      // instead of its real target.
+      const realBase = mkdtempSync(join(tmpdir(), "zinfer-realpath-real-"));
+      const linkPath = mkdtempSync(join(tmpdir(), "zinfer-realpath-link-"));
+      rmSync(linkPath, { recursive: true, force: true });
+      symlinkSync(realBase, linkPath, "junction");
+
+      try {
+        writeFileSync(
+          join(linkPath, "schema.ts"),
+          'import { z } from "zod";\n\n' +
+            "export class LocalClass {\n" +
+            '  value: string = "";\n' +
+            "}\n\n" +
+            "export const FooSchema: z.ZodType<LocalClass, LocalClass> = z.any();\n",
+        );
+
+        const results = extractor.extractAll(join(linkPath, "schema.ts"));
+        const result = results.find((r) => r.schemaName === "FooSchema");
+
+        const realSchemaPath = realpathSync(join(linkPath, "schema.ts")).replace(/\.ts$/, "");
+        expect(result?.input).toBe(`import("${realSchemaPath}").LocalClass`);
+        expect(result?.output).toBe(`import("${realSchemaPath}").LocalClass`);
+      } finally {
+        rmSync(linkPath, { recursive: true, force: true });
+        rmSync(realBase, { recursive: true, force: true });
+      }
     });
 
     it("should fall back to the bare identifier when the locally declared type isn't exported (no module specifier can reach it)", () => {

@@ -1486,9 +1486,20 @@ export class ZodTypeExtractor {
    * synthesized `import("...")` type and what `resolveModuleSourceFile`
    * resolves back from - so a type reached either way lands on the same
    * cycle-detection key.
+   *
+   * realpath'd for the same reason `absolutizeImportPaths` realpath's its
+   * source directory: on a symlinked working directory (e.g. macOS's `/var`
+   * -> `/private/var` tmpdir), the file was added to the project at
+   * whatever path was handed in - not necessarily realpath'd - and leaving
+   * it as-is here would produce an absolute path on a different symlink
+   * base than the rest of a printed type, corrupting `resolveModuleSourceFile`'s
+   * filesystem lookup and the cycle-detection keys built from it.
    */
   private modulePathFor(sourceFile: SourceFile): string {
-    return sourceFile.getFilePath().replace(/\.d\.(ts|mts|cts)$|\.(ts|tsx|mts|cts)$/, "");
+    return realpathSync(sourceFile.getFilePath()).replace(
+      /\.d\.(ts|mts|cts)$|\.(ts|tsx|mts|cts)$/,
+      "",
+    );
   }
 }
 
