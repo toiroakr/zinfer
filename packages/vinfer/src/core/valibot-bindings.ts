@@ -1,4 +1,5 @@
 import { Node, type SourceFile } from "ts-morph";
+import { escapeRegExp } from "./regexp.js";
 
 /**
  * Module specifiers that are treated as Valibot.
@@ -154,13 +155,6 @@ export class ValibotBindings {
  * be imported by generated files.
  */
 export const VALIBOT_PRINTED_TYPE_NAMES = ["Brand", "Flavor"] as const;
-
-/**
- * Escapes special characters in a string for use in a RegExp.
- */
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 /**
  * Valibot exports that produce a schema.

@@ -2,6 +2,7 @@ import { SourceFile, SyntaxKind, Node } from "ts-morph";
 import { ValibotBindings } from "./valibot-bindings.js";
 import { analyzeSchemaExpression, type SchemaExpressionRef } from "./schema-expression.js";
 import { isEscaped } from "./string-scan.js";
+import { escapeRegExp } from "./regexp.js";
 
 /**
  * Information about a getter field in a `v.object()` schema.
@@ -305,11 +306,4 @@ function findValueEnd(typeStr: string, valueStart: number): number {
   }
 
   return index;
-}
-
-/**
- * Escapes special characters in a string for use in a RegExp.
- */
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
