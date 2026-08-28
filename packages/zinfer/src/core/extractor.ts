@@ -1119,7 +1119,7 @@ export class ZodTypeExtractor {
     word: string,
     visiting: Set<string>,
   ): string {
-    const key = `${this.modulePathFor(reference.file)}#${reference.exportedName}`;
+    const key = `${reference.modulePath}#${reference.exportedName}`;
     const fallback = this.referenceFallbackText(reference, word);
 
     if (visiting.has(key)) return fallback;

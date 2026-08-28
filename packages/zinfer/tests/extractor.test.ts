@@ -511,10 +511,11 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // instead of its real target.
       const realBase = mkdtempSync(join(tmpdir(), "zinfer-realpath-real-"));
       const linkPath = mkdtempSync(join(tmpdir(), "zinfer-realpath-link-"));
-      rmSync(linkPath, { recursive: true, force: true });
-      symlinkSync(realBase, linkPath, "junction");
 
       try {
+        rmSync(linkPath, { recursive: true, force: true });
+        symlinkSync(realBase, linkPath, "junction");
+
         writeFileSync(
           join(linkPath, "schema.ts"),
           'import { z } from "zod";\n\n' +
