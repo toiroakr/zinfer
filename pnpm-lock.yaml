@@ -64,7 +64,7 @@ importers:
         specifier: ^15.0.0
         version: 15.0.0
       glob:
-        specifier: ^13.0.0
+        specifier: ^13.0.6
         version: 13.0.6
       jiti:
         specifier: ^2.6.1
