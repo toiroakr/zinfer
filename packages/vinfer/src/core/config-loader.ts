@@ -1,6 +1,4 @@
-import type { InferConfig } from "@zinfer-monorepo/core";
-
-export { defineConfig } from "@zinfer-monorepo/core";
+import { defineConfig as sharedDefineConfig, type InferConfig } from "@zinfer-monorepo/core";
 
 /**
  * Configuration options that can be specified in config file.
@@ -15,3 +13,24 @@ export type VinferConfig = InferConfig & {
    */
   brandStrategy?: "valibot-import" | "local-symbol";
 };
+
+/**
+ * Defines a vinfer configuration with type checking.
+ * Use this in vinfer.config.ts for type safety.
+ *
+ * @example
+ * ```typescript
+ * // vinfer.config.ts
+ * import { defineConfig } from 'vinfer';
+ *
+ * export default defineConfig({
+ *   include: ['src/** /*.schema.ts'],
+ *   outDir: './types',
+ *   mergeSame: true,
+ *   suffix: 'Schema',
+ * });
+ * ```
+ */
+export function defineConfig(config: VinferConfig): VinferConfig {
+  return sharedDefineConfig(config);
+}

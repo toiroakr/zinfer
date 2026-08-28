@@ -5,7 +5,13 @@
  * into their fully evaluated form.
  *
  * Built-in types like Date, Array, Map, Set, Promise, Function, etc. are preserved without expansion.
- * Symbol-keyed properties (like a schema library's internal brand marker) are filtered out from object types.
+ *
+ * An object that carries a symbol-keyed property (a schema library's internal
+ * brand marker, typically) is returned untouched rather than mapped, so that
+ * property survives - a homomorphic mapped type over its other keys would
+ * otherwise drop it, silently stripping the brand. An object with no
+ * symbol-keyed properties is mapped as normal, which incidentally excludes
+ * symbol keys from the result, but there are none to begin with.
  */
 export const NORMALIZE_TYPE_DEFINITION = `
 type __Normalize<T> =
