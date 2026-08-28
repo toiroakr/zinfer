@@ -13,7 +13,7 @@ export interface InferConfig {
   exclude?: string[];
   /** Path to tsconfig.json */
   project?: string;
-  /** Comma-separated schema names to filter */
+  /** Schema names to extract (if not specified, all are extracted) */
   schemas?: string[];
   /** Output only input types */
   inputOnly?: boolean;
