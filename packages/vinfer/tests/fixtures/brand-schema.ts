@@ -19,8 +19,7 @@ export const EmailSchema = v.pipe(v.string(), v.email(), v.flavor("Email"));
 
 // Brand applied to the whole object, not to a field - the brand's symbol key
 // must survive __Normalize's key filtering instead of being stripped away.
-// (The tuple equivalent has the same gap but is not yet fixed - see the
-// comment on NORMALIZE_TYPE_DEFINITION in normalizer.ts.)
+// (The tuple/array equivalent is covered by tuple-brand-schema.ts.)
 export const BrandedUserSchema = v.pipe(
   v.object({ id: v.string(), name: v.string() }),
   v.brand("BrandedUser"),

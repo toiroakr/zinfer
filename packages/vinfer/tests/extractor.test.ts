@@ -252,6 +252,37 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
   });
   createSchemaTest(
     extractor,
+    "tuple-brand-schema",
+    "should keep a whole-tuple or whole-array brand instead of stripping or expanding it",
+  );
+
+  describe("tuple-brand-schema.ts", () => {
+    it("should keep the brand on a tuple, a variadic tuple and an array", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "tuple-brand-schema.ts"));
+      const outputOf = (name: string) => results.find((r) => r.schemaName === name)?.output;
+
+      // Without the symbol-key guard in __Normalize's array/tuple branch, a
+      // fixed-length branded tuple was mapped key-by-key - which, for an
+      // intersection, expands every Array.prototype member into an object
+      // literal - and a branded array silently lost its brand.
+      expect(outputOf("CoordSchema")).toBe('[number, number] & Brand<"Coord">');
+      expect(outputOf("TagListSchema")).toBe('string[] & Brand<"TagList">');
+      expect(outputOf("HeadedListSchema")).toBe('[string, ...number[]] & Brand<"HeadedList">');
+    });
+
+    it("should still normalize an unbranded tuple next to a branded one", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "tuple-brand-schema.ts"));
+      const result = results.find((r) => r.schemaName === "ShapeSchema");
+
+      expect(result?.output).toBe(
+        '{ origin: [number, number] & Brand<"Coord">; size: [number, number]; }',
+      );
+      expect(result?.input).toBe("{ origin: [number, number]; size: [number, number]; }");
+    });
+  });
+
+  createSchemaTest(
+    extractor,
     "described-ref-schema",
     "should keep named schema references when v.description() wraps them",
   );
