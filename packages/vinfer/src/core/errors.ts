@@ -1,5 +1,7 @@
 import { formatError as sharedFormatError, type ErrorMessages } from "@zinfer-monorepo/core";
 
+export { InvalidOptionError } from "@zinfer-monorepo/core";
+
 export const vinferErrorMessages: ErrorMessages = {
   toolName: "vinfer",
   schemaLibraryName: "Valibot",

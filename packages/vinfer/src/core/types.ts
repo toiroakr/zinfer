@@ -1,4 +1,7 @@
-import type { ExtractResult as CoreExtractResult } from "@zinfer-monorepo/core";
+import type {
+  ExtractResult as CoreExtractResult,
+  DeclarationOptions as CoreDeclarationOptions,
+} from "@zinfer-monorepo/core";
 
 export type {
   ExtractOptions,
@@ -10,7 +13,6 @@ export type {
   NameMappingOptions,
   OutputOptions,
   GeneratedFile,
-  DeclarationOptions,
 } from "@zinfer-monorepo/core";
 
 /**
@@ -29,4 +31,21 @@ export type ExtractResult = CoreExtractResult & {
    * local alias, so the `import type` has to bridge the two with `as`.
    */
   originalName?: string;
+};
+
+/**
+ * Options for type declaration formatting.
+ *
+ * A type alias (not `interface X extends Y`) on purpose - same reasoning as
+ * `ExtractResult` above, this time for the identical name "DeclarationOptions".
+ */
+export type DeclarationOptions = CoreDeclarationOptions & {
+  /**
+   * How a `.brand()`/`.flavor()` marker is represented in the generated
+   * output. `"valibot-import"` (default) prints `Brand<"Tag">` /
+   * `Flavor<"Tag">` and imports `Brand`/`Flavor` from "valibot".
+   * `"local-symbol"` prints a self-contained `unique symbol`-keyed property
+   * instead, so the generated file never imports valibot.
+   */
+  brandStrategy?: "valibot-import" | "local-symbol";
 };

@@ -30,7 +30,7 @@ export { FileResolver } from "./file-resolver.js";
 
 export { DescriptionExtractor } from "./description-extractor.js";
 
-export { formatError } from "./errors.js";
+export { InvalidOptionError, formatError } from "./errors.js";
 
 export { defineConfig, type VinferConfig } from "./config-loader.js";
 

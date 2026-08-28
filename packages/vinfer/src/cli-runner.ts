@@ -9,6 +9,7 @@ import {
   relativizeImportPaths,
   NameMapper,
   DescriptionExtractor,
+  InvalidOptionError,
   generateTypeTests,
   generateImportPrefix,
   runCLI as sharedRunCLI,
@@ -25,7 +26,9 @@ import { vinferErrorMessages } from "./core/errors.js";
 /**
  * Options accepted by the CLI, after commander has parsed them.
  */
-export type CLIOptions = CLIOptionsBase;
+export interface CLIOptions extends CLIOptionsBase {
+  brandStrategy?: "valibot-import" | "local-symbol";
+}
 
 const bindings: CliBindings<VinferConfig, CLIOptions> = {
   toolName: "vinfer",
@@ -39,12 +42,37 @@ const bindings: CliBindings<VinferConfig, CLIOptions> = {
     return new DescriptionExtractor({ tsconfigPath });
   },
 
-  mergeCliExtra() {
-    // vinfer has no CLI options beyond the shared set.
+  mergeCliExtra(merged, cli) {
+    if (cli.brandStrategy !== undefined) merged.brandStrategy = cli.brandStrategy;
   },
 
-  validateExtra() {
-    // vinfer has no config fields beyond the shared set.
+  validateExtra(config) {
+    // commander's .choices() rejects an invalid CLI flag value before this ever
+    // runs, but a config file is untyped JS/JSON and can carry any string.
+    if (
+      config.brandStrategy !== undefined &&
+      config.brandStrategy !== "valibot-import" &&
+      config.brandStrategy !== "local-symbol"
+    ) {
+      throw new InvalidOptionError(
+        "--brand-strategy",
+        `Invalid value "${config.brandStrategy}"`,
+        'Use "valibot-import" or "local-symbol"',
+      );
+    }
+
+    // The generated test asserts full type equality against
+    // v.InferOutput<>/v.InferInput<>, which always carries valibot's own
+    // Brand<Tag>/Flavor<Tag> for a branded/flavored schema. A local-symbol
+    // marker is intentionally a different (self-contained) shape, so that
+    // equality can never hold.
+    if (config.generateTests && config.brandStrategy === "local-symbol") {
+      throw new InvalidOptionError(
+        "--generate-tests",
+        "Cannot be used with --brand-strategy local-symbol",
+        "Generate tests with the default --brand-strategy valibot-import, or drop --generate-tests",
+      );
+    }
   },
 
   buildExtractContextExtra(config, resolvedFiles, outputOptions, cwd, fileResolver) {
@@ -60,8 +88,11 @@ const bindings: CliBindings<VinferConfig, CLIOptions> = {
     };
   },
 
-  generateDeclarationFileContent(results, nameMapper, declOptions) {
-    return generateDeclarationFile(results, nameMapper.createMapFunction(), declOptions);
+  generateDeclarationFileContent(results, nameMapper, declOptions, config) {
+    return generateDeclarationFile(results, nameMapper.createMapFunction(), {
+      ...declOptions,
+      brandStrategy: config.brandStrategy,
+    });
   },
 
   relativizeImportPaths,
