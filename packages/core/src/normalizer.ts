@@ -12,6 +12,15 @@
  * otherwise drop it, silently stripping the brand. An object with no
  * symbol-keyed properties is mapped as normal, which incidentally excludes
  * symbol keys from the result, but there are none to begin with.
+ *
+ * An array or tuple gets the same treatment, against `keyof any[] & symbol`
+ * rather than `never` - an array type always carries the well-known symbols
+ * `Array` itself declares (`Symbol.iterator`, `Symbol.unscopables`), so
+ * anything beyond those is a marker someone intersected in. Without this,
+ * a brand applied directly to a tuple or array was mangled: a fixed-length
+ * tuple went through the mapped-type branch, which over an intersection is
+ * no longer homomorphic and expands every `Array.prototype` member into an
+ * object literal, and an array lost its brand to the `(infer U)[]` branch.
  */
 export const NORMALIZE_TYPE_DEFINITION = `
 type __Normalize<T> =
@@ -20,15 +29,17 @@ type __Normalize<T> =
     : T extends (...args: infer A) => infer R
       ? (...args: __Normalize<A>) => __Normalize<R>
       : T extends readonly any[]
-        ? number extends T['length']
-          ? T extends readonly [any, ...any[]]
-            ? T extends [any, ...any[]]
-              ? __NormalizeTuple<T>
-              : Readonly<__NormalizeTuple<T>>
-            : T extends (infer U)[]
-              ? __Normalize<U>[]
-              : readonly __Normalize<T[number]>[]
-          : { [K in keyof T]: __Normalize<T[K]> }
+        ? keyof T & symbol extends keyof any[] & symbol
+          ? number extends T['length']
+            ? T extends readonly [any, ...any[]]
+              ? T extends [any, ...any[]]
+                ? __NormalizeTuple<T>
+                : Readonly<__NormalizeTuple<T>>
+              : T extends (infer U)[]
+                ? __Normalize<U>[]
+                : readonly __Normalize<T[number]>[]
+            : { [K in keyof T]: __Normalize<T[K]> }
+          : T
         : T extends string | number | boolean | bigint | symbol
           ? T
           : T extends object
