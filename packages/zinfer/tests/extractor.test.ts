@@ -311,6 +311,11 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   );
   createSchemaTest(
     extractor,
+    "cross-ref-quote-in-literal-schema",
+    "should resolve a cross-reference whose printed value contains a differently-quoted literal in between",
+  );
+  createSchemaTest(
+    extractor,
     "strict-object-schema",
     "should generate TypeScript declarations with strictObject cross-references",
     // z.looseObject() only exists on zod v4; there is no v3 equivalent at any version.

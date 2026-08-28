@@ -1461,12 +1461,19 @@ function findReferenceValueEnd(typeStr: string, valueStart: number): number {
   let depth = 0;
   let index = valueStart;
   let inString = false;
+  let stringChar = "";
 
   while (index < typeStr.length) {
     const char = typeStr[index];
 
-    if (char === '"' || char === "'") {
-      inString = !inString;
+    if ((char === '"' || char === "'" || char === "`") && !isEscaped(typeStr, index)) {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+        stringChar = "";
+      }
     } else if (!inString) {
       if (char === "{" || char === "[" || char === "(") {
         depth++;
