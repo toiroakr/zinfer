@@ -1,5 +1,6 @@
 import { SourceFile, SyntaxKind, Node, CallExpression, PropertyAccessExpression } from "ts-morph";
 import { escapeRegExp } from "./regexp.js";
+import { isEscaped } from "./string-scan.js";
 
 /**
  * Information about a getter field in a z.object schema.
@@ -422,7 +423,7 @@ function findValueEnd(typeStr: string, valueStart: number): number {
     const char = typeStr[index];
     const prevChar = typeStr[index - 1];
 
-    if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+    if ((char === '"' || char === "'" || char === "`") && !isEscaped(typeStr, index)) {
       if (!inString) {
         inString = true;
         stringChar = char;

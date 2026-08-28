@@ -19,6 +19,7 @@ import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver, type ImportedSchemaMap } from "./import-resolver.js";
 import { escapeRegExp } from "./regexp.js";
+import { isEscaped } from "./string-scan.js";
 import { resolve, isAbsolute } from "pathe";
 import { realpathSync } from "fs";
 import { logDebugError } from "./logger.js";
@@ -1009,7 +1010,7 @@ export class ZodTypeExtractor {
 
       if (quote) {
         result += char;
-        if (char === quote && text[i - 1] !== "\\") quote = undefined;
+        if (char === quote && !isEscaped(text, i)) quote = undefined;
         i++;
         continue;
       }
@@ -1196,7 +1197,7 @@ export class ZodTypeExtractor {
       const char = typeText[i];
 
       if (quote) {
-        if (char === quote && typeText[i - 1] !== "\\") quote = undefined;
+        if (char === quote && !isEscaped(typeText, i)) quote = undefined;
         continue;
       }
 
@@ -1460,12 +1461,19 @@ function findReferenceValueEnd(typeStr: string, valueStart: number): number {
   let depth = 0;
   let index = valueStart;
   let inString = false;
+  let stringChar = "";
 
   while (index < typeStr.length) {
     const char = typeStr[index];
 
-    if (char === '"' || char === "'") {
-      inString = !inString;
+    if ((char === '"' || char === "'" || char === "`") && !isEscaped(typeStr, index)) {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+        stringChar = "";
+      }
     } else if (!inString) {
       if (char === "{" || char === "[" || char === "(") {
         depth++;

@@ -1,4 +1,5 @@
 import { SourceFile, VariableDeclaration } from "ts-morph";
+import { isEscaped } from "./string-scan.js";
 import type { DetectedSchema } from "./types.js";
 
 /**
@@ -270,10 +271,9 @@ export class SchemaDetector {
 
     while (endIdx < typeText.length && depth > 0) {
       const char = typeText[endIdx];
-      const prevChar = typeText[endIdx - 1];
 
       // Track string literals
-      if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+      if ((char === '"' || char === "'" || char === "`") && !isEscaped(typeText, endIdx)) {
         if (!inString) {
           inString = true;
           stringChar = char;

@@ -7,6 +7,7 @@ import type {
   FieldDescription,
 } from "./types.js";
 import { escapeRegExp } from "./regexp.js";
+import { isEscaped } from "./string-scan.js";
 
 /**
  * Options for formatting type output.
@@ -153,9 +154,10 @@ function createParserState(): ParserState {
 function updateStringState(
   state: ParserState,
   char: string,
-  prevChar: string | undefined,
+  typeStr: string,
+  index: number,
 ): boolean {
-  if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+  if ((char === '"' || char === "'" || char === "`") && !isEscaped(typeStr, index)) {
     if (!state.inString) {
       state.inString = true;
       state.stringChar = char;
@@ -288,9 +290,8 @@ function prettifyObjectType(
 
   for (let i = 0; i < typeStr.length; i++) {
     const char = typeStr[i];
-    const prevChar = typeStr[i - 1];
 
-    const inString = updateStringState(state, char, prevChar);
+    const inString = updateStringState(state, char, typeStr, i);
 
     if (inString) {
       handleStringChar(state, char);
@@ -601,23 +602,6 @@ const LOCAL_BRAND_SYMBOL = "__brand";
 
 /** Matches a TypeScript identifier character: letters, digits, `_`, or `$`. */
 const WORD_CHAR = /[A-Za-z0-9_$]/;
-
-/**
- * Whether the character at `index` is escaped, i.e. preceded by an odd
- * number of consecutive backslashes. An even count (including zero) means
- * those backslashes escape each other in pairs and `index` itself is not
- * escaped - e.g. in `"a\\"` (a, one escaped backslash, close quote) the
- * closing quote is preceded by two backslashes and is *not* escaped.
- */
-function isEscaped(typeStr: string, index: number): boolean {
-  let count = 0;
-  let i = index - 1;
-  while (i >= 0 && typeStr[i] === "\\") {
-    count++;
-    i--;
-  }
-  return count % 2 === 1;
-}
 
 /**
  * Rewrites every printed `BRAND<Tag>` marker to a self-contained
