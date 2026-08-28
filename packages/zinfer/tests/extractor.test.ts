@@ -527,7 +527,10 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         const results = extractor.extractAll(join(linkPath, "schema.ts"));
         const result = results.find((r) => r.schemaName === "FooSchema");
 
-        const realSchemaPath = realpathSync(join(linkPath, "schema.ts")).replace(/\.ts$/, "");
+        const realSchemaPath = resolve(realpathSync(join(linkPath, "schema.ts"))).replace(
+          /\.ts$/,
+          "",
+        );
         expect(result?.input).toBe(`import("${realSchemaPath}").LocalClass`);
         expect(result?.output).toBe(`import("${realSchemaPath}").LocalClass`);
       } finally {

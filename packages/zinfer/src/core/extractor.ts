@@ -1494,9 +1494,16 @@ export class ZodTypeExtractor {
    * it as-is here would produce an absolute path on a different symlink
    * base than the rest of a printed type, corrupting `resolveModuleSourceFile`'s
    * filesystem lookup and the cycle-detection keys built from it.
+   *
+   * `realpathSync` returns OS-native separators, which are backslashes on
+   * Windows - embedding that directly into an `import("...")` string would
+   * produce an invalid module specifier (and a mis-escaped string literal).
+   * Routed through pathe's `resolve()`, the same normalization
+   * `absolutizeImportPaths` already relies on for its own realpath'd
+   * `sourceDir`, to always land on the forward-slash form.
    */
   private modulePathFor(sourceFile: SourceFile): string {
-    return realpathSync(sourceFile.getFilePath()).replace(
+    return resolve(realpathSync(sourceFile.getFilePath())).replace(
       /\.d\.(ts|mts|cts)$|\.(ts|tsx|mts|cts)$/,
       "",
     );
