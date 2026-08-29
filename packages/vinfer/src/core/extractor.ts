@@ -83,6 +83,20 @@ interface LocalTypeReference {
 }
 
 /**
+ * Matches the empty position just before/after a run of identifier
+ * characters, without requiring `\b`'s narrower `\w` (`[A-Za-z0-9_]`)
+ * definition on the other side - `\b` excludes `$` (legal at the start of
+ * a JS/TS identifier) and every Unicode letter, so a type named
+ * `$NodeOutput` or with an accented name would never match under `\b` and
+ * silently fail to get rewritten. Mirrors `NOT_BEFORE_IDENTIFIER`/
+ * `NOT_AFTER_IDENTIFIER` in this package's own `type-printer.ts`, without
+ * that module's typeof-operand/method-name exclusions, which don't apply
+ * to this file's plain explicit-type self-reference rewrite.
+ */
+const NOT_BEFORE_IDENTIFIER = "(?<![\\p{ID_Continue}$])";
+const NOT_AFTER_IDENTIFIER = "(?![\\p{ID_Continue}$])";
+
+/**
  * Collapses a `| undefined` TypeScript's printer spelled more than once.
  *
  * A homomorphic mapped type - which is what `__Normalize` is - copies an
@@ -687,7 +701,10 @@ export class ValibotTypeExtractor {
       const explicitType = schemasByName.get(schemaName)?.explicitType;
       if (explicitType && this.isLocallyDeclaredType(sourceFile, explicitType)) {
         const escapedTypeName = escapeRegExp(explicitType);
-        const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
+        const typeNamePattern = new RegExp(
+          `${NOT_BEFORE_IDENTIFIER}${escapedTypeName}${NOT_AFTER_IDENTIFIER}`,
+          "gu",
+        );
         input = input.replace(typeNamePattern, `${schemaName}Input`);
         output = output.replace(typeNamePattern, `${schemaName}Output`);
       } else if (explicitType) {
@@ -703,7 +720,10 @@ export class ValibotTypeExtractor {
         const importedRef = this.collectFileLocalTypeReferences(sourceFile).get(explicitType);
         if (importedRef && importedRef.file !== sourceFile) {
           const escapedTypeName = escapeRegExp(explicitType);
-          const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
+          const typeNamePattern = new RegExp(
+            `${NOT_BEFORE_IDENTIFIER}${escapedTypeName}${NOT_AFTER_IDENTIFIER}`,
+            "gu",
+          );
           // When the resolved type is exactly the explicit identifier (as
           // opposed to appearing inside a larger composite type, e.g. a
           // recursive union member), rewriting it to `<schema>Input`/`Output`

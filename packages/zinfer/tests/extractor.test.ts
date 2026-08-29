@@ -685,6 +685,32 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     { requiresZodV4: true },
   );
 
+  describe("dollar-identifier-explicit-type/schema.ts", () => {
+    // `\b` is defined in terms of `\w` ([A-Za-z0-9_]), which excludes `$`
+    // (legal at the start of a JS/TS identifier), so a naive `\b`-bounded
+    // pattern never matches a type named `$NodeOutput` at all - the
+    // rewrite below would silently no-op and leave the bare, unimported
+    // `$NodeOutput` in the output.
+    it.skipIf(!isZodV4)(
+      "should rewrite a cross-file recursion point named with a leading $ instead of silently leaving it unmatched",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "dollar-identifier-explicit-type/schema.ts"),
+        );
+        const result = results.find((r) => r.schemaName === "NodeSchema");
+
+        expect(result?.input).not.toContain("$NodeOutput");
+        expect(result?.output).not.toContain("$NodeOutput");
+        expect(result?.input).toBe(
+          "{ value: string; children?: Record<string, NodeSchemaInput>; }",
+        );
+        expect(result?.output).toBe(
+          "{ value: string; children?: Record<string, NodeSchemaOutput>; }",
+        );
+      },
+    );
+  });
+
   describe("degenerate-explicit-type-cross-file/schema.ts", () => {
     // The non-recursive cross-file counterpart to the degenerate-explicit-type
     // fixtures above: an explicit annotation that resolves to exactly a type

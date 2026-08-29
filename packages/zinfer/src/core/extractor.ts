@@ -82,6 +82,21 @@ interface LocalTypeReference {
 }
 
 /**
+ * Matches the empty position just before/after a run of identifier
+ * characters, without requiring `\b`'s narrower `\w` (`[A-Za-z0-9_]`)
+ * definition on the other side - `\b` excludes `$` (legal at the start of
+ * a JS/TS identifier) and every Unicode letter, so a type named
+ * `$NodeOutput` or with an accented name would never match under `\b` and
+ * silently fail to get rewritten. Mirrors `NOT_BEFORE_IDENTIFIER`/
+ * `NOT_AFTER_IDENTIFIER` in vinfer's `type-printer.ts` (a separate
+ * module/package, so duplicated rather than shared), without that
+ * module's typeof-operand/method-name exclusions, which don't apply to
+ * this file's plain self-reference rewrite.
+ */
+const NOT_BEFORE_IDENTIFIER = "(?<![\\p{ID_Continue}$])";
+const NOT_AFTER_IDENTIFIER = "(?![\\p{ID_Continue}$])";
+
+/**
  * Extracts input and output types from Zod schemas using TypeScript Compiler API.
  */
 export class ZodTypeExtractor {
@@ -1500,7 +1515,10 @@ export class ZodTypeExtractor {
     qualifyExact: () => string,
   ): { input: string; output: string } {
     const escapedTypeName = escapeRegExp(typeName);
-    const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
+    const typeNamePattern = new RegExp(
+      `${NOT_BEFORE_IDENTIFIER}${escapedTypeName}${NOT_AFTER_IDENTIFIER}`,
+      "gu",
+    );
     return {
       input:
         input === typeName ? qualifyExact() : input.replace(typeNamePattern, `${schemaName}Input`),
