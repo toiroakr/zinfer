@@ -1,5 +1,14 @@
 # vinfer
 
+## 0.2.4
+
+### Patch Changes
+
+- 08754f9: Deduplicate `escapeRegExp` into a shared `src/core/regexp.ts` module (matching zinfer's existing `regexp.ts`), instead of four independent copies of the same function in `extractor.ts`, `getter-resolver.ts`, `type-printer.ts`, and `valibot-bindings.ts`. Internal refactor, no behavior change.
+- aee5473: Keep a brand applied directly to a tuple or an array. `__Normalize`'s array/tuple branch now leaves a type carrying symbol keys beyond an array's own well-known ones untouched, the same way the object branch already did - previously a branded fixed-length tuple was expanded into an object literal of every `Array.prototype` member, and a branded array silently lost its brand.
+- 2ce9ff1: fix(deps): update dependency jiti to ^2.7.0
+- ddb6137: Canonicalize the cycle-detection `visiting` keys in `resolveOrKeepImportText()` and `resolveReferenceOrFallback()` through `modulePathFor()` (realpath'd, extension-stripped) instead of building them from `SourceFile.getFilePath()` directly, so they stay consistent with every other module-path key the extractor computes - porting the same consistency fix already applied to zinfer.
+
 ## 0.2.3
 
 ### Patch Changes
