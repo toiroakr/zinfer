@@ -349,20 +349,28 @@ export async function runCLI<TConfig extends InferConfig, TCLIOptions extends CL
     // File output mode
     if (config.outDir || config.outPattern) {
       const outputPath = fileResolver.resolveOutputPath(filePath, outputOptions, cwd);
-      // Realpath'd separately from outputPath (which stays as the caller
-      // spelled it, so writes/logs still land where the caller expects): the
-      // declaring file's own outputPath is computed the same way from
-      // result.importedFrom, and the two need a shared canonical basis for
-      // buildImportSources's comparison and relative-specifier math to be
-      // correct - see buildImportSources's own comment.
-      const canonicalOutputPath = fileResolver.resolveOutputPath(
-        resolve(realpathSync(filePath)),
-        outputOptions,
-        cwd,
-      );
+      // Realpath'd separately, and only the directory - not re-run through
+      // resolveOutputPath - so this stays blind to any `[dir]`/`[name]`
+      // pattern substitution: that has to keep matching what outputPath
+      // above (the caller-spelled, actually-written path) computed, or the
+      // specifier buildImportSources builds would name a file that was never
+      // written. Only the directory needs canonicalizing - see
+      // buildImportSources's own comment.
+      //
+      // With outDir set, every file's output directory is the same
+      // cwd-relative literal regardless of the input file's own path, so
+      // there's no per-file symlink base to reconcile (and outDir may not
+      // exist yet for realpathSync to resolve) - dirname(outputPath) is used
+      // as-is. Without outDir, resolveOutputPath uses dirname(filePath) as
+      // the output directory, which does already exist (the input file was
+      // just read from there) and is what needs realpathing.
+      const canonicalOutputDir = config.outDir
+        ? dirname(outputPath)
+        : resolve(realpathSync(dirname(filePath)));
       const importSources = buildImportSources(
         results,
-        canonicalOutputPath,
+        outputPath,
+        canonicalOutputDir,
         outputOptions,
         cwd,
         fileResolver,
@@ -489,23 +497,30 @@ function getFilteredResults(
  * import, so it is left out; everything else is addressed by the path from this
  * output file to the one that declares it, extension dropped.
  *
- * @param canonicalOutputPath - This file's own outputPath, realpath'd (the
- *   caller keeps its own non-canonical outputPath for logging/`--dry-run`/the
- *   write itself). When `outPattern` is used without `outDir`,
- *   `resolveOutputPath` derives the output directory from the input file's
- *   own directory - so on a symlinked working directory, this file's
- *   outputPath and `result.importedFrom` (realpath'd by ts-morph's module
- *   resolution in some resolution paths, per #495) can land on different
- *   symlink bases for what is otherwise the same physical location.
- *   Comparing/relativizing against the realpath'd form keeps the two in the
- *   same basis; the resulting relative specifier still resolves correctly
- *   from the caller's own (possibly symlinked) outputPath, since a relative
- *   path is structural and symlinks are transparent to it.
+ * @param outputPath - This file's own actually-written output path (as the
+ *   caller spelled it - unchanged, since this is what the file really landed
+ *   at).
+ * @param canonicalOutputDir - `dirname(outputPath)`, realpath'd. When
+ *   `outPattern` is used without `outDir`, `resolveOutputPath` derives the
+ *   output directory from the input file's own directory - so on a symlinked
+ *   working directory, this file's own directory and `result.importedFrom`'s
+ *   directory (realpath'd by ts-morph's module resolution in some resolution
+ *   paths, per #495) can land on different symlink bases for what is
+ *   otherwise the same physical location. Only the directory is
+ *   canonicalized: the declaring file's *name* still has to come from
+ *   `result.importedFrom` unmodified, since `resolveOutputPath`'s `[dir]`/
+ *   `[name]` pattern substitution is itself path-derived - canonicalizing the
+ *   path passed into it would risk computing a name that doesn't match what
+ *   the declaring file's own iteration actually wrote (flagged in review on
+ *   #502). The resulting relative specifier still resolves correctly from
+ *   `outputPath`'s own (possibly symlinked) directory, since a relative path
+ *   is structural and symlinks are transparent to it.
  * @returns Map of schema name to module specifier
  */
 function buildImportSources(
   results: ExtractResult[],
-  canonicalOutputPath: string,
+  outputPath: string,
+  canonicalOutputDir: string,
   outputOptions: OutputOptions,
   cwd: string,
   fileResolver: FileResolver,
@@ -516,14 +531,25 @@ function buildImportSources(
     if (!result.importedFrom) continue;
 
     const declaringOutputPath = fileResolver.resolveOutputPath(
-      resolve(realpathSync(result.importedFrom)),
+      result.importedFrom,
       outputOptions,
       cwd,
     );
-    if (declaringOutputPath === canonicalOutputPath) continue;
+    const canonicalDeclaringDir = outputOptions.outDir
+      ? dirname(declaringOutputPath)
+      : resolve(realpathSync(dirname(result.importedFrom)));
+    // Same file iff both the (canonicalized) directory and the actual
+    // filename agree - the directory comparison alone would miss a same-file
+    // case whose non-canonical outputPath differs only in symlink spelling.
+    if (
+      canonicalDeclaringDir === canonicalOutputDir &&
+      basename(declaringOutputPath) === basename(outputPath)
+    ) {
+      continue;
+    }
 
-    const withoutExtension = declaringOutputPath.replace(/\.d\.ts$|\.ts$/, "");
-    let specifier = relative(dirname(canonicalOutputPath), withoutExtension);
+    const withoutExtension = basename(declaringOutputPath).replace(/\.d\.ts$|\.ts$/, "");
+    let specifier = relative(canonicalOutputDir, resolve(canonicalDeclaringDir, withoutExtension));
     if (!specifier.startsWith(".")) {
       specifier = `./${specifier}`;
     }
