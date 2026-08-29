@@ -1124,7 +1124,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       const field = withoutFlag.find((r) => r.schemaName === "FieldSchema");
       expect(field?.input).toContain('import("');
 
-      const withFlag = extractor.extractAll(filePath, { inlineExternalTypes: true });
+      const withFlag = extractor.extractAll(filePath, { inlineTypeReferences: "project" });
       const inlinedField = withFlag.find((r) => r.schemaName === "FieldSchema");
       expect(inlinedField?.input).not.toContain("import(");
       for (const literal of ['"uuid"', '"string"', '"number"', '"boolean"']) {
@@ -1136,7 +1136,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/chain/schema.ts"),
         {
-          inlineExternalTypes: true,
+          inlineTypeReferences: "project",
         },
       );
       const chain = results.find((r) => r.schemaName === "ChainSchema");
@@ -1165,7 +1165,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/cycle/schema.ts"),
         {
-          inlineExternalTypes: true,
+          inlineTypeReferences: "project",
         },
       );
       const cycle = results.find((r) => r.schemaName === "CycleSchema");
@@ -1185,7 +1185,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // resolveType() reads at the top level.
       const direct = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/qualified/direct-schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const directHolder = direct.find((r) => r.schemaName === "DirectQualifiedSchema");
       expect(directHolder?.input).toMatch(/import\(".*kind"\)\.Kind\.A/);
@@ -1197,7 +1197,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // promoteBareTypeReferences has to turn into the same valid form.
       const viaWrapper = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/qualified/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const wrapped = viaWrapper.find((r) => r.schemaName === "QualifiedSchema");
       expect(wrapped?.input).toMatch(/import\(".*kind"\)\.Kind\.A/);
@@ -1209,7 +1209,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     it("should document the known limitation: a cycle through a non-exported same-file type has no fallback and is left as a bare identifier", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/nonexported-cycle/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "NonExportedCycleSchema");
 
@@ -1229,7 +1229,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       //
       // Kind is reached as a *field* of Holder (never as the whole
       // annotated type) so the printer synthesizes import("./kind").Kind
-      // for it, which is what --inline-external-types resolves through
+      // for it, which is what --inline-type-references resolves through
       // resolveExternalTypeReference -> printEnumAsLiteralUnion. Annotating
       // the schema with Kind directly instead only ever printed the bare
       // identifier "Kind", which resolveType() looks up as a same-file enum
@@ -1238,7 +1238,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // same-file code path.
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/computed-enum/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "ComputedEnumSchema");
 
@@ -1254,7 +1254,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // own import of Declared), not just the top-level synthesis path.
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/dts-source/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "DtsSourceSchema");
 
@@ -1278,11 +1278,56 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       );
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/package-specifier/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "PackageSpecifierSchema");
 
       expect(result?.input).toBe('{ foo: import("virtual-lib").Foo; }');
+    });
+
+    it("should still leave an ambient bare package specifier as a reference under `all` scope", () => {
+      // "virtual-lib" is a shorthand-ambient module (declare module "..."
+      // with no backing file) - `all` scope resolves a bare specifier
+      // through TypeScript's own module resolution, which finds no file for
+      // an ambient module, so this falls back exactly like `project` scope.
+      extractor.getSchemaNames(
+        resolve(fixturesDir, "inline-external-types/package-specifier/ambient.d.ts"),
+      );
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/package-specifier/schema.ts"),
+        { inlineTypeReferences: "all" },
+      );
+      const result = results.find((r) => r.schemaName === "PackageSpecifierSchema");
+
+      expect(result?.input).toBe('{ foo: import("virtual-lib").Foo; }');
+    });
+
+    it("should expand a bare package specifier into a dependency package's own type under `all` scope", () => {
+      // "some-lib" is a real package under this fixture's own node_modules
+      // (package-specifier-all/node_modules/some-lib) - unlike the ambient
+      // "virtual-lib" case above, `ts.resolveModuleName` finds a real file,
+      // so `all` scope expands Foo's structure in place, recursing into its
+      // own bare reference to Bar (declared in the same package file).
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/package-specifier-all/schema.ts"),
+        { inlineTypeReferences: "all" },
+      );
+      const result = results.find((r) => r.schemaName === "PackageSpecifierAllSchema");
+
+      expect(result?.input).toBe("{ foo: { real: true; bar: { nested: true; }; }; }");
+    });
+
+    it("should not expand a bare package specifier under `project` scope even when it would resolve", () => {
+      // Same "some-lib" fixture as the `all`-scope test above, but with
+      // `project` scope: only an absolute (in-project) specifier is
+      // resolved, so this stays a reference exactly like the ambient case.
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/package-specifier-all/schema.ts"),
+        { inlineTypeReferences: "project" },
+      );
+      const result = results.find((r) => r.schemaName === "PackageSpecifierAllSchema");
+
+      expect(result?.input).toBe('{ foo: import("some-lib").Foo; }');
     });
 
     it("should never expand the operand of a `typeof` type query - only reference it", () => {
@@ -1295,14 +1340,14 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // the bare `typeof Kind`).
       const direct = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/typeof-query/direct-schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const directResult = direct.find((r) => r.schemaName === "DirectTypeofQuerySchema");
       expect(directResult?.input).toMatch(/typeof import\(".*kind"\)\.Kind/);
 
       const viaWrapper = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/typeof-query/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const wrapped = viaWrapper.find((r) => r.schemaName === "TypeofQuerySchema");
       expect(wrapped?.input).toMatch(/typeof import\(".*kind"\)\.Kind/);
@@ -1319,7 +1364,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // `import("...").`, so it never produces this ambiguity.
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/method-collision/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "MethodCollisionSchema");
 
@@ -1337,7 +1382,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // `import("...").Box<T>(): T`.
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/generic-method-collision/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "GenericMethodCollisionSchema");
 
@@ -1353,7 +1398,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // of such functions.
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/suffix-wrap/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "SuffixWrapSchema");
 
@@ -1381,7 +1426,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "inline-external-types/chain/schema",
     "should generate TypeScript declarations",
     {
-      context: { inlineExternalTypes: true },
+      context: { inlineTypeReferences: "project" },
       snapshotName: "inline-external-types/chain/schema-inlined",
     },
   );
@@ -1390,7 +1435,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "inline-external-types/cycle/schema",
     "should generate TypeScript declarations",
     {
-      context: { inlineExternalTypes: true },
+      context: { inlineTypeReferences: "project" },
       snapshotName: "inline-external-types/cycle/schema-inlined",
     },
   );
@@ -1399,7 +1444,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "inline-external-types/qualified/schema",
     "should generate TypeScript declarations",
     {
-      context: { inlineExternalTypes: true },
+      context: { inlineTypeReferences: "project" },
       snapshotName: "inline-external-types/qualified/schema-inlined",
     },
   );
@@ -1408,7 +1453,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "inline-external-types/dts-source/schema",
     "should generate TypeScript declarations",
     {
-      context: { inlineExternalTypes: true },
+      context: { inlineTypeReferences: "project" },
       snapshotName: "inline-external-types/dts-source/schema-inlined",
     },
   );
@@ -1417,7 +1462,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "inline-external-types/typeof-query/schema",
     "should generate TypeScript declarations",
     {
-      context: { inlineExternalTypes: true },
+      context: { inlineTypeReferences: "project" },
       snapshotName: "inline-external-types/typeof-query/schema-inlined",
     },
   );
@@ -1426,7 +1471,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "inline-external-types/method-collision/schema",
     "should generate TypeScript declarations",
     {
-      context: { inlineExternalTypes: true },
+      context: { inlineTypeReferences: "project" },
       snapshotName: "inline-external-types/method-collision/schema-inlined",
     },
   );
@@ -1435,7 +1480,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "inline-external-types/generic-method-collision/schema",
     "should generate TypeScript declarations",
     {
-      context: { inlineExternalTypes: true },
+      context: { inlineTypeReferences: "project" },
       snapshotName: "inline-external-types/generic-method-collision/schema-inlined",
     },
   );
@@ -1444,7 +1489,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "inline-external-types/suffix-wrap/schema",
     "should generate TypeScript declarations",
     {
-      context: { inlineExternalTypes: true },
+      context: { inlineTypeReferences: "project" },
       snapshotName: "inline-external-types/suffix-wrap/schema-inlined",
     },
   );

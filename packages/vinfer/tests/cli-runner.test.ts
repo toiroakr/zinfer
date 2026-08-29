@@ -96,6 +96,23 @@ describe("runCLI", () => {
     expect(output).toContain("export type UserOut = {");
   });
 
+  it("replaces a cross-file plain-type reference with its own structure when --inline-type-references is set with no value", async () => {
+    writeFileSync(join(workDir, "schemas/model.ts"), "export type Model = { name: string };\n");
+    writeFileSync(
+      join(workDir, "schemas/explicit-schema.ts"),
+      'import * as v from "valibot";\n' +
+        'import type { Model } from "./model";\n\n' +
+        "export const UserSchema: v.GenericSchema<Model, Model> = v.any();\n",
+    );
+
+    // commander sets `inlineTypeReferences` to `true` (not a scope string)
+    // when `--inline-type-references` is passed with no value - runCLI has
+    // to normalize that to `"project"` the same way the real CLI does.
+    const output = await run(["schemas/explicit-schema.ts"], { inlineTypeReferences: true });
+    expect(output).toContain("name: string");
+    expect(output).not.toContain("import(");
+  });
+
   it("writes one file per input into outDir", async () => {
     await run(["schemas/*.ts"], { outDir: "types", suffix: "Schema" });
 
@@ -627,6 +644,14 @@ describe("runCLI", () => {
         'export default { include: ["schemas/basic-schema.ts"], brandStrategy: "nope" };',
       );
       await expect(run([])).rejects.toThrow(/Invalid option "--brand-strategy"/);
+    });
+
+    it("rejects an inlineTypeReferences value that isn't project or all from a config file", async () => {
+      writeFileSync(
+        join(workDir, "vinfer.config.mjs"),
+        'export default { include: ["schemas/basic-schema.ts"], inlineTypeReferences: "everything" };',
+      );
+      await expect(run([])).rejects.toThrow(/Invalid option "--inline-type-references"/);
     });
 
     it("rejects an invalid schema name", async () => {

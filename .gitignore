@@ -36,3 +36,10 @@ node_modules/.vite/
 *.tmp
 *.temp
 .cache/
+
+# Test fixtures deliberately containing a real (checked-in) node_modules
+# package to exercise dependency-package module resolution - not a real
+# installed dependency, so it isn't covered by the `node_modules/` ignore
+# above.
+!packages/*/tests/fixtures/**/node_modules/
+!packages/*/tests/fixtures/**/node_modules/**

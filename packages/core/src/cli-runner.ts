@@ -17,6 +17,7 @@ import type {
   OutputOptions,
   DeclarationOptions,
   FieldDescription,
+  TypeReferenceScope,
 } from "./types.js";
 
 /**
@@ -41,7 +42,11 @@ export interface CLIOptionsBase {
   config?: string;
   generateTests?: boolean;
   verbose?: boolean;
-  inlineExternalTypes?: boolean;
+  /**
+   * `true` when commander parses the flag with no value (`--inline-type-references`
+   * alone) - normalized to `"project"` by `mergeCliWithConfig`.
+   */
+  inlineTypeReferences?: boolean | TypeReferenceScope;
 }
 
 /**
@@ -252,7 +257,7 @@ export async function runCLI<TConfig extends InferConfig, TCLIOptions extends CL
   // gets written out: without a file output there is nowhere to import from.
   const writesFiles = Boolean(config.outDir || config.outFile || config.outPattern);
   const extractContext: ExtractContext = {
-    inlineExternalTypes: config.inlineExternalTypes,
+    inlineTypeReferences: config.inlineTypeReferences,
     ...(writesFiles
       ? bindings.buildExtractContextExtra(config, resolvedFiles, outputOptions, cwd, fileResolver)
       : {}),
@@ -624,8 +629,14 @@ function mergeCliWithConfig<TConfig extends InferConfig, TCLIOptions extends CLI
   if (cliOptions.withDescriptions !== undefined)
     merged.withDescriptions = cliOptions.withDescriptions;
   if (cliOptions.generateTests !== undefined) merged.generateTests = cliOptions.generateTests;
-  if (cliOptions.inlineExternalTypes !== undefined)
-    merged.inlineExternalTypes = cliOptions.inlineExternalTypes;
+  if (cliOptions.inlineTypeReferences !== undefined) {
+    // commander sets this to `true` (not a scope string) when the flag is
+    // given with no value, e.g. `--inline-type-references` alone.
+    merged.inlineTypeReferences =
+      typeof cliOptions.inlineTypeReferences === "string"
+        ? cliOptions.inlineTypeReferences
+        : "project";
+  }
 
   bindings.mergeCliExtra(merged, cliOptions);
 
@@ -664,6 +675,20 @@ function validateOptions<TConfig extends InferConfig, TCLIOptions extends CLIOpt
       "--suffix",
       "Empty suffix is not allowed",
       "Provide a non-empty suffix value or omit the option",
+    );
+  }
+
+  // Guards a config file or package.json field (not type-checked at runtime,
+  // unlike the CLI flag, which commander itself rejects via `.choices()`).
+  if (
+    config.inlineTypeReferences !== undefined &&
+    config.inlineTypeReferences !== "project" &&
+    config.inlineTypeReferences !== "all"
+  ) {
+    throw new InvalidOptionError(
+      "--inline-type-references",
+      `Invalid value "${config.inlineTypeReferences}"`,
+      'Use "project" or "all"',
     );
   }
 

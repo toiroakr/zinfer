@@ -15,6 +15,15 @@ export interface ExtractOptions {
 }
 
 /**
+ * How far an `import("...").Name` type reference gets expanded in place:
+ * `"project"` follows a reference into another file of the project being
+ * processed; `"all"` also follows a reference into a plain type declared in
+ * a dependency package (resolved through TypeScript's own module resolution,
+ * not filesystem probing).
+ */
+export type TypeReferenceScope = "project" | "all";
+
+/**
  * Extra context that lets extraction reach beyond the file being processed.
  */
 export interface ExtractContext {
@@ -51,9 +60,11 @@ export interface ExtractContext {
    * referenced type's own structure instead, recursively, so the generated
    * output carries no dependency on the original file layout. A reference
    * that would recurse into itself (directly or through another file) is
-   * left as `import(...)` at the point it would cycle.
+   * left as `import(...)` at the point it would cycle. `"all"` additionally
+   * expands a reference into a plain type declared in a dependency package;
+   * `undefined` leaves every reference as printed.
    */
-  inlineExternalTypes?: boolean;
+  inlineTypeReferences?: TypeReferenceScope;
 }
 
 /**

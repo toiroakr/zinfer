@@ -42,6 +42,7 @@ export type {
   OutputOptions,
   GeneratedFile,
   DeclarationOptions,
+  TypeReferenceScope,
 } from "./types.js";
 
 export {

@@ -32,9 +32,11 @@ program
   .option("--dry-run", "Preview without writing files")
   .option("--with-descriptions", "Include v.description() as TSDoc comments")
   .option("--generate-tests", "Generate vitest type equality tests alongside type files")
-  .option(
-    "--inline-external-types",
-    "Inline a plain type that an explicit v.GenericSchema<T> annotation reaches in another file, instead of referencing it",
+  .addOption(
+    new Option(
+      "--inline-type-references [scope]",
+      'Inline a plain type that an explicit v.GenericSchema<T> annotation reaches, instead of referencing it: "project" (default when the flag is set) follows a reference within this project, "all" also follows one into a dependency package',
+    ).choices(["project", "all"]),
   )
   .addOption(
     new Option(

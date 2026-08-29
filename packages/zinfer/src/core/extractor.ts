@@ -29,6 +29,7 @@ import type {
   DetectedSchema,
   ExtractOptions,
   ExtractContext,
+  TypeReferenceScope,
 } from "./types.js";
 
 // Re-export ExtractResult for backward compatibility
@@ -262,7 +263,7 @@ export class ZodTypeExtractor {
       // - see resolveImportedSchemaType), and what they point at depends on
       // whether the declaring file is generated, so both belong in the cache
       // key alongside the declaration.
-      const cacheKey = `${importInfo.sourceFilePath}:${importInfo.originalName}:${isImportable}:${Boolean(context.inlineExternalTypes)}`;
+      const cacheKey = `${importInfo.sourceFilePath}:${importInfo.originalName}:${isImportable}:${context.inlineTypeReferences ?? "off"}`;
       const cached = this.importedSchemaCache.get(cacheKey);
       if (cached) {
         rawTypes.set(localName, { ...cached, isExported: false });
@@ -279,7 +280,7 @@ export class ZodTypeExtractor {
           importedSourceFile,
           importInfo.originalName,
           isImportable,
-          context.inlineExternalTypes,
+          context.inlineTypeReferences,
         );
 
         // Cache the result
@@ -306,7 +307,7 @@ export class ZodTypeExtractor {
           const resolvedType = this.resolveType(
             sourceFile,
             "__TempExplicit",
-            context.inlineExternalTypes,
+            context.inlineTypeReferences,
           );
           rawTypes.set(schemaName, {
             input: resolvedType,
@@ -321,8 +322,8 @@ export class ZodTypeExtractor {
 
       this.injectTemporaryTypes(sourceFile, declaredName);
       try {
-        let inputType = this.resolveType(sourceFile, "__TempInput", context.inlineExternalTypes);
-        let outputType = this.resolveType(sourceFile, "__TempOutput", context.inlineExternalTypes);
+        let inputType = this.resolveType(sourceFile, "__TempInput", context.inlineTypeReferences);
+        let outputType = this.resolveType(sourceFile, "__TempOutput", context.inlineTypeReferences);
 
         // Resolve getter-based self-references. getterFieldMap is keyed by
         // declared (local variable) name, not the exported name.
@@ -731,7 +732,7 @@ export class ZodTypeExtractor {
   private resolveType(
     sourceFile: SourceFile,
     typeName: string,
-    inlineExternalTypes = false,
+    scope?: TypeReferenceScope,
   ): string {
     const typeAlias = sourceFile.getTypeAlias(typeName);
     if (!typeAlias) {
@@ -758,8 +759,13 @@ export class ZodTypeExtractor {
       }
     }
 
-    if (inlineExternalTypes) {
-      rawType = this.inlineExternalTypeReferences(rawType, new Set());
+    if (scope) {
+      rawType = this.inlineExternalTypeReferences(
+        rawType,
+        new Set(),
+        scope,
+        sourceFile.getFilePath(),
+      );
     }
 
     // Post-process to simplify Zod internal function types and canonicalize
@@ -860,7 +866,12 @@ export class ZodTypeExtractor {
    * satisfy `(?!\s*<)` by giving back characters (matching `Bo` instead of
    * `Box` when `Box<string>` follows), which a scan never does.
    */
-  private inlineExternalTypeReferences(rawType: string, visiting: Set<string>): string {
+  private inlineExternalTypeReferences(
+    rawType: string,
+    visiting: Set<string>,
+    scope: TypeReferenceScope,
+    containingFilePath: string,
+  ): string {
     if (!rawType.includes('import("')) return rawType;
 
     const importPrefix = /import\("([^"]+)"\)\./g;
@@ -886,7 +897,9 @@ export class ZodTypeExtractor {
       const isTypeQuery = rawType.slice(0, match.index).endsWith("typeof ");
       const isQualifiedOrGeneric = nextChar === "." || nextChar === "<";
       const targetFile =
-        isQualifiedOrGeneric || isTypeQuery ? undefined : this.resolveModuleSourceFile(modulePath);
+        isQualifiedOrGeneric || isTypeQuery
+          ? undefined
+          : this.resolveModuleSourceFile(modulePath, scope, containingFilePath);
 
       result += targetFile
         ? this.resolveOrKeepImportText(
@@ -894,6 +907,7 @@ export class ZodTypeExtractor {
             typeName,
             rawType.slice(match.index, nameEnd),
             visiting,
+            scope,
           )
         : rawType.slice(match.index, nameEnd);
 
@@ -915,13 +929,14 @@ export class ZodTypeExtractor {
     typeName: string,
     originalText: string,
     visiting: Set<string>,
+    scope: TypeReferenceScope,
   ): string {
     const key = `${this.modulePathFor(targetFile)}#${typeName}`;
     if (visiting.has(key)) return originalText;
 
     visiting.add(key);
     try {
-      const expanded = this.resolveExternalTypeReference(targetFile, typeName, visiting);
+      const expanded = this.resolveExternalTypeReference(targetFile, typeName, visiting, scope);
       if (expanded === undefined) return originalText;
       return this.needsParensBeforeSuffix(expanded) ? `(${expanded})` : expanded;
     } finally {
@@ -940,15 +955,16 @@ export class ZodTypeExtractor {
     targetFile: SourceFile,
     typeName: string,
     visiting: Set<string>,
+    scope: TypeReferenceScope,
   ): string | undefined {
     const typeAlias = targetFile.getTypeAlias(typeName);
     if (typeAlias) {
-      return this.expandExternalDeclaration(targetFile, typeAlias, visiting);
+      return this.expandExternalDeclaration(targetFile, typeAlias, visiting, scope);
     }
 
     const iface = targetFile.getInterface(typeName);
     if (iface) {
-      return this.expandExternalDeclaration(targetFile, iface, visiting);
+      return this.expandExternalDeclaration(targetFile, iface, visiting, scope);
     }
 
     const enumDecl = targetFile.getEnum(typeName);
@@ -974,12 +990,13 @@ export class ZodTypeExtractor {
     targetFile: SourceFile,
     declaration: TypeAliasDeclaration | InterfaceDeclaration,
     visiting: Set<string>,
+    scope: TypeReferenceScope,
   ): string {
     let text = declaration.getType().getText(declaration, this.typeTextFormatFlags());
     text = this.trimPrintedType(text);
     text = this.absolutizeImportPaths(text, targetFile.getDirectoryPath());
-    text = this.promoteBareTypeReferences(text, targetFile, visiting);
-    return this.inlineExternalTypeReferences(text, visiting);
+    text = this.promoteBareTypeReferences(text, targetFile, visiting, scope);
+    return this.inlineExternalTypeReferences(text, visiting, scope, targetFile.getFilePath());
   }
 
   /**
@@ -997,6 +1014,7 @@ export class ZodTypeExtractor {
     text: string,
     targetFile: SourceFile,
     visiting: Set<string>,
+    scope: TypeReferenceScope,
   ): string {
     const references = this.collectFileLocalTypeReferences(targetFile);
     if (references.size === 0) return text;
@@ -1059,7 +1077,7 @@ export class ZodTypeExtractor {
           reference && !precededByDot && !isPropertyKey && !isMethodName
             ? isQualifiedOrGeneric || isTypeQuery
               ? this.referenceFallbackText(reference, word)
-              : this.resolveReferenceOrFallback(reference, word, visiting)
+              : this.resolveReferenceOrFallback(reference, word, visiting, scope)
             : word;
         i = end;
         continue;
@@ -1118,6 +1136,7 @@ export class ZodTypeExtractor {
     reference: LocalTypeReference,
     word: string,
     visiting: Set<string>,
+    scope: TypeReferenceScope,
   ): string {
     const key = `${reference.modulePath}#${reference.exportedName}`;
     const fallback = this.referenceFallbackText(reference, word);
@@ -1130,6 +1149,7 @@ export class ZodTypeExtractor {
         reference.file,
         reference.exportedName,
         visiting,
+        scope,
       );
       if (expanded === undefined) return fallback;
       return this.needsParensBeforeSuffix(expanded) ? `(${expanded})` : expanded;
@@ -1199,28 +1219,55 @@ export class ZodTypeExtractor {
 
   /**
    * Resolves a printed `import("...")` module specifier to the `SourceFile`
-   * it points at, trying each extension TypeScript itself would resolve.
-   * Loads the file into the shared project on demand so a type declared
-   * there can be read the same way as any file passed to `extractAll`.
+   * it points at. Loads the file into the shared project on demand so a
+   * type declared there can be read the same way as any file passed to
+   * `extractAll`.
    *
-   * Only an absolute specifier is probed as a filesystem path.
-   * `absolutizeImportPaths` already makes every relative specifier
-   * (`./...`) TypeScript prints absolute, so a non-absolute one here is a
-   * bare package specifier (`import("zod").Foo`) - treating `zod` as a
-   * relative filename could accidentally resolve to an unrelated same-named
-   * file the caller never intended to reach.
+   * An absolute specifier is probed as a filesystem path, trying each
+   * extension TypeScript itself would resolve. `absolutizeImportPaths`
+   * already makes every relative specifier (`./...`) TypeScript prints
+   * absolute, so a non-absolute one here is a bare package specifier
+   * (`import("zod").Foo`) - treating `zod` as a relative filename could
+   * accidentally resolve to an unrelated same-named file the caller never
+   * intended to reach. A bare specifier is only resolved under `scope ===
+   * "all"`, and then only through TypeScript's own module resolution
+   * (`ts.resolveModuleName`, from `containingFilePath` - the file whose
+   * printed text is currently being expanded, not necessarily the one that
+   * originally wrote the `import`, which the printed text alone can't
+   * recover) rather than filesystem probing, for the same reason: an
+   * ambient module with no backing file (e.g. a `declare module "..."`
+   * block) resolves to nothing and is correctly left as a reference.
    */
-  private resolveModuleSourceFile(modulePath: string): SourceFile | undefined {
-    if (!isAbsolute(modulePath)) return undefined;
-
-    for (const ext of [".ts", ".tsx", ".mts", ".cts", ".d.ts", ".d.mts", ".d.cts"]) {
-      const candidate = `${modulePath}${ext}`;
-      const sourceFile =
-        this.project.getSourceFile(candidate) ??
-        this.project.addSourceFileAtPathIfExists(candidate);
-      if (sourceFile) return sourceFile;
+  private resolveModuleSourceFile(
+    modulePath: string,
+    scope: TypeReferenceScope,
+    containingFilePath: string,
+  ): SourceFile | undefined {
+    if (isAbsolute(modulePath)) {
+      for (const ext of [".ts", ".tsx", ".mts", ".cts", ".d.ts", ".d.mts", ".d.cts"]) {
+        const candidate = `${modulePath}${ext}`;
+        const sourceFile =
+          this.project.getSourceFile(candidate) ??
+          this.project.addSourceFileAtPathIfExists(candidate);
+        if (sourceFile) return sourceFile;
+      }
+      return undefined;
     }
-    return undefined;
+
+    if (scope !== "all") return undefined;
+
+    const resolved = ts.resolveModuleName(
+      modulePath,
+      containingFilePath,
+      this.project.getCompilerOptions(),
+      ts.sys,
+    ).resolvedModule;
+    if (!resolved) return undefined;
+
+    return (
+      this.project.getSourceFile(resolved.resolvedFileName) ??
+      this.project.addSourceFileAtPathIfExists(resolved.resolvedFileName)
+    );
   }
 
   /**
@@ -1345,10 +1392,10 @@ export class ZodTypeExtractor {
     importedSourceFile: SourceFile,
     originalName: string,
     isImportable: boolean,
-    inlineExternalTypes = false,
+    scope?: TypeReferenceScope,
   ): Omit<RawSchemaType, "isExported"> {
-    const inputType = this.resolveType(importedSourceFile, "__TempInput", inlineExternalTypes);
-    const outputType = this.resolveType(importedSourceFile, "__TempOutput", inlineExternalTypes);
+    const inputType = this.resolveType(importedSourceFile, "__TempInput", scope);
+    const outputType = this.resolveType(importedSourceFile, "__TempOutput", scope);
 
     const getterFields = this.getterResolver
       .analyzeGetterFields(importedSourceFile, new Set([originalName]))

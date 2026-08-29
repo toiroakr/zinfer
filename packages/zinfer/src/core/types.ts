@@ -11,6 +11,7 @@ export type {
   NameMappingOptions,
   OutputOptions,
   GeneratedFile,
+  TypeReferenceScope,
 } from "@zinfer-monorepo/core";
 
 /**

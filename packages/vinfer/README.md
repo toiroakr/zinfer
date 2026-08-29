@@ -87,7 +87,7 @@ Options:
   --dry-run                  Preview without writing files
   --with-descriptions        Include v.description() as TSDoc comments
   --generate-tests           Generate vitest type equality tests alongside type files
-  --inline-external-types    Inline a plain type that an explicit v.GenericSchema<T> annotation reaches in another file, instead of referencing it
+  --inline-type-references [scope]  Inline a plain type that an explicit v.GenericSchema<T> annotation reaches: "project" (default when the flag is set) or "all" (also dependency-declared types)
   --brand-strategy <strategy> How to represent a .brand()/.flavor() marker in the generated output (default: valibot-import)
   -v, --verbose              Enable verbose output
   -V, --version              Output the version number
@@ -139,8 +139,11 @@ export default defineConfig({
   // Output v.description() as TSDoc
   withDescriptions: true,
 
-  // Inline a plain type that an explicit v.GenericSchema<T> annotation reaches in another file
-  inlineExternalTypes: false,
+  // Inline a plain type an explicit annotation reaches instead of leaving
+  // it as a reference: "project" follows a reference within this project,
+  // "all" also follows one into a dependency package. Omit (the default)
+  // to leave every such reference as printed.
+  inlineTypeReferences: "project",
 
   // How to represent a .brand()/.flavor() marker (default: "valibot-import")
   brandStrategy: "valibot-import",
@@ -642,9 +645,14 @@ printed differently on purpose:
 | `v.looseObject()` / `v.objectWithRest()` | `entries & { [key: string]: … }` | the index signature inside the object               |
 | `v.enum(SomeEnum)`                       | the enum's member types          | the underlying literals, so the output stands alone |
 
-## Inlining External Types (`--inline-external-types`)
+## Inlining Type References (`--inline-type-references`)
 
-When a schema carries an explicit `v.GenericSchema<T>` annotation and `T` reaches a plain (non-Valibot) `type`/`interface`/`enum` declared in another file, TypeScript prints an `import("...").Name` reference to it rather than expanding it - there is nothing else visible to print from that location. By default vinfer keeps that reference (rewritten to resolve correctly from wherever the output is written). Setting `--inline-external-types` replaces it with the referenced type's own structure instead, recursively, so the generated output carries no dependency on the original file layout - useful when generated files are moved, published, or read outside the project that declares those types.
+When a schema carries an explicit `v.GenericSchema<T>` annotation and `T` reaches a plain (non-Valibot) `type`/`interface`/`enum` declared in another file, TypeScript prints an `import("...").Name` reference to it rather than expanding it - there is nothing else visible to print from that location. By default vinfer keeps that reference (rewritten to resolve correctly from wherever the output is written). Setting `--inline-type-references` replaces it with the referenced type's own structure instead, recursively, so the generated output carries no dependency on the original file layout - useful when generated files are moved, published, or read outside the project that declares those types.
+
+The flag takes a scope, defaulting to `project` when given with no value:
+
+- `--inline-type-references` / `--inline-type-references=project` - follows a reference into another file of this project.
+- `--inline-type-references=all` - also follows a reference into a plain type declared in a **dependency package**, resolved through TypeScript's own module resolution (not filesystem probing).
 
 ```typescript
 // field.types.ts
@@ -672,7 +680,7 @@ export type FieldOutput = {
 };
 ```
 
-With `--inline-external-types`, it's expanded in place:
+With `--inline-type-references`, it's expanded in place:
 
 ```typescript
 export type FieldOutput = {
@@ -682,6 +690,8 @@ export type FieldOutput = {
 ```
 
 The expansion follows references across as many files as needed. A reference that would recurse into itself - directly, or by cycling back through another file - is left as an `import(...)` at the point it would repeat; everything outside the cycle is still fully expanded. A same-file type that isn't exported has no importable name to fall back to, so a cycle through one is left as a bare (unresolved) identifier - the same known limitation as a non-exported local explicit-annotation type. Namespace imports (`import * as ns`), default-imported types, and generic instantiations (`import("...").Foo<Bar>`) aren't expanded either; each is left as the reference vinfer would otherwise print.
+
+A reference through a **bare package specifier** (`import("some-lib").Foo`, as opposed to a relative path within the project) is left as a reference under `project` scope, same as any other unexpanded case above - but expanded under `all` scope, as long as it actually resolves to a file (a `declare module "some-lib" { ... }` ambient module with no backing file does not, and is left as a reference under either scope). This is what lets a type declared in a **devDependency** be inlined: without it, the generated output keeps `import("some-lib").Foo`, which resolves inside this project but not for a consumer who installs the published package without that dev-only dependency. `all` scope exposes that dependency's own type structure in the generated output, so weigh that against the output-size and encapsulation cost before turning it on for a published package.
 
 This only applies to a plain type reached through an explicit `v.GenericSchema<T>` annotation - a Valibot schema imported from another file is unaffected, and continues to be referenced by its own generated type name or inlined as already described elsewhere in this document.
 
