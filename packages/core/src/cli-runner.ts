@@ -140,10 +140,11 @@ export interface CliBindings<TConfig extends InferConfig, TCLIOptions extends CL
  *
  * @returns Absolute paths, realpath'd so extraction can match them against
  *   the paths TypeScript's module resolution reports for the same files -
- *   which are realpath'd too, and so would otherwise land on a different
- *   symlink base on a symlinked working directory (e.g. macOS's `/var` ->
- *   `/private/var` tmpdir), silently degrading a cross-file schema
- *   reference into an inlined duplicate of its structure.
+ *   which can be realpath'd too, depending on the resolution path taken, and
+ *   so would otherwise sometimes land on a different symlink base on a
+ *   symlinked working directory (e.g. macOS's `/var` -> `/private/var`
+ *   tmpdir), silently degrading a cross-file schema reference into an
+ *   inlined duplicate of its structure.
  */
 export function computeImportableFiles(
   resolvedFiles: string[],
