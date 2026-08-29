@@ -484,24 +484,16 @@ export class ZodTypeExtractor {
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
       if (explicitType && this.isLocallyDeclaredType(sourceFile, explicitType)) {
-        const escapedTypeName = escapeRegExp(explicitType);
-        const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
-        // When the resolved type is exactly the explicit identifier (as
-        // opposed to appearing inside a larger composite type, e.g. a
-        // recursive union member), rewriting it to `<schema>Input`/`Output`
-        // would produce a circular alias like `type FooInput = FooInput`.
-        // Reference the declaration through its source file instead, so the
-        // generated output doesn't print a bare identifier it never imports.
-        if (input === explicitType) {
-          input = this.qualifyLocalTypeReference(sourceFile, explicitType) ?? input;
-        } else {
-          input = input.replace(typeNamePattern, `${schemaName}Input`);
-        }
-        if (output === explicitType) {
-          output = this.qualifyLocalTypeReference(sourceFile, explicitType) ?? output;
-        } else {
-          output = output.replace(typeNamePattern, `${schemaName}Output`);
-        }
+        // Reference the declaration through its own source file when the
+        // resolved type is exactly the explicit identifier (see
+        // rewriteExplicitTypeSelfReference for why).
+        ({ input, output } = this.rewriteExplicitTypeSelfReference(
+          input,
+          output,
+          schemaName,
+          explicitType,
+          () => this.qualifyLocalTypeReference(sourceFile, explicitType) ?? explicitType,
+        ));
       } else if (explicitType) {
         // Not locally declared - but a recursive explicit annotation
         // (z.lazy()) reaching a type imported from another file hits the
@@ -514,18 +506,13 @@ export class ZodTypeExtractor {
         // generated type name.
         const importedRef = this.collectFileLocalTypeReferences(sourceFile).get(explicitType);
         if (importedRef && importedRef.file !== sourceFile) {
-          const escapedTypeName = escapeRegExp(explicitType);
-          const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
-          if (input === explicitType) {
-            input = this.referenceFallbackText(importedRef, explicitType);
-          } else {
-            input = input.replace(typeNamePattern, `${schemaName}Input`);
-          }
-          if (output === explicitType) {
-            output = this.referenceFallbackText(importedRef, explicitType);
-          } else {
-            output = output.replace(typeNamePattern, `${schemaName}Output`);
-          }
+          ({ input, output } = this.rewriteExplicitTypeSelfReference(
+            input,
+            output,
+            schemaName,
+            explicitType,
+            () => this.referenceFallbackText(importedRef, explicitType),
+          ));
         }
       }
 
@@ -1489,6 +1476,39 @@ export class ZodTypeExtractor {
    */
   private isLocallyDeclaredType(sourceFile: SourceFile, typeName: string): boolean {
     return this.getLocalTypeDeclaration(sourceFile, typeName) !== undefined;
+  }
+
+  /**
+   * Rewrites every bare occurrence of `typeName` in an explicit annotation's
+   * resolved `input`/`output` text to the schema's own generated
+   * `<schema>Input`/`<schema>Output` name - the self-reference a recursive
+   * schema's own recursion point needs, whether `typeName` is declared in
+   * this file or merely imported into it (the two callers only differ in
+   * which case applies and how to qualify the degenerate one below).
+   *
+   * When the resolved text is exactly `typeName` itself (not embedded in a
+   * larger composite type, e.g. a recursive union member), rewriting it
+   * this way would produce a circular alias like `type FooInput =
+   * FooInput` instead. `qualifyExact` supplies the non-circular form for
+   * that case - an inline `import("...")` reference to the declaration.
+   */
+  private rewriteExplicitTypeSelfReference(
+    input: string,
+    output: string,
+    schemaName: string,
+    typeName: string,
+    qualifyExact: () => string,
+  ): { input: string; output: string } {
+    const escapedTypeName = escapeRegExp(typeName);
+    const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
+    return {
+      input:
+        input === typeName ? qualifyExact() : input.replace(typeNamePattern, `${schemaName}Input`),
+      output:
+        output === typeName
+          ? qualifyExact()
+          : output.replace(typeNamePattern, `${schemaName}Output`),
+    };
   }
 
   /**
