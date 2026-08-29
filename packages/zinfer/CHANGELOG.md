@@ -1,5 +1,21 @@
 # zinfer
 
+## 0.3.6
+
+### Patch Changes
+
+- aee5473: Keep a brand applied directly to a tuple or an array. `__Normalize`'s array/tuple branch now leaves a type carrying symbol keys beyond an array's own well-known ones untouched, the same way the object branch already did - previously a branded fixed-length tuple was expanded into an object literal of every `Array.prototype` member, and a branded array silently lost its brand.
+- 26193ef: Fix `--inline-external-types` corrupting a generic method's own name when it collides with an in-scope type reference. `promoteBareTypeReferences()`'s method-name guard only recognized a non-generic `Name(): T` signature (checking for `(` immediately after the name); a generic method's own `Name<T>(): T` fell through to the qualified/generic-reference branch instead, so its name could be rewritten into an invalid `import("...").Name<T>(): T`.
+- 319db00: Fix a naive string-literal boundary check (`prevChar !== "\\"`, or the equivalent `text[i - 1] !== "\\"`) in `schema-detector.ts`, `getter-resolver.ts`, `type-printer.ts`, and `extractor.ts` (`promoteBareTypeReferences` and `hasTopLevelUnionOrIntersection`) that misjudged a string literal ending in an even number of backslashes (e.g. `"a\\"`) as still escaped, causing the scanner to stay stuck "inside" the string past its real end. Replaced with a backslash-parity check, shared through a new `string-scan.ts` module (ported from `toiroakr/vinfer`, which had the same bug independently and already fixed it the same way).
+
+  Also fix a related but distinct bug in `extractor.ts`'s `findReferenceValueEnd`, used to find where a cross-referenced field's printed value ends: it toggled a single `inString` flag on _any_ `"` or `'` without tracking which quote opened the string or checking for escaping at all, so a field whose printed value contained a differently-quoted character (e.g. `"it's here"`) would flip out of "in string" mode mid-literal. Depth-tracking for the rest of the value would then desync, corrupting the generated declaration for the containing schema (observed: the object's closing brace and everything after it silently disappearing from the output). Fixed the same way as the other call sites - tracking the actual opening quote character plus the shared `isEscaped` check.
+
+- 5d06000: Fix `modulePathFor()` (used by `qualifyLocalTypeReference()` to reference a locally declared class/interface/type through an inline `import("...")`, and by `--inline-external-types`'s `collectFileLocalTypeReferences()`/`referenceFallbackText()`) to `realpathSync` a file's path before stripping its extension, matching `absolutizeImportPaths()`'s convention. On a symlinked working directory (e.g. macOS's `/var` -> `/private/var` tmpdir), the un-realpath'd version anchored the printed `import("...")` to the symlink instead of its real target, inconsistent with every other absolute `import("...")` the extractor produces - breaking `resolveModuleSourceFile()`'s filesystem lookup and the cycle-detection keys built from the same path. Also routes the realpath'd result through pathe's `resolve()`, matching `packages/vinfer`'s existing fix for the same bug, so the OS-native backslash separators `realpathSync` returns on Windows don't end up embedded in the printed `import("...")` string.
+
+  Also canonicalize the cycle-detection `visiting` keys in `resolveOrKeepImportText()` and `resolveReferenceOrFallback()` through the same `modulePathFor()` instead of building them from `SourceFile.getFilePath()` directly, so they stay consistent with every other module-path key the extractor computes.
+
+- ddb6137: Fix `--inline-external-types` to parenthesize an expanded function type (and, defensively, a conditional type) before a trailing suffix, not just a union or intersection. Inlining a bare reference to a function-type alias used with a suffix - e.g. `callbacks: Callback[]` where `Callback = (value: string) => string` - printed `(value: string) => string[]`, a function returning `string[]` rather than an array of functions. `hasTopLevelUnionOrIntersection()` is renamed `needsParensBeforeSuffix()` now that its scope is broader than `|`/`&`.
+
 ## 0.3.5
 
 ### Patch Changes
