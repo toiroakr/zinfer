@@ -129,12 +129,14 @@ describe("runCLI", () => {
   });
 
   it("points the generated import at the declaring file's actual output when outPattern is used without outDir through a symlinked directory (#501)", async () => {
-    const realBase = mkdtempSync(join(tmpdir(), "zinfer-real-"));
-    const linkPath = mkdtempSync(join(tmpdir(), "zinfer-link-"));
-    rmSync(linkPath, { recursive: true, force: true });
-    symlinkSync(realBase, linkPath, "junction");
+    let realBase: string | undefined;
+    let linkPath: string | undefined;
 
     try {
+      realBase = mkdtempSync(join(tmpdir(), "zinfer-real-"));
+      linkPath = mkdtempSync(join(tmpdir(), "zinfer-link-"));
+      rmSync(linkPath, { recursive: true, force: true });
+      symlinkSync(realBase, linkPath, "junction");
       symlinkSync(
         resolve(import.meta.dirname, "../node_modules"),
         join(realBase, "node_modules"),
@@ -179,8 +181,8 @@ describe("runCLI", () => {
       const importedPath = readFileSync(join(realBase, "schemas/node/node.generated.ts"), "utf-8");
       expect(importedPath).toContain("export type CrossFileNode");
     } finally {
-      rmSync(linkPath, { recursive: true, force: true });
-      rmSync(realBase, { recursive: true, force: true });
+      if (linkPath) rmSync(linkPath, { recursive: true, force: true });
+      if (realBase) rmSync(realBase, { recursive: true, force: true });
     }
   });
 

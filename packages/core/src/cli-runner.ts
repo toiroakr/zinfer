@@ -329,6 +329,22 @@ export async function runCLI<TConfig extends InferConfig, TCLIOptions extends CL
   logVerbose("Processing files...");
   let totalResults = 0;
 
+  // Each file's own actually-written output path, keyed by the file's
+  // realpath - built up front (one pass over every resolvedFiles entry, all
+  // of which already exist on disk) so buildImportSources can look up a
+  // declaring file's output path by identity instead of recomputing it from
+  // result.importedFrom's own (possibly differently-spelled) path. See
+  // buildImportSources's own comment for why recomputing is unsafe.
+  const outputPathBySource = new Map<string, string>();
+  if (config.outDir || config.outPattern) {
+    for (const filePath of resolvedFiles) {
+      outputPathBySource.set(
+        resolve(realpathSync(filePath)),
+        fileResolver.resolveOutputPath(filePath, outputOptions, cwd),
+      );
+    }
+  }
+
   for (let i = 0; i < resolvedFiles.length; i++) {
     const filePath = resolvedFiles[i];
     logProgress(i + 1, resolvedFiles.length, `Processing ${basename(filePath)}`);
@@ -371,6 +387,7 @@ export async function runCLI<TConfig extends InferConfig, TCLIOptions extends CL
         results,
         outputPath,
         canonicalOutputDir,
+        outputPathBySource,
         outputOptions,
         cwd,
         fileResolver,
@@ -500,27 +517,39 @@ function getFilteredResults(
  * @param outputPath - This file's own actually-written output path (as the
  *   caller spelled it - unchanged, since this is what the file really landed
  *   at).
- * @param canonicalOutputDir - `dirname(outputPath)`, realpath'd. When
- *   `outPattern` is used without `outDir`, `resolveOutputPath` derives the
- *   output directory from the input file's own directory - so on a symlinked
- *   working directory, this file's own directory and `result.importedFrom`'s
- *   directory (realpath'd by ts-morph's module resolution in some resolution
- *   paths, per #495) can land on different symlink bases for what is
- *   otherwise the same physical location. Only the directory is
- *   canonicalized: the declaring file's *name* still has to come from
- *   `result.importedFrom` unmodified, since `resolveOutputPath`'s `[dir]`/
- *   `[name]` pattern substitution is itself path-derived - canonicalizing the
- *   path passed into it would risk computing a name that doesn't match what
+ * @param canonicalOutputDir - `dirname(outputPath)`. When `outDir` is set,
+ *   every file shares that one cwd-relative literal directory, so it is used
+ *   as-is (already canonical by construction - no per-file symlink base to
+ *   reconcile). Otherwise (`outPattern` without `outDir`) it is realpath'd:
+ *   `resolveOutputPath` then derives the output directory from the input
+ *   file's own directory, so on a symlinked working directory, this file's
+ *   own directory and `result.importedFrom`'s directory (realpath'd by
+ *   ts-morph's module resolution in some resolution paths, per #495) can land
+ *   on different symlink bases for what is otherwise the same physical
+ *   location. Only the directory is canonicalized. The resulting relative
+ *   specifier still resolves correctly from `outputPath`'s own (possibly
+ *   symlinked) directory, since a relative path is structural and symlinks
+ *   are transparent to it.
+ * @param outputPathBySource - Every processed file's own actually-written
+ *   output path, keyed by that file's realpath. Preferred over recomputing
+ *   `resolveOutputPath(result.importedFrom, ...)`: `result.importedFrom`
+ *   (from ts-morph's module resolution) can be spelled differently than the
+ *   declaring file's own `resolvedFiles` entry even when both name the same
+ *   physical file (per #495) - since `resolveOutputPath`'s `[dir]`/`[name]`
+ *   pattern substitution is itself path-derived, recomputing from a
+ *   differently-spelled path can compute a *different filename* than the one
  *   the declaring file's own iteration actually wrote (flagged in review on
- *   #502). The resulting relative specifier still resolves correctly from
- *   `outputPath`'s own (possibly symlinked) directory, since a relative path
- *   is structural and symlinks are transparent to it.
+ *   #502). Falls back to recomputing only if the declaring file has no entry
+ *   (should not happen: `result.importedFrom` is only set for files already
+ *   gated as importable) - producing a best-effort specifier rather than
+ *   silently dropping the import.
  * @returns Map of schema name to module specifier
  */
 function buildImportSources(
   results: ExtractResult[],
   outputPath: string,
   canonicalOutputDir: string,
+  outputPathBySource: ReadonlyMap<string, string>,
   outputOptions: OutputOptions,
   cwd: string,
   fileResolver: FileResolver,
@@ -530,11 +559,9 @@ function buildImportSources(
   for (const result of results) {
     if (!result.importedFrom) continue;
 
-    const declaringOutputPath = fileResolver.resolveOutputPath(
-      result.importedFrom,
-      outputOptions,
-      cwd,
-    );
+    const declaringOutputPath =
+      outputPathBySource.get(resolve(realpathSync(result.importedFrom))) ??
+      fileResolver.resolveOutputPath(result.importedFrom, outputOptions, cwd);
     const canonicalDeclaringDir = outputOptions.outDir
       ? dirname(declaringOutputPath)
       : resolve(realpathSync(dirname(result.importedFrom)));
