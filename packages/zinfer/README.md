@@ -67,27 +67,27 @@ Arguments:
   files                      File paths or glob patterns
 
 Options:
-  -c, --config <path>        Path to config file
-  -p, --project <path>       Path to tsconfig.json
-  --schemas <names>          Comma-separated schema names to extract
-  --input-only               Output only input types
-  --output-only              Output only output types
-  --merge-same               Single type if input===output
-  --suffix <suffix>          Remove suffix from schema names (e.g., 'Schema')
-  --input-suffix <suffix>    Suffix for input type names (default: 'Input')
-  --output-suffix <suffix>   Suffix for output type names (default: 'Output')
-  --map <mappings>           Custom name mappings (e.g., 'UserSchema:User')
-  --outDir <dir>             Output directory for generated files
-  --outFile <file>           Single output file for all types
-  --outPattern <pattern>     Output file naming pattern (e.g., '[name].types.ts')
-  -d, --declaration          Generate .d.ts files
-  --dry-run                  Preview without writing files
-  --with-descriptions        Include Zod .describe() as TSDoc comments
-  --generate-tests           Generate vitest type equality tests alongside type files
+  -c, --config <path>               Path to config file
+  -p, --project <path>              Path to tsconfig.json
+  --schemas <names>                 Comma-separated schema names to extract
+  --input-only                      Output only input types
+  --output-only                     Output only output types
+  --merge-same                      Single type if input===output
+  --suffix <suffix>                 Remove suffix from schema names (e.g., 'Schema')
+  --input-suffix <suffix>           Suffix for input type names (default: 'Input')
+  --output-suffix <suffix>          Suffix for output type names (default: 'Output')
+  --map <mappings>                  Custom name mappings (e.g., 'UserSchema:User')
+  --outDir <dir>                    Output directory for generated files
+  --outFile <file>                  Single output file for all types
+  --outPattern <pattern>            Output file naming pattern (e.g., '[name].types.ts')
+  -d, --declaration                 Generate .d.ts files
+  --dry-run                         Preview without writing files
+  --with-descriptions               Include Zod .describe() as TSDoc comments
+  --generate-tests                  Generate vitest type equality tests alongside type files
   --inline-type-references [scope]  Inline a plain type an explicit z.ZodType<T> annotation reaches: "project" (default when the flag is set) or "all" (also dependency-declared types)
-  --brand-strategy <strategy> How to represent a .brand() marker in the generated output (default: zod-import)
-  -V, --version              Output the version number
-  -h, --help                 Display help
+  --brand-strategy <strategy>       How to represent a .brand() marker in the generated output (default: zod-import)
+  -V, --version                     Output the version number
+  -h, --help                        Display help
 ```
 
 ## Configuration File
@@ -640,7 +640,7 @@ export type FieldOutput = {
 
 The expansion follows references across as many files as needed. A reference that would recurse into itself - directly, or by cycling back through another file - is left as an `import(...)` at the point it would repeat; everything outside the cycle is still fully expanded. A same-file type that isn't exported has no importable name to fall back to, so a cycle through one is left as a bare (unresolved) identifier - the same known limitation `nonexported-explicit-type-schema.ts` documents for a local explicit annotation. Namespace imports (`import * as ns`), default-imported types, and generic instantiations (`import("...").Foo<Bar>`) aren't expanded either; each is left as the reference zinfer would otherwise print.
 
-A reference through a **bare package specifier** (`import("some-lib").Foo`, as opposed to a relative path within the project) is left as a reference under `project` scope, same as any other unexpanded case above - but expanded under `all` scope, as long as it actually resolves to a file (a `declare module "some-lib" { ... }` ambient module with no backing file does not, and is left as a reference under either scope). This is what lets a type declared in a **devDependency** be inlined: without it, the generated output keeps `import("some-lib").Foo`, which resolves inside this project but not for a consumer who installs the published package without that dev-only dependency. `all` scope exposes that dependency's own type structure in the generated output, so weigh that against the output-size and encapsulation cost before turning it on for a published package.
+A reference through a **bare package specifier** (`import("some-lib").Foo`, as opposed to a relative path within the project) is left as a reference under `project` scope, same as any other unexpanded case above - but expanded under `all` scope, as long as it actually resolves to a file (a `declare module "some-lib" { ... }` ambient module with no backing file does not, and is left as a reference under either scope). This is what lets a type declared in a **devDependency** be inlined: without it, the generated output keeps `import("some-lib").Foo`, which resolves inside this project but not for a consumer who installs the published package without that dev-only dependency. `all` scope exposes that dependency's own type structure in the generated output, so weigh that against the output-size and encapsulation cost before turning it on for a published package. Resolution is identity-based - "does this specifier resolve to a real file" - not name-based, so a package typed via a separate `@types/*` package is expanded the same as one that ships its own types; only an ambient module with no backing file at all is exempt.
 
 This only applies to a plain type reached through an explicit `z.ZodType<T>` annotation - a Zod schema imported from another file is unaffected, and continues to be referenced by its own generated type name or inlined as already described elsewhere in this document.
 

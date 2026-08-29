@@ -44,9 +44,12 @@ export interface CLIOptionsBase {
   verbose?: boolean;
   /**
    * `true` when commander parses the flag with no value (`--inline-type-references`
-   * alone) - normalized to `"project"` by `mergeCliWithConfig`.
+   * alone) - normalized to `"project"` by `mergeCliWithConfig`. `false` is
+   * not a value commander produces for this flag (there is no `--no-...`
+   * counterpart), so it is deliberately excluded from this type rather than
+   * silently treated the same as `true`.
    */
-  inlineTypeReferences?: boolean | TypeReferenceScope;
+  inlineTypeReferences?: true | TypeReferenceScope;
 }
 
 /**
@@ -633,9 +636,7 @@ function mergeCliWithConfig<TConfig extends InferConfig, TCLIOptions extends CLI
     // commander sets this to `true` (not a scope string) when the flag is
     // given with no value, e.g. `--inline-type-references` alone.
     merged.inlineTypeReferences =
-      typeof cliOptions.inlineTypeReferences === "string"
-        ? cliOptions.inlineTypeReferences
-        : "project";
+      cliOptions.inlineTypeReferences === true ? "project" : cliOptions.inlineTypeReferences;
   }
 
   bindings.mergeCliExtra(merged, cliOptions);
