@@ -2,7 +2,7 @@
 
 export type FieldInput = {
   type: import("../../../../fixtures/nested-import-path/deep/nested/common").FieldType;
-  fields?: Record<string, FieldOutput>;
+  fields?: Record<string, FieldInput>;
 };
 
 export type FieldOutput = {

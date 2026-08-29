@@ -690,6 +690,37 @@ export class ValibotTypeExtractor {
         const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
         input = input.replace(typeNamePattern, `${schemaName}Input`);
         output = output.replace(typeNamePattern, `${schemaName}Output`);
+      } else if (explicitType) {
+        // Not locally declared - but a recursive explicit annotation
+        // (v.lazy()) reaching a type imported from another file hits the
+        // same wall the same-file case above does: the printer can't expand
+        // the reference again at its own recursion point, so it falls back
+        // to the bare name - visible here only because of this file's own
+        // import. Left alone, the bare name would carry into the generated
+        // output without anything to import it from. Rewrite it the same
+        // way as a same-file self-reference, to the schema's own generated
+        // type name.
+        const importedRef = this.collectFileLocalTypeReferences(sourceFile).get(explicitType);
+        if (importedRef && importedRef.file !== sourceFile) {
+          const escapedTypeName = escapeRegExp(explicitType);
+          const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
+          // When the resolved type is exactly the explicit identifier (as
+          // opposed to appearing inside a larger composite type, e.g. a
+          // recursive union member), rewriting it to `<schema>Input`/`Output`
+          // would produce a circular alias like `type FooInput = FooInput`.
+          // Reference it through the same `import("...")` fallback the
+          // cycle-detection path already uses for this name instead.
+          if (input === explicitType) {
+            input = this.referenceFallbackText(importedRef, explicitType);
+          } else {
+            input = input.replace(typeNamePattern, `${schemaName}Input`);
+          }
+          if (output === explicitType) {
+            output = this.referenceFallbackText(importedRef, explicitType);
+          } else {
+            output = output.replace(typeNamePattern, `${schemaName}Output`);
+          }
+        }
       }
 
       resolvingSchemas.delete(schemaName);
@@ -1402,11 +1433,13 @@ export class ValibotTypeExtractor {
   /**
    * Checks whether an explicit annotation names a type declared in the same file.
    *
-   * Only such a type is rewritten to the generated type name: a recursive schema
-   * annotated `v.GenericSchema<Category>` prints as `Category`, which the
-   * generated file has to spell as `CategoryInput` / `CategoryOutput`. A global
-   * type (`v.GenericSchema<Function>`) must be left alone - rewriting it would
-   * turn the declaration into a self-reference.
+   * A recursive schema annotated `v.GenericSchema<Category>` prints as
+   * `Category` at its own recursion point, which the generated file has to
+   * spell as `CategoryInput` / `CategoryOutput` instead - whether `Category`
+   * is declared here or merely imported into this file (the caller checks
+   * for that case separately). A global type (`v.GenericSchema<Function>`)
+   * must be left alone either way - rewriting it would turn the declaration
+   * into a self-reference.
    */
   private isLocallyDeclaredType(sourceFile: SourceFile, typeName: string): boolean {
     if (!this.isValidIdentifier(typeName)) return false;

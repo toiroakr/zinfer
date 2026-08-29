@@ -502,6 +502,31 @@ export class ZodTypeExtractor {
         } else {
           output = output.replace(typeNamePattern, `${schemaName}Output`);
         }
+      } else if (explicitType) {
+        // Not locally declared - but a recursive explicit annotation
+        // (z.lazy()) reaching a type imported from another file hits the
+        // same wall the same-file case above does: the printer can't expand
+        // the reference again at its own recursion point, so it falls back
+        // to the bare name - visible here only because of this file's own
+        // `import type`. Left alone, the bare name would carry into the
+        // generated output without anything to import it from. Rewrite it
+        // the same way as a same-file self-reference, to the schema's own
+        // generated type name.
+        const importedRef = this.collectFileLocalTypeReferences(sourceFile).get(explicitType);
+        if (importedRef && importedRef.file !== sourceFile) {
+          const escapedTypeName = escapeRegExp(explicitType);
+          const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
+          if (input === explicitType) {
+            input = this.referenceFallbackText(importedRef, explicitType);
+          } else {
+            input = input.replace(typeNamePattern, `${schemaName}Input`);
+          }
+          if (output === explicitType) {
+            output = this.referenceFallbackText(importedRef, explicitType);
+          } else {
+            output = output.replace(typeNamePattern, `${schemaName}Output`);
+          }
+        }
       }
 
       resolvingSchemas.delete(schemaName);
@@ -1455,11 +1480,12 @@ export class ZodTypeExtractor {
   }
 
   /**
-   * Checks if a type name is declared in the given source file (as opposed to
-   * a global type). Rewriting an explicit annotation's type name to the
-   * generated `<schema>Input`/`<schema>Output` alias is only safe for
-   * locally declared types - rewriting a global name like `Function`
-   * produces a self-referential alias.
+   * Checks if a type name is declared in the given source file (as opposed
+   * to a global type, or a type merely imported into the file - the caller
+   * checks for that case separately). Gates the same-file self-reference
+   * rewrite below: a global name like `Function` must be left as-is,
+   * since rewriting it to `<schema>Input`/`<schema>Output` would produce a
+   * self-referential alias instead of the explicit annotation it names.
    */
   private isLocallyDeclaredType(sourceFile: SourceFile, typeName: string): boolean {
     return this.getLocalTypeDeclaration(sourceFile, typeName) !== undefined;
