@@ -128,6 +128,64 @@ describe("runCLI", () => {
     }
   });
 
+  it("points the generated import at the declaring file's actual output when outPattern is used without outDir through a symlinked directory (#501)", async () => {
+    let realBase: string | undefined;
+    let linkPath: string | undefined;
+
+    try {
+      realBase = mkdtempSync(join(tmpdir(), "zinfer-real-"));
+      linkPath = mkdtempSync(join(tmpdir(), "zinfer-link-"));
+      rmSync(linkPath, { recursive: true, force: true });
+      symlinkSync(realBase, linkPath, "junction");
+      symlinkSync(
+        resolve(import.meta.dirname, "../node_modules"),
+        join(realBase, "node_modules"),
+        "junction",
+      );
+      const source = resolve(import.meta.dirname, "fixtures/cross-file-recursive");
+      mkdirSync(join(realBase, "schemas/node"), { recursive: true });
+      mkdirSync(join(realBase, "schemas/tree"), { recursive: true });
+      writeFileSync(
+        join(realBase, "schemas/node/schema.ts"),
+        readFileSync(join(source, "node-schema.ts"), "utf-8"),
+      );
+      writeFileSync(
+        join(realBase, "schemas/tree/schema.ts"),
+        readFileSync(join(source, "tree-schema.ts"), "utf-8").replace(
+          './node-schema"',
+          '../node/schema"',
+        ),
+      );
+
+      // File arguments are absolute paths built from the symlink entry
+      // point, not derived from process.cwd() (which Node always reports
+      // fully resolved). No outDir: outPattern alone keeps each output next
+      // to its own input file (FileResolver.resolveOutputPath uses
+      // dirname(inputPath) as the output directory in this mode) - the
+      // scenario buildImportSources()'s output-path comparison is meant to
+      // handle correctly.
+      await runCLI(
+        [join(linkPath, "schemas/node/schema.ts"), join(linkPath, "schemas/tree/schema.ts")],
+        {
+          outPattern: "[dir].generated[ext]",
+          suffix: "Schema",
+          outputSuffix: "",
+          mergeSame: true,
+        },
+      );
+
+      const tree = readFileSync(join(realBase, "schemas/tree/tree.generated.ts"), "utf-8");
+      // node-schema.ts's own output lands at schemas/node/node.generated.ts;
+      // the import from tree's output must resolve there.
+      expect(tree).toContain('from "../node/node.generated"');
+      const importedPath = readFileSync(join(realBase, "schemas/node/node.generated.ts"), "utf-8");
+      expect(importedPath).toContain("export type CrossFileNode");
+    } finally {
+      if (linkPath) rmSync(linkPath, { recursive: true, force: true });
+      if (realBase) rmSync(realBase, { recursive: true, force: true });
+    }
+  });
+
   it("loads config from an explicit --config path, not just well-known filenames", async () => {
     workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
     symlinkSync(
