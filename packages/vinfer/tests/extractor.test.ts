@@ -633,7 +633,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       const field = withoutFlag.find((r) => r.schemaName === "FieldSchema");
       expect(field?.input).toContain('import("');
 
-      const withFlag = extractor.extractAll(filePath, { inlineExternalTypes: true });
+      const withFlag = extractor.extractAll(filePath, { inlineTypeReferences: "project" });
       const inlinedField = withFlag.find((r) => r.schemaName === "FieldSchema");
       expect(inlinedField?.input).not.toContain("import(");
     });
@@ -641,7 +641,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
     it("should recursively inline a type reached through a chain of three separate files", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/chain/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const chain = results.find((r) => r.schemaName === "ChainSchema");
 
@@ -668,7 +668,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
     it("should stop at a cross-file cycle between plain types and leave a resolvable import(...) reference there, never a dangling bare identifier", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/cycle/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const cycle = results.find((r) => r.schemaName === "CycleSchema");
 
@@ -687,7 +687,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       // resolveType() reads at the top level.
       const direct = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/qualified/direct-schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const directHolder = direct.find((r) => r.schemaName === "DirectQualifiedSchema");
       expect(directHolder?.input).toMatch(/import\(".*kind"\)\.Kind\.A/);
@@ -699,7 +699,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       // promoteBareTypeReferences has to turn into the same valid form.
       const viaWrapper = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/qualified/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const wrapped = viaWrapper.find((r) => r.schemaName === "QualifiedSchema");
       expect(wrapped?.input).toMatch(/import\(".*kind"\)\.Kind\.A/);
@@ -711,7 +711,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
     it("should document the known limitation: a cycle through a non-exported same-file type has no fallback and is left as a bare identifier", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/nonexported-cycle/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "NonExportedCycleSchema");
 
@@ -728,10 +728,10 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       // top-level `sourceFile.getEnum()` branch on a same-file enum), Kind
       // here is only imported into holder.ts, so this only reaches
       // printEnumAsLiteralUnion through promoteBareTypeReferences ->
-      // resolveExternalTypeReference, the --inline-external-types-specific path.
+      // resolveExternalTypeReference, the --inline-type-references-specific path.
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/computed-enum/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "ComputedEnumSchema");
 
@@ -747,7 +747,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       // own import of Declared), not just the top-level synthesis path.
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/dts-source/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "DtsSourceSchema");
 
@@ -771,11 +771,32 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       );
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/package-specifier/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "PackageSpecifierSchema");
 
       expect(result?.input).toBe('{ foo: import("virtual-lib").Foo; }');
+    });
+
+    it('should leave a bare package specifier as a reference under "project" scope, and expand it under "all" scope', () => {
+      // "some-lib" is a real dependency (tests/fixtures/.../node_modules/some-lib),
+      // not an ambient module - resolvable through TypeScript's own module
+      // resolution, unlike package-specifier/schema.ts's virtual-lib. Under
+      // "project" scope it's still left unresolved, matching the pre-"all"
+      // behavior; only "all" reaches into it.
+      const projectScoped = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/dependency-package/schema.ts"),
+        { inlineTypeReferences: "project" },
+      );
+      const projectResult = projectScoped.find((r) => r.schemaName === "DependencyPackageSchema");
+      expect(projectResult?.input).toBe('{ foo: import("some-lib").Foo; }');
+
+      const allScoped = extractor.extractAll(
+        resolve(fixturesDir, "inline-external-types/dependency-package/schema.ts"),
+        { inlineTypeReferences: "all" },
+      );
+      const allResult = allScoped.find((r) => r.schemaName === "DependencyPackageSchema");
+      expect(allResult?.input).toBe("{ foo: { real: true; }; }");
     });
 
     it("should never expand a typeof operand - only reference it - at both the top-level synthesis and bare-reference promotion paths", () => {
@@ -783,7 +804,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       // TypeScript's own top-level synthesis: typeof import("./kind").Kind.
       const direct = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/typeof-query/direct-schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const directResult = direct.find((r) => r.schemaName === "DirectTypeofQuerySchema");
       expect(directResult?.input).toMatch(/typeof import\(".*kind"\)\.Kind/);
@@ -793,7 +814,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       // promotion path's own typeof guard.
       const viaWrapper = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/typeof-query/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const wrapped = viaWrapper.find((r) => r.schemaName === "TypeofQuerySchema");
       expect(wrapped?.input).toMatch(/typeof import\(".*kind"\)\.Kind/);
@@ -802,7 +823,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
     it("should never rewrite a method's own name just because it collides with an in-scope type also reached through bare-reference promotion", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/method-collision/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "MethodCollisionSchema");
 
@@ -836,7 +857,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       // of such functions.
       const results = extractor.extractAll(
         resolve(fixturesDir, "inline-external-types/suffix-wrap/schema.ts"),
-        { inlineExternalTypes: true },
+        { inlineTypeReferences: "project" },
       );
       const result = results.find((r) => r.schemaName === "SuffixWrapSchema");
 
@@ -860,7 +881,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
     "inline-external-types/chain/schema",
     "should generate TypeScript declarations",
     {
-      context: { inlineExternalTypes: true },
+      context: { inlineTypeReferences: "project" },
       snapshotName: "inline-external-types/chain/schema-inlined",
     },
   );
@@ -869,7 +890,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
     "inline-external-types/cycle/schema",
     "should generate TypeScript declarations",
     {
-      context: { inlineExternalTypes: true },
+      context: { inlineTypeReferences: "project" },
       snapshotName: "inline-external-types/cycle/schema-inlined",
     },
   );
@@ -878,7 +899,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
     "inline-external-types/qualified/schema",
     "should generate TypeScript declarations",
     {
-      context: { inlineExternalTypes: true },
+      context: { inlineTypeReferences: "project" },
       snapshotName: "inline-external-types/qualified/schema-inlined",
     },
   );
@@ -887,7 +908,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
     "inline-external-types/dts-source/schema",
     "should generate TypeScript declarations",
     {
-      context: { inlineExternalTypes: true },
+      context: { inlineTypeReferences: "project" },
       snapshotName: "inline-external-types/dts-source/schema-inlined",
     },
   );

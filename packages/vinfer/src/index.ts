@@ -3,6 +3,7 @@ export {
   ValibotTypeExtractor,
   type ExtractOptions,
   type ExtractContext,
+  type TypeReferenceScope,
   formatResult,
   formatInputOnly,
   formatOutputOnly,

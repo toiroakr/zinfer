@@ -3,6 +3,12 @@ node_modules/
 package-lock.json
 yarn.lock
 
+# A test fixture's own node_modules, standing in for a real dependency
+# package so TypeScript's module resolution has something real to resolve
+# a bare specifier to - not an actual installed dependency.
+!packages/*/tests/fixtures/**/node_modules/
+!packages/*/tests/fixtures/**/node_modules/**
+
 # Build output
 dist/
 *.tsbuildinfo

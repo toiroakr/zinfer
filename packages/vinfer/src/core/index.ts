@@ -48,6 +48,7 @@ export {
 export type {
   ExtractOptions,
   ExtractContext,
+  TypeReferenceScope,
   ExtractResult,
   FileExtractResult,
   DetectedSchema,

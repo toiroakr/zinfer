@@ -15,6 +15,17 @@ export interface ExtractOptions {
 }
 
 /**
+ * How far `inlineTypeReferences` follows an `import("...").Name` reference:
+ * - `"project"` - a reference to another file in the project (the previous,
+ *   and still default, behavior).
+ * - `"all"` - also a reference to a plain type declared in a dependency
+ *   package, resolved through TypeScript's own module resolution rather than
+ *   the filesystem-only lookup `"project"` uses (which never matches a bare
+ *   package specifier).
+ */
+export type TypeReferenceScope = "project" | "all";
+
+/**
  * Extra context that lets extraction reach beyond the file being processed.
  */
 export interface ExtractContext {
@@ -51,9 +62,10 @@ export interface ExtractContext {
    * referenced type's own structure instead, recursively, so the generated
    * output carries no dependency on the original file layout. A reference
    * that would recurse into itself (directly or through another file) is
-   * left as `import(...)` at the point it would cycle.
+   * left as `import(...)` at the point it would cycle. See
+   * `TypeReferenceScope` for what `"all"` adds over `"project"`.
    */
-  inlineExternalTypes?: boolean;
+  inlineTypeReferences?: TypeReferenceScope;
 }
 
 /**

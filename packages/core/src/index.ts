@@ -33,6 +33,7 @@ export { NORMALIZE_TYPE_DEFINITION, NORMALIZE_TYPE_NAMES } from "./normalizer.js
 export type {
   ExtractOptions,
   ExtractContext,
+  TypeReferenceScope,
   DetectedSchema,
   FieldDescription,
   ExtractResult,

@@ -2,6 +2,7 @@ import { existsSync } from "fs";
 import { readFile } from "fs/promises";
 import { basename, resolve } from "pathe";
 import { pathToFileURL } from "url";
+import type { TypeReferenceScope } from "./types.js";
 
 /**
  * Configuration options that can be specified in config file.
@@ -45,9 +46,10 @@ export interface InferConfig {
    * Replace the `import("...")` reference an explicit annotation's `T`
    * synthesizes for a plain type declared in another file with that type's
    * own structure, instead of leaving the generated output pointing back at
-   * it.
+   * it. `"project"` follows references within the project; `"all"` also
+   * follows one into a dependency package.
    */
-  inlineExternalTypes?: boolean;
+  inlineTypeReferences?: TypeReferenceScope;
 }
 
 /**

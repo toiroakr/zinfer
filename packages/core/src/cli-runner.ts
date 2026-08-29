@@ -13,6 +13,7 @@ import { setVerbose, logVerbose, logProgress } from "./logger.js";
 import type {
   ExtractResult,
   ExtractContext,
+  TypeReferenceScope,
   NameMappingOptions,
   OutputOptions,
   DeclarationOptions,
@@ -41,7 +42,12 @@ export interface CLIOptionsBase {
   config?: string;
   generateTests?: boolean;
   verbose?: boolean;
-  inlineExternalTypes?: boolean;
+  /**
+   * `true` when commander's optional-value flag (`--inline-type-references`)
+   * is passed with no value - normalized to `"project"` by
+   * `mergeCliWithConfig` before it reaches `InferConfig`.
+   */
+  inlineTypeReferences?: true | TypeReferenceScope;
 }
 
 /**
@@ -247,7 +253,7 @@ export async function runCLI<TConfig extends InferConfig, TCLIOptions extends CL
   // gets written out: without a file output there is nowhere to import from.
   const writesFiles = Boolean(config.outDir || config.outFile || config.outPattern);
   const extractContext: ExtractContext = {
-    inlineExternalTypes: config.inlineExternalTypes,
+    inlineTypeReferences: config.inlineTypeReferences,
     ...(writesFiles
       ? bindings.buildExtractContextExtra(config, resolvedFiles, outputOptions, cwd, fileResolver)
       : {}),
@@ -543,8 +549,12 @@ function mergeCliWithConfig<TConfig extends InferConfig, TCLIOptions extends CLI
   if (cliOptions.withDescriptions !== undefined)
     merged.withDescriptions = cliOptions.withDescriptions;
   if (cliOptions.generateTests !== undefined) merged.generateTests = cliOptions.generateTests;
-  if (cliOptions.inlineExternalTypes !== undefined)
-    merged.inlineExternalTypes = cliOptions.inlineExternalTypes;
+  if (cliOptions.inlineTypeReferences !== undefined) {
+    // commander's optional-value flag (`--inline-type-references` with no
+    // value) parses as boolean `true`; normalize it to the default scope.
+    merged.inlineTypeReferences =
+      cliOptions.inlineTypeReferences === true ? "project" : cliOptions.inlineTypeReferences;
+  }
 
   bindings.mergeCliExtra(merged, cliOptions);
 
@@ -583,6 +593,20 @@ function validateOptions<TConfig extends InferConfig, TCLIOptions extends CLIOpt
       "--suffix",
       "Empty suffix is not allowed",
       "Provide a non-empty suffix value or omit the option",
+    );
+  }
+
+  // commander's .choices() rejects an invalid CLI flag value before this ever
+  // runs, but a config file is untyped JS/JSON and can carry any string.
+  if (
+    config.inlineTypeReferences !== undefined &&
+    config.inlineTypeReferences !== "project" &&
+    config.inlineTypeReferences !== "all"
+  ) {
+    throw new InvalidOptionError(
+      "--inline-type-references",
+      `Invalid value "${config.inlineTypeReferences}"`,
+      'Use "project" or "all" (omit the value for "project")',
     );
   }
 

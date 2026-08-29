@@ -3,6 +3,7 @@ import type { DeclarationOptions as CoreDeclarationOptions } from "@zinfer-monor
 export type {
   ExtractOptions,
   ExtractContext,
+  TypeReferenceScope,
   DetectedSchema,
   FieldDescription,
   ExtractResult,

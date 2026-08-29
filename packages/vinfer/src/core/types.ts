@@ -6,6 +6,7 @@ import type {
 export type {
   ExtractOptions,
   ExtractContext,
+  TypeReferenceScope,
   DetectedSchema,
   FieldDescription,
   FileExtractResult,

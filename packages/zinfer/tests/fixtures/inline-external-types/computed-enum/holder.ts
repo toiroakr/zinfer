@@ -7,6 +7,6 @@ import { Kind } from "./kind";
 // that merely imports Kind never expands it, and printEnumAsLiteralUnion is
 // never reached (see computed-enum-schema.ts for the same-file shape that
 // does reach it). As a field of Holder, the reference is left for
-// --inline-external-types' own resolveExternalTypeReference to resolve,
+// --inline-type-references' own resolveExternalTypeReference to resolve,
 // where the give-up path actually runs.
 export type Holder = { kind: Kind };
