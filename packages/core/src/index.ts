@@ -48,6 +48,7 @@ export type {
 export {
   runCLI,
   computeImportableFiles,
+  disambiguateOptionalValueFlag,
   type CLIOptionsBase,
   type CliBindings,
   type ExtractorLike,

@@ -139,6 +139,53 @@ export interface CliBindings<TConfig extends InferConfig, TCLIOptions extends CL
 }
 
 /**
+ * commander's optional-value long options (`--flag [value]`) consume the
+ * *next argv token* as the value whenever that token doesn't itself look
+ * like an option (start with `-`) - regardless of whether that token is one
+ * of `values`. So `zinfer --inline-type-references schema.ts` doesn't fail
+ * to recognize `schema.ts` as a value and fall back to treating `--...` as
+ * boolean; commander eats `schema.ts` as the (invalid) value first, and
+ * only *then* rejects it via `.choices()`, instead of treating it as an
+ * input file. Commander has no built-in way to restrict this to the
+ * `--flag=value` form only, or to make the swallow conditional on the
+ * value's validity.
+ *
+ * Rewrites `argv` two ways: a following bare token that is one of `values`
+ * is turned into the equivalent `--flag=value` form (unambiguous either
+ * way, so this is a no-op in effect); a bare `flag` followed by anything
+ * else - most commonly a positional file argument - has `flag` moved to
+ * the very end of `argv` instead, so nothing sits immediately after it for
+ * commander to swallow, and it parses as a boolean flag with every other
+ * token left in place as positional. An occurrence already written as
+ * `--flag=value` is left untouched throughout, since it doesn't match the
+ * bare `flag` string this operates on.
+ */
+export function disambiguateOptionalValueFlag(
+  argv: readonly string[],
+  flag: string,
+  values: readonly string[],
+): string[] {
+  const result: string[] = [];
+  let deferredBareFlag = false;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg !== flag) {
+      result.push(arg);
+      continue;
+    }
+    const next = argv[i + 1];
+    if (next !== undefined && values.includes(next)) {
+      result.push(`${flag}=${next}`);
+      i++;
+      continue;
+    }
+    deferredBareFlag = true;
+  }
+  if (deferredBareFlag) result.push(flag);
+  return result;
+}
+
+/**
  * Selects the files that get an output file to themselves.
  *
  * Per-file output can map two inputs onto one path - `[dir]` for two files in

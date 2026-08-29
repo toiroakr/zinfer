@@ -3,7 +3,7 @@ import { Command, Option } from "commander";
 import { resolve, dirname } from "pathe";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
-import { formatError } from "./core/index.js";
+import { formatError, disambiguateOptionalValueFlag } from "./core/index.js";
 import { runCLI, type CLIOptions } from "./cli-runner.js";
 
 const program = new Command();
@@ -54,7 +54,13 @@ program
     }
   });
 
-program.parse();
+// A bare `--inline-type-references` before a positional file argument
+// (e.g. `vinfer --inline-type-references schema.ts`) would otherwise have
+// commander consume `schema.ts` as the flag's optional value instead of
+// treating it as an input file - see disambiguateOptionalValueFlag's doc.
+program.parse(
+  disambiguateOptionalValueFlag(process.argv, "--inline-type-references", ["project", "all"]),
+);
 
 /**
  * Reads vinfer's own version from its package.json.

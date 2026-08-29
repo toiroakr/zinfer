@@ -49,14 +49,30 @@ describe("cli --version", () => {
 });
 
 describe("cli --inline-type-references", () => {
-  it("rejects a scope value commander itself doesn't recognize", () => {
+  it("rejects a scope value commander itself doesn't recognize (--flag=value form)", () => {
     expect(() =>
       execFileSync(
         execPath,
-        [jitiCliPath, cliPath, "schema.ts", "--inline-type-references", "everything"],
+        [jitiCliPath, cliPath, "schema.ts", "--inline-type-references=everything"],
         { encoding: "utf-8", timeout: 60_000, stdio: "pipe" },
       ),
     ).toThrowError(/Allowed choices are project, all/);
+  }, 60_000);
+
+  it("does not swallow a following positional file as the scope value in the space-separated form", () => {
+    // Without disambiguateOptionalValueFlag, commander would treat
+    // "schema.ts" as this option's optional value (since it doesn't look
+    // like another option) and reject it via .choices() instead of
+    // resolving no files matched - `--inline-type-references schema.ts`
+    // has to behave like a bare flag followed by a file argument, the same
+    // as if `--inline-type-references` weren't there at all.
+    expect(() =>
+      execFileSync(execPath, [jitiCliPath, cliPath, "--inline-type-references", "schema.ts"], {
+        encoding: "utf-8",
+        timeout: 60_000,
+        stdio: "pipe",
+      }),
+    ).toThrowError(/No files matched/);
   }, 60_000);
 });
 

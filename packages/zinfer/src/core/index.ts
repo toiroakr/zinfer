@@ -3,6 +3,7 @@ export { ZodTypeExtractor } from "./extractor.js";
 export {
   runCLI,
   computeImportableFiles,
+  disambiguateOptionalValueFlag,
   type CLIOptionsBase,
   type CliBindings,
 } from "@zinfer-monorepo/core";

@@ -137,9 +137,9 @@ export default defineConfig({
 
   // Inline a plain type an explicit annotation reaches instead of leaving
   // it as a reference: "project" follows a reference within this project,
-  // "all" also follows one into a dependency package. Omit (the default)
-  // to leave every such reference as printed.
-  inlineTypeReferences: "project",
+  // "all" also follows one into a dependency package. Not set here (the
+  // default) leaves every such reference as printed.
+  // inlineTypeReferences: "project",
 
   // How to represent a .brand() marker: "zod-import" (default) imports
   // BRAND from zod; "local-symbol" emits a self-contained unique symbol

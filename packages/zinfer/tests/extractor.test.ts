@@ -44,6 +44,7 @@ const ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS = [
   "inline-external-types/computed-enum/schema.ts",
   "inline-external-types/dts-source/schema.ts",
   "inline-external-types/package-specifier/schema.ts",
+  "inline-external-types/package-specifier-all/schema.ts",
   "inline-external-types/typeof-query/direct-schema.ts",
   "inline-external-types/typeof-query/schema.ts",
   "inline-external-types/method-collision/schema.ts",
