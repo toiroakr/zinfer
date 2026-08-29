@@ -1,5 +1,5 @@
 import { resolve, dirname, basename, relative, parse as parsePath } from "pathe";
-import { existsSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, writeFileSync, mkdirSync, realpathSync } from "fs";
 import { ConfigLoader, type InferConfig } from "./config-loader.js";
 import {
   NoFilesMatchedError,
@@ -349,9 +349,20 @@ export async function runCLI<TConfig extends InferConfig, TCLIOptions extends CL
     // File output mode
     if (config.outDir || config.outPattern) {
       const outputPath = fileResolver.resolveOutputPath(filePath, outputOptions, cwd);
+      // Realpath'd separately from outputPath (which stays as the caller
+      // spelled it, so writes/logs still land where the caller expects): the
+      // declaring file's own outputPath is computed the same way from
+      // result.importedFrom, and the two need a shared canonical basis for
+      // buildImportSources's comparison and relative-specifier math to be
+      // correct - see buildImportSources's own comment.
+      const canonicalOutputPath = fileResolver.resolveOutputPath(
+        resolve(realpathSync(filePath)),
+        outputOptions,
+        cwd,
+      );
       const importSources = buildImportSources(
         results,
-        outputPath,
+        canonicalOutputPath,
         outputOptions,
         cwd,
         fileResolver,
@@ -478,11 +489,23 @@ function getFilteredResults(
  * import, so it is left out; everything else is addressed by the path from this
  * output file to the one that declares it, extension dropped.
  *
+ * @param canonicalOutputPath - This file's own outputPath, realpath'd (the
+ *   caller keeps its own non-canonical outputPath for logging/`--dry-run`/the
+ *   write itself). When `outPattern` is used without `outDir`,
+ *   `resolveOutputPath` derives the output directory from the input file's
+ *   own directory - so on a symlinked working directory, this file's
+ *   outputPath and `result.importedFrom` (realpath'd by ts-morph's module
+ *   resolution in some resolution paths, per #495) can land on different
+ *   symlink bases for what is otherwise the same physical location.
+ *   Comparing/relativizing against the realpath'd form keeps the two in the
+ *   same basis; the resulting relative specifier still resolves correctly
+ *   from the caller's own (possibly symlinked) outputPath, since a relative
+ *   path is structural and symlinks are transparent to it.
  * @returns Map of schema name to module specifier
  */
 function buildImportSources(
   results: ExtractResult[],
-  outputPath: string,
+  canonicalOutputPath: string,
   outputOptions: OutputOptions,
   cwd: string,
   fileResolver: FileResolver,
@@ -493,14 +516,14 @@ function buildImportSources(
     if (!result.importedFrom) continue;
 
     const declaringOutputPath = fileResolver.resolveOutputPath(
-      result.importedFrom,
+      resolve(realpathSync(result.importedFrom)),
       outputOptions,
       cwd,
     );
-    if (declaringOutputPath === outputPath) continue;
+    if (declaringOutputPath === canonicalOutputPath) continue;
 
     const withoutExtension = declaringOutputPath.replace(/\.d\.ts$|\.ts$/, "");
-    let specifier = relative(dirname(outputPath), withoutExtension);
+    let specifier = relative(dirname(canonicalOutputPath), withoutExtension);
     if (!specifier.startsWith(".")) {
       specifier = `./${specifier}`;
     }
