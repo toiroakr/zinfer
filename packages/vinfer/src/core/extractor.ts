@@ -469,7 +469,8 @@ export class ValibotTypeExtractor {
     for (const [localName, importInfo] of importedSchemas) {
       if (!importInfo.resolved) continue;
 
-      const isImportable = context.importableFiles?.has(importInfo.sourceFilePath) ?? false;
+      const isImportable =
+        context.importableFiles?.has(resolvePath(realpathSync(importInfo.sourceFilePath))) ?? false;
       // The self-references a recursive schema needs are spelled with the local
       // name, and what they point at depends on whether the declaring file is
       // generated, so both belong in the cache key alongside the declaration.

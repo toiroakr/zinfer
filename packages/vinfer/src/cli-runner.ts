@@ -2,7 +2,8 @@
  * The CLI's behavior, separated from its commander wiring so it can be driven
  * directly - from tests, or from another tool embedding vinfer.
  */
-import { dirname, basename, relative } from "pathe";
+import { dirname, basename, relative, resolve } from "pathe";
+import { realpathSync } from "fs";
 import {
   ValibotTypeExtractor,
   generateDeclarationFile,
@@ -83,7 +84,7 @@ const bindings: CliBindings<VinferConfig, CLIOptions> = {
 
     return {
       importableFiles: config.outFile
-        ? new Set(resolvedFiles)
+        ? new Set(resolvedFiles.map((filePath) => resolve(realpathSync(filePath))))
         : computeImportableFiles(resolvedFiles, outputOptions, cwd, fileResolver),
     };
   },

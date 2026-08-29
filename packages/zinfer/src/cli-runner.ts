@@ -1,4 +1,5 @@
 import { dirname, basename, relative, resolve } from "pathe";
+import { realpathSync } from "fs";
 import {
   ZodTypeExtractor,
   generateDeclarationFile,
@@ -59,7 +60,7 @@ const bindings: CliBindings<ZinferConfig, CLIOptions> = {
   buildExtractContextExtra(config, resolvedFiles, outputOptions, cwd, fileResolver) {
     return {
       importableFiles: config.outFile
-        ? new Set(resolvedFiles.map((filePath) => resolve(filePath)))
+        ? new Set(resolvedFiles.map((filePath) => resolve(realpathSync(filePath))))
         : computeImportableFiles(resolvedFiles, outputOptions, cwd, fileResolver),
       generatedSchemaNames: config.schemas ? new Set(config.schemas) : undefined,
     };
