@@ -52,4 +52,34 @@ describe("disambiguateOptionalValueFlag", () => {
     const argv = ["node", "cli.js", "schema.ts", "--dry-run"];
     expect(disambiguateOptionalValueFlag(argv, flag, values)).toEqual(argv);
   });
+
+  it("reinserts a deferred bare flag before a `--` end-of-options separator instead of after it", () => {
+    // Commander treats everything past `--` as positional unconditionally
+    // - a flag moved past it (e.g. appended to the very end of argv) would
+    // silently stop being recognized as an option at all.
+    const argv = ["node", "cli.js", flag, "--", "schema.ts"];
+    expect(disambiguateOptionalValueFlag(argv, flag, values)).toEqual([
+      "node",
+      "cli.js",
+      flag,
+      "--",
+      "schema.ts",
+    ]);
+  });
+
+  it("leaves the flag untouched when it appears after `--` (the user wrote it as a literal positional)", () => {
+    const argv = ["node", "cli.js", "--", flag, "schema.ts"];
+    expect(disambiguateOptionalValueFlag(argv, flag, values)).toEqual(argv);
+  });
+
+  it("still rewrites a bare flag before `--` into the --flag=value form when a recognized value follows", () => {
+    const argv = ["node", "cli.js", flag, "all", "--", "schema.ts"];
+    expect(disambiguateOptionalValueFlag(argv, flag, values)).toEqual([
+      "node",
+      "cli.js",
+      `${flag}=all`,
+      "--",
+      "schema.ts",
+    ]);
+  });
 });

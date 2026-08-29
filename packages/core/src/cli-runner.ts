@@ -153,12 +153,17 @@ export interface CliBindings<TConfig extends InferConfig, TCLIOptions extends CL
  * Rewrites `argv` two ways: a following bare token that is one of `values`
  * is turned into the equivalent `--flag=value` form (unambiguous either
  * way, so this is a no-op in effect); a bare `flag` followed by anything
- * else - most commonly a positional file argument - has `flag` moved to
- * the very end of `argv` instead, so nothing sits immediately after it for
+ * else - most commonly a positional file argument - is deferred and
+ * reinserted just before the next `--` end-of-options separator, or at the
+ * end of `argv` if there is none, so nothing sits immediately after it for
  * commander to swallow, and it parses as a boolean flag with every other
- * token left in place as positional. An occurrence already written as
+ * token left in place as positional. It must land *before* a `--`
+ * separator, never after: commander treats everything past `--` as
+ * positional unconditionally, so a flag moved past it would silently stop
+ * being recognized as an option at all. An occurrence already written as
  * `--flag=value` is left untouched throughout, since it doesn't match the
- * bare `flag` string this operates on.
+ * bare `flag` string this operates on - and so is anything (including this
+ * flag) already past a `--` separator, which is copied through as-is.
  */
 export function disambiguateOptionalValueFlag(
   argv: readonly string[],
@@ -169,6 +174,13 @@ export function disambiguateOptionalValueFlag(
   let deferredBareFlag = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
+
+    if (arg === "--") {
+      if (deferredBareFlag) result.push(flag);
+      result.push(...argv.slice(i));
+      return result;
+    }
+
     if (arg !== flag) {
       result.push(arg);
       continue;
