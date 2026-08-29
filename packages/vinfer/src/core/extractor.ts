@@ -84,14 +84,13 @@ interface LocalTypeReference {
 
 /**
  * Matches the empty position just before/after a run of identifier
- * characters, without requiring `\b`'s narrower `\w` (`[A-Za-z0-9_]`)
- * definition on the other side - `\b` excludes `$` (legal at the start of
- * a JS/TS identifier) and every Unicode letter, so a type named
- * `$NodeOutput` or with an accented name would never match under `\b` and
- * silently fail to get rewritten. Mirrors `NOT_BEFORE_IDENTIFIER`/
- * `NOT_AFTER_IDENTIFIER` in this package's own `type-printer.ts`, without
- * that module's typeof-operand/method-name exclusions, which don't apply
- * to this file's plain explicit-type self-reference rewrite.
+ * characters - `\b` (based on `\w`, `[A-Za-z0-9_]`) excludes `$`, legal at
+ * the start of a JS/TS identifier, so a type named `$NodeOutput` would
+ * never match under `\b` and silently fail to get rewritten. Mirrors
+ * `NOT_BEFORE_IDENTIFIER`/`NOT_AFTER_IDENTIFIER` in this package's own
+ * `type-printer.ts`, without that module's typeof-operand/method-name
+ * exclusions, which don't apply to this file's plain explicit-type
+ * self-reference rewrite.
  */
 const NOT_BEFORE_IDENTIFIER = "(?<![\\p{ID_Continue}$])";
 const NOT_AFTER_IDENTIFIER = "(?![\\p{ID_Continue}$])";
