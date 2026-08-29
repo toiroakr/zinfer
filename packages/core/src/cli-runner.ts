@@ -1,5 +1,5 @@
 import { resolve, dirname, basename, relative, parse as parsePath } from "pathe";
-import { existsSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, writeFileSync, mkdirSync, realpathSync } from "fs";
 import { ConfigLoader, type InferConfig } from "./config-loader.js";
 import {
   NoFilesMatchedError,
@@ -138,8 +138,13 @@ export interface CliBindings<TConfig extends InferConfig, TCLIOptions extends CL
  * declaration that may not survive is no use to reference by name, so those
  * files are left out and their schemas stay inlined.
  *
- * @returns Absolute paths, canonicalized so extraction can match them against
- *   the paths TypeScript reports for the same files
+ * @returns Absolute paths, realpath'd so extraction can match them against
+ *   the paths TypeScript's module resolution reports for the same files -
+ *   which can be realpath'd too, depending on the resolution path taken, and
+ *   so would otherwise sometimes land on a different symlink base on a
+ *   symlinked working directory (e.g. macOS's `/var` -> `/private/var`
+ *   tmpdir), silently degrading a cross-file schema reference into an
+ *   inlined duplicate of its structure.
  */
 export function computeImportableFiles(
   resolvedFiles: string[],
@@ -162,7 +167,7 @@ export function computeImportableFiles(
   return new Set(
     [...filesByOutputPath.values()]
       .filter((files) => files.length === 1)
-      .map(([filePath]) => resolve(filePath)),
+      .map(([filePath]) => resolve(realpathSync(filePath))),
   );
 }
 
