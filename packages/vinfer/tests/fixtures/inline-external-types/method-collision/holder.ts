@@ -14,7 +14,7 @@ import type { Box, GenericBox } from "./box";
 // exercises the guard that tells the two apart by checking whether `(`
 // follows the closing `>`. The constraint's own arrow-function type carries
 // a `>` that never opened a matching `<` - exercising the same exclusion
-// hasTopLevelUnionOrIntersection needs for an arrow type, here inside the
+// needsParensBeforeSuffix needs for an arrow type, here inside the
 // balanced-<...> scan instead.
 export type Holder = {
   Box(): string;
