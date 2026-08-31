@@ -17,6 +17,7 @@ import type {
   OutputOptions,
   DeclarationOptions,
   FieldDescription,
+  TypeReferenceScope,
 } from "./types.js";
 
 /**
@@ -41,7 +42,14 @@ export interface CLIOptionsBase {
   config?: string;
   generateTests?: boolean;
   verbose?: boolean;
-  inlineExternalTypes?: boolean;
+  /**
+   * `true` when commander parses the flag with no value (`--inline-type-references`
+   * alone) - normalized to `"project"` by `mergeCliWithConfig`. `false` is
+   * not a value commander produces for this flag (there is no `--no-...`
+   * counterpart), so it is deliberately excluded from this type rather than
+   * silently treated the same as `true`.
+   */
+  inlineTypeReferences?: true | TypeReferenceScope;
 }
 
 /**
@@ -128,6 +136,65 @@ export interface CliBindings<TConfig extends InferConfig, TCLIOptions extends CL
     nameMapper: NameMapper,
     config: TConfig,
   ): string;
+}
+
+/**
+ * commander's optional-value long options (`--flag [value]`) consume the
+ * *next argv token* as the value whenever that token doesn't itself look
+ * like an option (start with `-`) - regardless of whether that token is one
+ * of `values`. So `zinfer --inline-type-references schema.ts` doesn't fail
+ * to recognize `schema.ts` as a value and fall back to treating `--...` as
+ * boolean; commander eats `schema.ts` as the (invalid) value first, and
+ * only *then* rejects it via `.choices()`, instead of treating it as an
+ * input file. Commander has no built-in way to restrict this to the
+ * `--flag=value` form only, or to make the swallow conditional on the
+ * value's validity.
+ *
+ * Rewrites `argv` two ways: a following bare token that is one of `values`
+ * is turned into the equivalent `--flag=value` form (unambiguous either
+ * way, so this is a no-op in effect); a bare `flag` followed by anything
+ * else - most commonly a positional file argument - is deferred and
+ * reinserted just before the next `--` end-of-options separator, or at the
+ * end of `argv` if there is none, so nothing sits immediately after it for
+ * commander to swallow, and it parses as a boolean flag with every other
+ * token left in place as positional. It must land *before* a `--`
+ * separator, never after: commander treats everything past `--` as
+ * positional unconditionally, so a flag moved past it would silently stop
+ * being recognized as an option at all. An occurrence already written as
+ * `--flag=value` is left untouched throughout, since it doesn't match the
+ * bare `flag` string this operates on - and so is anything (including this
+ * flag) already past a `--` separator, which is copied through as-is.
+ */
+export function disambiguateOptionalValueFlag(
+  argv: readonly string[],
+  flag: string,
+  values: readonly string[],
+): string[] {
+  const result: string[] = [];
+  let deferredBareFlag = false;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+
+    if (arg === "--") {
+      if (deferredBareFlag) result.push(flag);
+      result.push(...argv.slice(i));
+      return result;
+    }
+
+    if (arg !== flag) {
+      result.push(arg);
+      continue;
+    }
+    const next = argv[i + 1];
+    if (next !== undefined && values.includes(next)) {
+      result.push(`${flag}=${next}`);
+      i++;
+      continue;
+    }
+    deferredBareFlag = true;
+  }
+  if (deferredBareFlag) result.push(flag);
+  return result;
 }
 
 /**
@@ -252,7 +319,7 @@ export async function runCLI<TConfig extends InferConfig, TCLIOptions extends CL
   // gets written out: without a file output there is nowhere to import from.
   const writesFiles = Boolean(config.outDir || config.outFile || config.outPattern);
   const extractContext: ExtractContext = {
-    inlineExternalTypes: config.inlineExternalTypes,
+    inlineTypeReferences: config.inlineTypeReferences,
     ...(writesFiles
       ? bindings.buildExtractContextExtra(config, resolvedFiles, outputOptions, cwd, fileResolver)
       : {}),
@@ -624,8 +691,12 @@ function mergeCliWithConfig<TConfig extends InferConfig, TCLIOptions extends CLI
   if (cliOptions.withDescriptions !== undefined)
     merged.withDescriptions = cliOptions.withDescriptions;
   if (cliOptions.generateTests !== undefined) merged.generateTests = cliOptions.generateTests;
-  if (cliOptions.inlineExternalTypes !== undefined)
-    merged.inlineExternalTypes = cliOptions.inlineExternalTypes;
+  if (cliOptions.inlineTypeReferences !== undefined) {
+    // commander sets this to `true` (not a scope string) when the flag is
+    // given with no value, e.g. `--inline-type-references` alone.
+    merged.inlineTypeReferences =
+      cliOptions.inlineTypeReferences === true ? "project" : cliOptions.inlineTypeReferences;
+  }
 
   bindings.mergeCliExtra(merged, cliOptions);
 
@@ -664,6 +735,20 @@ function validateOptions<TConfig extends InferConfig, TCLIOptions extends CLIOpt
       "--suffix",
       "Empty suffix is not allowed",
       "Provide a non-empty suffix value or omit the option",
+    );
+  }
+
+  // Guards a config file or package.json field (not type-checked at runtime,
+  // unlike the CLI flag, which commander itself rejects via `.choices()`).
+  if (
+    config.inlineTypeReferences !== undefined &&
+    config.inlineTypeReferences !== "project" &&
+    config.inlineTypeReferences !== "all"
+  ) {
+    throw new InvalidOptionError(
+      "--inline-type-references",
+      `Invalid value "${config.inlineTypeReferences}"`,
+      'Use "project" or "all"',
     );
   }
 

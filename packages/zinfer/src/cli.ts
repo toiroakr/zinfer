@@ -3,7 +3,7 @@ import { Command, Option } from "commander";
 import { resolve, dirname } from "pathe";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
-import { formatError } from "./core/index.js";
+import { formatError, disambiguateOptionalValueFlag } from "./core/index.js";
 import { runCLI, type CLIOptions } from "./cli-runner.js";
 
 function readPackageVersion(): string {
@@ -41,9 +41,11 @@ program
   .option("--dry-run", "Preview without writing files")
   .option("--with-descriptions", "Include Zod .describe() as TSDoc comments")
   .option("--generate-tests", "Generate vitest type equality tests alongside type files")
-  .option(
-    "--inline-external-types",
-    "Inline a plain type an explicit z.ZodType<T> annotation reaches in another file, instead of referencing it",
+  .addOption(
+    new Option(
+      "--inline-type-references [scope]",
+      'Inline a plain type an explicit z.ZodType<T> annotation reaches, instead of referencing it: "project" (default when the flag is set) follows a reference within this project, "all" also follows one into a dependency package',
+    ).choices(["project", "all"]),
   )
   .addOption(
     new Option(
@@ -61,4 +63,10 @@ program
     }
   });
 
-program.parse();
+// A bare `--inline-type-references` before a positional file argument
+// (e.g. `zinfer --inline-type-references schema.ts`) would otherwise have
+// commander consume `schema.ts` as the flag's optional value instead of
+// treating it as an input file - see disambiguateOptionalValueFlag's doc.
+program.parse(
+  disambiguateOptionalValueFlag(process.argv, "--inline-type-references", ["project", "all"]),
+);

@@ -48,6 +48,34 @@ describe("cli --version", () => {
   }, 60_000);
 });
 
+describe("cli --inline-type-references", () => {
+  it("rejects a scope value commander itself doesn't recognize (--flag=value form)", () => {
+    expect(() =>
+      execFileSync(
+        execPath,
+        [jitiCliPath, cliPath, "schema.ts", "--inline-type-references=everything"],
+        { encoding: "utf-8", timeout: 60_000, stdio: "pipe" },
+      ),
+    ).toThrowError(/Allowed choices are project, all/);
+  }, 60_000);
+
+  it("does not swallow a following positional file as the scope value in the space-separated form", () => {
+    // Without disambiguateOptionalValueFlag, commander would treat
+    // "schema.ts" as this option's optional value (since it doesn't look
+    // like another option) and reject it via .choices() instead of
+    // resolving no files matched - `--inline-type-references schema.ts`
+    // has to behave like a bare flag followed by a file argument, the same
+    // as if `--inline-type-references` weren't there at all.
+    expect(() =>
+      execFileSync(execPath, [jitiCliPath, cliPath, "--inline-type-references", "schema.ts"], {
+        encoding: "utf-8",
+        timeout: 60_000,
+        stdio: "pipe",
+      }),
+    ).toThrowError(/No files matched/);
+  }, 60_000);
+});
+
 describe("runCLI", () => {
   let workDir: string | undefined;
   const originalCwd = process.cwd();
@@ -78,6 +106,36 @@ describe("runCLI", () => {
     const output = readFileSync(join(workDir, "schema.types.ts"), "utf-8");
     expect(output).toContain("export type UserInput");
     expect(output).toContain("id: string");
+  });
+
+  it("replaces a cross-file plain-type reference with its own structure when --inline-type-references is set with no value", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(join(workDir, "model.ts"), "export type Model = { name: string };\n");
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      'import { z } from "zod";\n' +
+        'import type { Model } from "./model";\n\n' +
+        "export const UserSchema: z.ZodType<Model, Model> = z.any();\n",
+    );
+    process.chdir(workDir);
+
+    // commander sets `inlineTypeReferences` to `true` (not a scope string)
+    // when `--inline-type-references` is passed with no value - runCLI has
+    // to normalize that to `"project"` the same way the real CLI does.
+    await runCLI(["schema.ts"], {
+      outDir: workDir,
+      suffix: "Schema",
+      inlineTypeReferences: true,
+    });
+
+    const output = readFileSync(join(workDir, "schema.types.ts"), "utf-8");
+    expect(output).toContain("name: string");
+    expect(output).not.toContain("import(");
   });
 
   it("rebases import() paths when outDir is an absolute path through a symlinked directory", async () => {
@@ -487,6 +545,26 @@ export const CoordWrapperSchema = z
     process.chdir(workDir);
 
     await expect(runCLI([], {})).rejects.toThrow("--brand-strategy");
+  });
+
+  it("rejects an inlineTypeReferences value that isn't project or all (e.g. set via a config file)", async () => {
+    workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      'import { z } from "zod";\n\nexport const UserSchema = z.object({ id: z.string() });\n',
+    );
+    writeFileSync(
+      join(workDir, "zinfer.config.mjs"),
+      'export default { include: ["schema.ts"], outDir: ".", inlineTypeReferences: "everything" };\n',
+    );
+    process.chdir(workDir);
+
+    await expect(runCLI([], {})).rejects.toThrow("--inline-type-references");
   });
 
   it("emits a self-contained unique symbol marker instead of importing zod when --brand-strategy local-symbol is set", async () => {
