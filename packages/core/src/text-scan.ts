@@ -26,11 +26,10 @@ export function isEscaped(str: string, index: number): boolean {
  *
  * A type parameter's constraint or default can itself carry an arrow
  * function type (`<T extends (x: string) => void>`) - that `=>`'s `>` never
- * opened a matching `<`, so it must not be counted as a close, the same
- * `=>` exclusion `needsParensBeforeSuffix` applies for the same reason.
- * Miscounting it would close the scan early, at the arrow's own `>`, and
- * misjudge whatever follows. A quote inside the type-parameter list (e.g.
- * a literal type argument like `<'a<b>'>`) doesn't confuse the scan either -
+ * opened a matching `<`, so it must not be counted as a close. Miscounting
+ * it would close the scan early, at the arrow's own `>`, and misjudge
+ * whatever follows. A quote inside the type-parameter list (e.g. a literal
+ * type argument like `<'a<b>'>`) doesn't confuse the scan either -
  * depth-counting a `<`/`>` that only appears inside a string literal would
  * otherwise misjudge the balance the same way.
  */

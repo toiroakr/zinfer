@@ -18,9 +18,12 @@ import { SchemaDetector } from "./schema-detector.js";
 import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver, type ImportedSchemaMap } from "./import-resolver.js";
-import { escapeRegExp } from "./regexp.js";
-import { isEscaped } from "./string-scan.js";
-import { isGenericMethodName, replaceBareTypeName } from "@zinfer-monorepo/core";
+import {
+  escapeRegExp,
+  isEscaped,
+  isGenericMethodName,
+  replaceBareTypeName,
+} from "@zinfer-monorepo/core";
 import { resolve, isAbsolute } from "pathe";
 import { realpathSync } from "fs";
 import { logDebugError } from "./logger.js";

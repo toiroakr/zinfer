@@ -20,9 +20,12 @@ import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-refe
 import { ImportResolver } from "./import-resolver.js";
 import { ValibotBindings } from "./valibot-bindings.js";
 import { logDebugError } from "./logger.js";
-import { isEscaped } from "./string-scan.js";
-import { escapeRegExp } from "./regexp.js";
-import { isGenericMethodName, replaceBareTypeName } from "@zinfer-monorepo/core";
+import {
+  escapeRegExp,
+  isEscaped,
+  isGenericMethodName,
+  replaceBareTypeName,
+} from "@zinfer-monorepo/core";
 import type {
   ExtractResult,
   FileExtractResult,
