@@ -1,5 +1,28 @@
 # vinfer
 
+## 0.3.0
+
+### Minor Changes
+
+- 73ab667: **Breaking:** Renamed `--inline-external-types` (and its config/API key `inlineExternalTypes: boolean`) to `--inline-type-references` (`inlineTypeReferences?: "project" | "all"`), and made it a scope instead of a boolean.
+
+  "external" reads as node_modules-only (the opposite of what the flag does - `resolveModuleSourceFile()` never followed a bare package specifier), while the flag's actual subject is the `import("...").Name` reference TypeScript's printer synthesizes for a type invisible from the print location, whether that type lives in this project or a dependency.
+
+  Migration:
+
+  - CLI: replace `--inline-external-types` with `--inline-type-references` (bare, or `--inline-type-references=project`) for the same behavior as before.
+  - Config file / programmatic API: replace `inlineExternalTypes: true` with `inlineTypeReferences: "project"`. `inlineExternalTypes` is no longer read - it is silently ignored, not an error.
+
+  New: `--inline-type-references=all` additionally expands a reference into a plain `type`/`interface`/`enum` declared in a **dependency package**, resolved through TypeScript's own module resolution rather than filesystem probing (a `declare module "..."` ambient module with no backing file is still left as a reference, under either scope). This is what lets a type declared in a devDependency be inlined into the generated output, instead of leaving an `import("some-lib").Foo` reference that only resolves inside this project.
+
+### Patch Changes
+
+- a53b533: Fix a recursive schema (`z.lazy()`/`v.lazy()`) with an explicit `z.ZodType<T>`/`v.GenericSchema<T>` annotation whose `T` is a type imported from another file: the recursion point in the generated declaration printed the annotation's type name verbatim, unqualified and unresolved, instead of the schema's own generated type name.
+
+  TypeScript's printer can't expand the imported type's structure again at its own recursion point - it falls back to the bare identifier, visible in the source file only via its own `import type`. Previously this was only rewritten when the annotation resolved to a type declared in the _same_ file (matching `lazy-schema.ts`'s same-file `JsonValueSchema` case); a cross-file annotation was left untouched, so the generated declaration referenced a name it never imports and failed to type-check standalone.
+
+  Fixes #455
+
 ## 0.2.5
 
 ### Patch Changes
