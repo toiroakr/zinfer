@@ -485,23 +485,35 @@ export class ZodTypeExtractor {
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
       if (explicitType && this.isLocallyDeclaredType(sourceFile, explicitType)) {
-        const escapedTypeName = escapeRegExp(explicitType);
-        const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
-        // When the resolved type is exactly the explicit identifier (as
-        // opposed to appearing inside a larger composite type, e.g. a
-        // recursive union member), rewriting it to `<schema>Input`/`Output`
-        // would produce a circular alias like `type FooInput = FooInput`.
-        // Reference the declaration through its source file instead, so the
-        // generated output doesn't print a bare identifier it never imports.
-        if (input === explicitType) {
-          input = this.qualifyLocalTypeReference(sourceFile, explicitType) ?? input;
-        } else {
-          input = input.replace(typeNamePattern, `${schemaName}Input`);
-        }
-        if (output === explicitType) {
-          output = this.qualifyLocalTypeReference(sourceFile, explicitType) ?? output;
-        } else {
-          output = output.replace(typeNamePattern, `${schemaName}Output`);
+        // Reference the declaration through its own source file when the
+        // resolved type is exactly the explicit identifier (see
+        // rewriteExplicitTypeSelfReference for why).
+        ({ input, output } = this.rewriteExplicitTypeSelfReference(
+          input,
+          output,
+          schemaName,
+          explicitType,
+          () => this.qualifyLocalTypeReference(sourceFile, explicitType) ?? explicitType,
+        ));
+      } else if (explicitType) {
+        // Not locally declared - but a recursive explicit annotation
+        // (z.lazy()) reaching a type imported from another file hits the
+        // same wall the same-file case above does: the printer can't expand
+        // the reference again at its own recursion point, so it falls back
+        // to the bare name - visible here only because of this file's own
+        // `import type`. Left alone, the bare name would carry into the
+        // generated output without anything to import it from. Rewrite it
+        // the same way as a same-file self-reference, to the schema's own
+        // generated type name.
+        const importedRef = this.collectFileLocalTypeReferences(sourceFile).get(explicitType);
+        if (importedRef && importedRef.file !== sourceFile) {
+          ({ input, output } = this.rewriteExplicitTypeSelfReference(
+            input,
+            output,
+            schemaName,
+            explicitType,
+            () => this.referenceFallbackText(importedRef, explicitType),
+          ));
         }
       }
 
@@ -1502,14 +1514,110 @@ export class ZodTypeExtractor {
   }
 
   /**
-   * Checks if a type name is declared in the given source file (as opposed to
-   * a global type). Rewriting an explicit annotation's type name to the
-   * generated `<schema>Input`/`<schema>Output` alias is only safe for
-   * locally declared types - rewriting a global name like `Function`
-   * produces a self-referential alias.
+   * Checks if a type name is declared in the given source file (as opposed
+   * to a global type, or a type merely imported into the file - the caller
+   * checks for that case separately). Gates the same-file self-reference
+   * rewrite below: a global name like `Function` must be left as-is,
+   * since rewriting it to `<schema>Input`/`<schema>Output` would produce a
+   * self-referential alias instead of the explicit annotation it names.
    */
   private isLocallyDeclaredType(sourceFile: SourceFile, typeName: string): boolean {
     return this.getLocalTypeDeclaration(sourceFile, typeName) !== undefined;
+  }
+
+  /**
+   * Rewrites every bare occurrence of `typeName` in an explicit annotation's
+   * resolved `input`/`output` text to the schema's own generated
+   * `<schema>Input`/`<schema>Output` name - the self-reference a recursive
+   * schema's own recursion point needs, whether `typeName` is declared in
+   * this file or merely imported into it (the two callers only differ in
+   * which case applies and how to qualify the degenerate one below).
+   *
+   * When the resolved text is exactly `typeName` itself (not embedded in a
+   * larger composite type, e.g. a recursive union member), rewriting it
+   * this way would produce a circular alias like `type FooInput =
+   * FooInput` instead. `qualifyExact` supplies the non-circular form for
+   * that case - an inline `import("...")` reference to the declaration.
+   */
+  private rewriteExplicitTypeSelfReference(
+    input: string,
+    output: string,
+    schemaName: string,
+    typeName: string,
+    qualifyExact: () => string,
+  ): { input: string; output: string } {
+    return {
+      input:
+        input === typeName
+          ? qualifyExact()
+          : this.replaceBareTypeName(input, typeName, `${schemaName}Input`),
+      output:
+        output === typeName
+          ? qualifyExact()
+          : this.replaceBareTypeName(output, typeName, `${schemaName}Output`),
+    };
+  }
+
+  /**
+   * Rewrites every bare occurrence of `typeName` in `text` to
+   * `replacement` - "bare" meaning a plain type reference, not text that
+   * merely happens to spell the same characters. Skips a quoted string
+   * literal (e.g. a discriminant or literal property value that happens
+   * to match the type's own name), a property key (`name:`/`name?:`), a
+   * method signature's own name (`name(): T`), and a dot-qualified name
+   * (`import("...").typeName` or `Namespace.typeName`, where substituting
+   * only `typeName` would strand the qualifier against the replacement
+   * instead of the declaration it names) - the same syntax positions
+   * `promoteBareTypeReferences` guards below, for the same reason: a
+   * naive word-boundary substitution would otherwise corrupt them instead
+   * of rewriting a reference.
+   */
+  private replaceBareTypeName(text: string, typeName: string, replacement: string): string {
+    let result = "";
+    let quote: string | undefined;
+    let i = 0;
+
+    while (i < text.length) {
+      const char = text[i];
+
+      if (quote) {
+        result += char;
+        if (char === quote && !isEscaped(text, i)) quote = undefined;
+        i++;
+        continue;
+      }
+
+      if (char === '"' || char === "'" || char === "`") {
+        quote = char;
+        result += char;
+        i++;
+        continue;
+      }
+
+      if (/[A-Za-z_$]/.test(char)) {
+        let end = i + 1;
+        while (end < text.length && /[A-Za-z0-9_$]/.test(text[end])) end++;
+        const word = text.slice(i, end);
+
+        const precededByDot = i > 0 && text[i - 1] === ".";
+        const nextChar = text[end];
+        const isPropertyKey = nextChar === ":" || (nextChar === "?" && text[end + 1] === ":");
+        const isMethodName =
+          nextChar === "(" || (nextChar === "<" && this.isGenericMethodName(text, end));
+
+        result +=
+          word === typeName && !precededByDot && !isPropertyKey && !isMethodName
+            ? replacement
+            : word;
+        i = end;
+        continue;
+      }
+
+      result += char;
+      i++;
+    }
+
+    return result;
   }
 
   /**

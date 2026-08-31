@@ -687,10 +687,37 @@ export class ValibotTypeExtractor {
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
       if (explicitType && this.isLocallyDeclaredType(sourceFile, explicitType)) {
-        const escapedTypeName = escapeRegExp(explicitType);
-        const typeNamePattern = new RegExp(`\\b${escapedTypeName}\\b`, "g");
-        input = input.replace(typeNamePattern, `${schemaName}Input`);
-        output = output.replace(typeNamePattern, `${schemaName}Output`);
+        input = this.replaceBareTypeName(input, explicitType, `${schemaName}Input`);
+        output = this.replaceBareTypeName(output, explicitType, `${schemaName}Output`);
+      } else if (explicitType) {
+        // Not locally declared - but a recursive explicit annotation
+        // (v.lazy()) reaching a type imported from another file hits the
+        // same wall the same-file case above does: the printer can't expand
+        // the reference again at its own recursion point, so it falls back
+        // to the bare name - visible here only because of this file's own
+        // import. Left alone, the bare name would carry into the generated
+        // output without anything to import it from. Rewrite it the same
+        // way as a same-file self-reference, to the schema's own generated
+        // type name.
+        const importedRef = this.collectFileLocalTypeReferences(sourceFile).get(explicitType);
+        if (importedRef && importedRef.file !== sourceFile) {
+          // When the resolved type is exactly the explicit identifier (as
+          // opposed to appearing inside a larger composite type, e.g. a
+          // recursive union member), rewriting it to `<schema>Input`/`Output`
+          // would produce a circular alias like `type FooInput = FooInput`.
+          // Reference it through the same `import("...")` fallback the
+          // cycle-detection path already uses for this name instead.
+          if (input === explicitType) {
+            input = this.referenceFallbackText(importedRef, explicitType);
+          } else {
+            input = this.replaceBareTypeName(input, explicitType, `${schemaName}Input`);
+          }
+          if (output === explicitType) {
+            output = this.referenceFallbackText(importedRef, explicitType);
+          } else {
+            output = this.replaceBareTypeName(output, explicitType, `${schemaName}Output`);
+          }
+        }
       }
 
       resolvingSchemas.delete(schemaName);
@@ -1449,11 +1476,13 @@ export class ValibotTypeExtractor {
   /**
    * Checks whether an explicit annotation names a type declared in the same file.
    *
-   * Only such a type is rewritten to the generated type name: a recursive schema
-   * annotated `v.GenericSchema<Category>` prints as `Category`, which the
-   * generated file has to spell as `CategoryInput` / `CategoryOutput`. A global
-   * type (`v.GenericSchema<Function>`) must be left alone - rewriting it would
-   * turn the declaration into a self-reference.
+   * A recursive schema annotated `v.GenericSchema<Category>` prints as
+   * `Category` at its own recursion point, which the generated file has to
+   * spell as `CategoryInput` / `CategoryOutput` instead - whether `Category`
+   * is declared here or merely imported into this file (the caller checks
+   * for that case separately). A global type (`v.GenericSchema<Function>`)
+   * must be left alone either way - rewriting it would turn the declaration
+   * into a self-reference.
    */
   private isLocallyDeclaredType(sourceFile: SourceFile, typeName: string): boolean {
     if (!this.isValidIdentifier(typeName)) return false;
@@ -1461,5 +1490,66 @@ export class ValibotTypeExtractor {
       sourceFile.getTypeAlias(typeName) !== undefined ||
       sourceFile.getInterface(typeName) !== undefined
     );
+  }
+
+  /**
+   * Rewrites every bare occurrence of `typeName` in `text` to
+   * `replacement` - "bare" meaning a plain type reference, not text that
+   * merely happens to spell the same characters. Skips a quoted string
+   * literal (e.g. a discriminant or literal property value that happens
+   * to match the type's own name), a property key (`name:`/`name?:`), a
+   * method signature's own name (`name(): T`), and a dot-qualified name
+   * (`import("...").typeName` or `Namespace.typeName`, where substituting
+   * only `typeName` would strand the qualifier against the replacement
+   * instead of the declaration it names) - the same syntax positions
+   * `promoteBareTypeReferences` guards below, for the same reason: a
+   * naive word-boundary substitution would otherwise corrupt them instead
+   * of rewriting a reference.
+   */
+  private replaceBareTypeName(text: string, typeName: string, replacement: string): string {
+    let result = "";
+    let quote: string | undefined;
+    let i = 0;
+
+    while (i < text.length) {
+      const char = text[i];
+
+      if (quote) {
+        result += char;
+        if (char === quote && !isEscaped(text, i)) quote = undefined;
+        i++;
+        continue;
+      }
+
+      if (char === '"' || char === "'" || char === "`") {
+        quote = char;
+        result += char;
+        i++;
+        continue;
+      }
+
+      if (/[A-Za-z_$]/.test(char)) {
+        let end = i + 1;
+        while (end < text.length && /[A-Za-z0-9_$]/.test(text[end])) end++;
+        const word = text.slice(i, end);
+
+        const precededByDot = i > 0 && text[i - 1] === ".";
+        const nextChar = text[end];
+        const isPropertyKey = nextChar === ":" || (nextChar === "?" && text[end + 1] === ":");
+        const isMethodName = nextChar === "(" || isGenericMethodSignature(text, end);
+
+        result +=
+          word === typeName && !precededByDot && !isPropertyKey && !isMethodName
+            ? replacement
+            : word;
+        i = end;
+        continue;
+      }
+
+      result += char;
+      i++;
+    }
+
+    return result;
   }
 }

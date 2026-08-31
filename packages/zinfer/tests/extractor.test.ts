@@ -34,6 +34,7 @@ const ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS = [
   "degenerate-explicit-type/default-export-explicit-type-schema.ts",
   "degenerate-explicit-type/interface-explicit-type-schema.ts",
   "degenerate-explicit-type/nonexported-explicit-type-schema.ts",
+  "degenerate-explicit-type-cross-file/schema.ts",
   "mixed-union-reference-common.ts",
   "mixed-union-reference-schema.ts",
   "inline-external-types/chain/schema.ts",
@@ -647,6 +648,151 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     extractor,
     "degenerate-explicit-type/aliased-export-explicit-type-schema",
     "should generate a type-checkable inline import for an explicit annotation naming a renamed-export local class",
+  );
+
+  describe("lazy-cross-file-explicit-type/schema.ts", () => {
+    // #455: a z.lazy() recursive schema whose explicit z.ZodType<T> reaches
+    // a type declared in another file. At the recursion point TypeScript's
+    // printer can't expand NodeOutput's structure again, so it falls back to
+    // the bare identifier "NodeOutput" - visible only via this file's own
+    // `import type`. Left as-is, the generated declaration references a name
+    // it never imports and doesn't type-check standalone; it should be
+    // rewritten to the schema's own self-reference, the same way the
+    // same-file case (lazy-schema.ts's JsonValueSchema) already is.
+    it.skipIf(!isZodV4)(
+      "should rewrite a cross-file recursion point to the schema's own generated type name instead of a bare unimported identifier",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "lazy-cross-file-explicit-type/schema.ts"),
+        );
+        const result = results.find((r) => r.schemaName === "NodeSchema");
+
+        expect(result?.input).not.toContain("NodeOutput");
+        expect(result?.output).not.toContain("NodeOutput");
+        expect(result?.input).toBe(
+          "{ value: string; children?: Record<string, NodeSchemaInput>; }",
+        );
+        expect(result?.output).toBe(
+          "{ value: string; children?: Record<string, NodeSchemaOutput>; }",
+        );
+      },
+    );
+  });
+
+  createSchemaTest(
+    extractor,
+    "lazy-cross-file-explicit-type/schema",
+    "should generate a type-checkable recursive declaration when the explicit annotation reaches another file",
+    { requiresZodV4: true },
+  );
+
+  describe("dollar-identifier-explicit-type/schema.ts", () => {
+    // `\b` is defined in terms of `\w` ([A-Za-z0-9_]), which excludes `$`
+    // (legal at the start of a JS/TS identifier), so a naive `\b`-bounded
+    // pattern never matches a type named `$NodeOutput` at all - the
+    // rewrite below would silently no-op and leave the bare, unimported
+    // `$NodeOutput` in the output.
+    it.skipIf(!isZodV4)(
+      "should rewrite a cross-file recursion point named with a leading $ instead of silently leaving it unmatched",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "dollar-identifier-explicit-type/schema.ts"),
+        );
+        const result = results.find((r) => r.schemaName === "NodeSchema");
+
+        expect(result?.input).not.toContain("$NodeOutput");
+        expect(result?.output).not.toContain("$NodeOutput");
+        expect(result?.input).toBe(
+          "{ value: string; children?: Record<string, NodeSchemaInput>; }",
+        );
+        expect(result?.output).toBe(
+          "{ value: string; children?: Record<string, NodeSchemaOutput>; }",
+        );
+      },
+    );
+  });
+
+  describe("literal-matching-type-name/schema.ts", () => {
+    // A CodeRabbit finding on #505: the recursion-point rewrite matched
+    // bare occurrences of the type name with a naive word-boundary
+    // pattern, which also matched a string literal spelling the same
+    // characters (e.g. a discriminant tag) - here "NodeOutput" is both
+    // the type's own name and a literal value one of its fields actually
+    // accepts at runtime. Only the bare type reference (the recursion
+    // point) should be rewritten, not the literal.
+    it.skipIf(!isZodV4)(
+      "should rewrite the recursion point but leave a string literal spelling the same characters as the type name untouched",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "literal-matching-type-name/schema.ts"),
+        );
+        const result = results.find((r) => r.schemaName === "NodeSchema");
+
+        expect(result?.input).toBe('{ kind: "NodeOutput"; child?: NodeSchemaInput; }');
+        expect(result?.output).toBe('{ kind: "NodeOutput"; child?: NodeSchemaOutput; }');
+      },
+    );
+  });
+
+  describe("qualified-reference-same-name/schema.ts", () => {
+    // A Copilot finding on #505: with --inline-external-types, expanding
+    // MiddleOutput's own structure can hit a cycle back to NodeOutput one
+    // level deeper than the schema's own recursion point, so that
+    // occurrence is already qualified as `import("./types").NodeOutput` by
+    // the existing cycle-detection fallback (inlineExternalTypeReferences/
+    // promoteBareTypeReferences) - producing raw text that mixes a bare
+    // occurrence (the schema's own recursion point) with a dot-qualified
+    // one for the same name. The self-reference rewrite must leave a
+    // dot-qualified occurrence alone - rewriting only the identifier after
+    // the dot would strand the `import("...").` prefix against a name the
+    // module doesn't export. Only asserts the invariant (never rewrite
+    // after a dot), not the exact nesting depth this reaches - how deep
+    // MiddleOutput's own structure gets inlined before hitting a cycle
+    // varies across TypeScript versions.
+    it.skipIf(!isZodV4)(
+      "should not rewrite the identifier in an already-qualified import(...) reference",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "qualified-reference-same-name/schema.ts"),
+          { inlineExternalTypes: true },
+        );
+        const result = results.find((r) => r.schemaName === "NodeSchema");
+
+        expect(result?.input).toContain("child?: NodeSchemaInput");
+        expect(result?.input).not.toMatch(/\.NodeSchemaInput\b/);
+        expect(result?.input).not.toMatch(/\.NodeSchemaOutput\b/);
+      },
+    );
+  });
+
+  describe("degenerate-explicit-type-cross-file/schema.ts", () => {
+    // The non-recursive cross-file counterpart to the degenerate-explicit-type
+    // fixtures above: an explicit annotation that resolves to exactly a type
+    // imported from another file (not embedded in a larger composite type).
+    // Rewriting it to `FooInput`/`FooOutput` would produce a circular alias;
+    // it should be qualified through an inline import(...) instead, the same
+    // way the same-file case already is.
+    it("should qualify an explicit annotation naming a class imported from another file through an inline import instead of a bare identifier", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type-cross-file/schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "FooSchema");
+
+      const expected = /^import\(".*degenerate-explicit-type-cross-file\/other"\)\.ImportedClass$/;
+      expect(result?.input).toMatch(expected);
+      expect(result?.output).toMatch(expected);
+
+      const output = generateDeclarationFile(results, mapName);
+      expect(output).not.toMatch(/FooInput\s*=\s*FooInput/);
+      expect(output).not.toMatch(/FooOutput\s*=\s*FooOutput/);
+      expect(output).not.toMatch(/=\s*ImportedClass;/);
+    });
+  });
+
+  createSchemaTest(
+    extractor,
+    "degenerate-explicit-type-cross-file/schema",
+    "should generate a type-checkable inline import for an explicit annotation naming a class imported from another file",
   );
 
   describe("rest-tuple-schema.ts", () => {
