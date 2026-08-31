@@ -82,19 +82,6 @@ interface LocalTypeReference {
 }
 
 /**
- * Matches the empty position just before/after a run of identifier
- * characters - `\b` (based on `\w`, `[A-Za-z0-9_]`) excludes `$`, legal at
- * the start of a JS/TS identifier, so a type named `$NodeOutput` would
- * never match under `\b` and silently fail to get rewritten. Mirrors
- * `NOT_BEFORE_IDENTIFIER`/`NOT_AFTER_IDENTIFIER` in vinfer's
- * `type-printer.ts` (a separate module/package, so duplicated rather than
- * shared), without that module's typeof-operand/method-name exclusions,
- * which don't apply to this file's plain self-reference rewrite.
- */
-const NOT_BEFORE_IDENTIFIER = "(?<![\\p{ID_Continue}$])";
-const NOT_AFTER_IDENTIFIER = "(?![\\p{ID_Continue}$])";
-
-/**
  * Extracts input and output types from Zod schemas using TypeScript Compiler API.
  */
 export class ZodTypeExtractor {
@@ -1512,19 +1499,71 @@ export class ZodTypeExtractor {
     typeName: string,
     qualifyExact: () => string,
   ): { input: string; output: string } {
-    const escapedTypeName = escapeRegExp(typeName);
-    const typeNamePattern = new RegExp(
-      `${NOT_BEFORE_IDENTIFIER}${escapedTypeName}${NOT_AFTER_IDENTIFIER}`,
-      "gu",
-    );
     return {
       input:
-        input === typeName ? qualifyExact() : input.replace(typeNamePattern, `${schemaName}Input`),
+        input === typeName
+          ? qualifyExact()
+          : this.replaceBareTypeName(input, typeName, `${schemaName}Input`),
       output:
         output === typeName
           ? qualifyExact()
-          : output.replace(typeNamePattern, `${schemaName}Output`),
+          : this.replaceBareTypeName(output, typeName, `${schemaName}Output`),
     };
+  }
+
+  /**
+   * Rewrites every bare occurrence of `typeName` in `text` to
+   * `replacement` - "bare" meaning a plain type reference, not text that
+   * merely happens to spell the same characters. Skips a quoted string
+   * literal (e.g. a discriminant or literal property value that happens
+   * to match the type's own name), a property key (`name:`/`name?:`),
+   * and a method signature's own name (`name(): T`) - the same syntax
+   * positions `promoteBareTypeReferences` guards below, for the same
+   * reason: a naive word-boundary substitution would otherwise corrupt
+   * them instead of rewriting a reference.
+   */
+  private replaceBareTypeName(text: string, typeName: string, replacement: string): string {
+    let result = "";
+    let quote: string | undefined;
+    let i = 0;
+
+    while (i < text.length) {
+      const char = text[i];
+
+      if (quote) {
+        result += char;
+        if (char === quote && !isEscaped(text, i)) quote = undefined;
+        i++;
+        continue;
+      }
+
+      if (char === '"' || char === "'" || char === "`") {
+        quote = char;
+        result += char;
+        i++;
+        continue;
+      }
+
+      if (/[A-Za-z_$]/.test(char)) {
+        let end = i + 1;
+        while (end < text.length && /[A-Za-z0-9_$]/.test(text[end])) end++;
+        const word = text.slice(i, end);
+
+        const nextChar = text[end];
+        const isPropertyKey = nextChar === ":" || (nextChar === "?" && text[end + 1] === ":");
+        const isMethodName =
+          nextChar === "(" || (nextChar === "<" && this.isGenericMethodName(text, end));
+
+        result += word === typeName && !isPropertyKey && !isMethodName ? replacement : word;
+        i = end;
+        continue;
+      }
+
+      result += char;
+      i++;
+    }
+
+    return result;
   }
 
   /**

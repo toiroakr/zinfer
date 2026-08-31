@@ -711,6 +711,28 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     );
   });
 
+  describe("literal-matching-type-name/schema.ts", () => {
+    // A CodeRabbit finding on #505: the recursion-point rewrite matched
+    // bare occurrences of the type name with a naive word-boundary
+    // pattern, which also matched a string literal spelling the same
+    // characters (e.g. a discriminant tag) - here "NodeOutput" is both
+    // the type's own name and a literal value one of its fields actually
+    // accepts at runtime. Only the bare type reference (the recursion
+    // point) should be rewritten, not the literal.
+    it.skipIf(!isZodV4)(
+      "should rewrite the recursion point but leave a string literal spelling the same characters as the type name untouched",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "literal-matching-type-name/schema.ts"),
+        );
+        const result = results.find((r) => r.schemaName === "NodeSchema");
+
+        expect(result?.input).toBe('{ kind: "NodeOutput"; child?: NodeSchemaInput; }');
+        expect(result?.output).toBe('{ kind: "NodeOutput"; child?: NodeSchemaOutput; }');
+      },
+    );
+  });
+
   describe("degenerate-explicit-type-cross-file/schema.ts", () => {
     // The non-recursive cross-file counterpart to the degenerate-explicit-type
     // fixtures above: an explicit annotation that resolves to exactly a type

@@ -83,19 +83,6 @@ interface LocalTypeReference {
 }
 
 /**
- * Matches the empty position just before/after a run of identifier
- * characters - `\b` (based on `\w`, `[A-Za-z0-9_]`) excludes `$`, legal at
- * the start of a JS/TS identifier, so a type named `$NodeOutput` would
- * never match under `\b` and silently fail to get rewritten. Mirrors
- * `NOT_BEFORE_IDENTIFIER`/`NOT_AFTER_IDENTIFIER` in this package's own
- * `type-printer.ts`, without that module's typeof-operand/method-name
- * exclusions, which don't apply to this file's plain explicit-type
- * self-reference rewrite.
- */
-const NOT_BEFORE_IDENTIFIER = "(?<![\\p{ID_Continue}$])";
-const NOT_AFTER_IDENTIFIER = "(?![\\p{ID_Continue}$])";
-
-/**
  * Collapses a `| undefined` TypeScript's printer spelled more than once.
  *
  * A homomorphic mapped type - which is what `__Normalize` is - copies an
@@ -699,13 +686,8 @@ export class ValibotTypeExtractor {
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
       if (explicitType && this.isLocallyDeclaredType(sourceFile, explicitType)) {
-        const escapedTypeName = escapeRegExp(explicitType);
-        const typeNamePattern = new RegExp(
-          `${NOT_BEFORE_IDENTIFIER}${escapedTypeName}${NOT_AFTER_IDENTIFIER}`,
-          "gu",
-        );
-        input = input.replace(typeNamePattern, `${schemaName}Input`);
-        output = output.replace(typeNamePattern, `${schemaName}Output`);
+        input = this.replaceBareTypeName(input, explicitType, `${schemaName}Input`);
+        output = this.replaceBareTypeName(output, explicitType, `${schemaName}Output`);
       } else if (explicitType) {
         // Not locally declared - but a recursive explicit annotation
         // (v.lazy()) reaching a type imported from another file hits the
@@ -718,11 +700,6 @@ export class ValibotTypeExtractor {
         // type name.
         const importedRef = this.collectFileLocalTypeReferences(sourceFile).get(explicitType);
         if (importedRef && importedRef.file !== sourceFile) {
-          const escapedTypeName = escapeRegExp(explicitType);
-          const typeNamePattern = new RegExp(
-            `${NOT_BEFORE_IDENTIFIER}${escapedTypeName}${NOT_AFTER_IDENTIFIER}`,
-            "gu",
-          );
           // When the resolved type is exactly the explicit identifier (as
           // opposed to appearing inside a larger composite type, e.g. a
           // recursive union member), rewriting it to `<schema>Input`/`Output`
@@ -732,12 +709,12 @@ export class ValibotTypeExtractor {
           if (input === explicitType) {
             input = this.referenceFallbackText(importedRef, explicitType);
           } else {
-            input = input.replace(typeNamePattern, `${schemaName}Input`);
+            input = this.replaceBareTypeName(input, explicitType, `${schemaName}Input`);
           }
           if (output === explicitType) {
             output = this.referenceFallbackText(importedRef, explicitType);
           } else {
-            output = output.replace(typeNamePattern, `${schemaName}Output`);
+            output = this.replaceBareTypeName(output, explicitType, `${schemaName}Output`);
           }
         }
       }
@@ -1466,5 +1443,59 @@ export class ValibotTypeExtractor {
       sourceFile.getTypeAlias(typeName) !== undefined ||
       sourceFile.getInterface(typeName) !== undefined
     );
+  }
+
+  /**
+   * Rewrites every bare occurrence of `typeName` in `text` to
+   * `replacement` - "bare" meaning a plain type reference, not text that
+   * merely happens to spell the same characters. Skips a quoted string
+   * literal (e.g. a discriminant or literal property value that happens
+   * to match the type's own name), a property key (`name:`/`name?:`),
+   * and a method signature's own name (`name(): T`) - the same syntax
+   * positions `promoteBareTypeReferences` guards below, for the same
+   * reason: a naive word-boundary substitution would otherwise corrupt
+   * them instead of rewriting a reference.
+   */
+  private replaceBareTypeName(text: string, typeName: string, replacement: string): string {
+    let result = "";
+    let quote: string | undefined;
+    let i = 0;
+
+    while (i < text.length) {
+      const char = text[i];
+
+      if (quote) {
+        result += char;
+        if (char === quote && !isEscaped(text, i)) quote = undefined;
+        i++;
+        continue;
+      }
+
+      if (char === '"' || char === "'" || char === "`") {
+        quote = char;
+        result += char;
+        i++;
+        continue;
+      }
+
+      if (/[A-Za-z_$]/.test(char)) {
+        let end = i + 1;
+        while (end < text.length && /[A-Za-z0-9_$]/.test(text[end])) end++;
+        const word = text.slice(i, end);
+
+        const nextChar = text[end];
+        const isPropertyKey = nextChar === ":" || (nextChar === "?" && text[end + 1] === ":");
+        const isMethodName = nextChar === "(" || isGenericMethodSignature(text, end);
+
+        result += word === typeName && !isPropertyKey && !isMethodName ? replacement : word;
+        i = end;
+        continue;
+      }
+
+      result += char;
+      i++;
+    }
+
+    return result;
   }
 }
