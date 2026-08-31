@@ -317,6 +317,93 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("degenerate-explicit-type fixtures", () => {
+    it("should qualify an explicit annotation naming a locally declared class through an inline import instead of a bare identifier", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type/class-explicit-type-schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "FooSchema");
+
+      const expected = /^import\(".*class-explicit-type-schema"\)\.LocalClass$/;
+      expect(result?.input).toMatch(expected);
+      expect(result?.output).toMatch(expected);
+
+      const output = generateDeclarationFile(results, mapName);
+      expect(output).not.toMatch(/FooInput\s*=\s*FooInput/);
+      expect(output).not.toMatch(/FooOutput\s*=\s*FooOutput/);
+      expect(output).not.toMatch(/=\s*LocalClass;/);
+    });
+
+    it("should qualify an explicit annotation naming a locally declared interface through an inline import instead of a bare identifier", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type/interface-explicit-type-schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "BarSchema");
+
+      const expected = /^import\(".*interface-explicit-type-schema"\)\.LocalInterface$/;
+      expect(result?.input).toMatch(expected);
+      expect(result?.output).toMatch(expected);
+
+      const output = generateDeclarationFile(results, mapName);
+      expect(output).not.toMatch(/BarInput\s*=\s*BarInput/);
+      expect(output).not.toMatch(/BarOutput\s*=\s*BarOutput/);
+      expect(output).not.toMatch(/=\s*LocalInterface;/);
+    });
+
+    it("should leave a non-exported locally declared type as a bare identifier (documented limitation)", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type/nonexported-explicit-type-schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "BazSchema");
+
+      expect(result?.input).toBe("LocalNonExportedClass");
+      expect(result?.output).toBe("LocalNonExportedClass");
+    });
+
+    it("should qualify a default-exported local class via its `.default` member, not its local name", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type/default-export-explicit-type-schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "QuxSchema");
+
+      const expected = /^import\(".*default-export-explicit-type-schema"\)\.default$/;
+      expect(result?.input).toMatch(expected);
+      expect(result?.output).toMatch(expected);
+    });
+
+    it("should qualify a renamed-export local class via its external export name, not its local name", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "degenerate-explicit-type/aliased-export-explicit-type-schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "QuuxSchema");
+
+      const expected = /^import\(".*aliased-export-explicit-type-schema"\)\.RenamedClass$/;
+      expect(result?.input).toMatch(expected);
+      expect(result?.output).toMatch(expected);
+    });
+  });
+
+  createSchemaTest(
+    extractor,
+    "degenerate-explicit-type/class-explicit-type-schema",
+    "should generate a type-checkable inline import for an explicit annotation naming a local class",
+  );
+  createSchemaTest(
+    extractor,
+    "degenerate-explicit-type/interface-explicit-type-schema",
+    "should generate a type-checkable inline import for an explicit annotation naming a local interface",
+  );
+  createSchemaTest(
+    extractor,
+    "degenerate-explicit-type/default-export-explicit-type-schema",
+    "should generate a type-checkable inline import for an explicit annotation naming a default-exported local class",
+  );
+  createSchemaTest(
+    extractor,
+    "degenerate-explicit-type/aliased-export-explicit-type-schema",
+    "should generate a type-checkable inline import for an explicit annotation naming a renamed-export local class",
+  );
+
   describe("degenerate-explicit-type-cross-file/schema.ts", () => {
     // The non-recursive counterpart to the case above: an explicit
     // annotation that resolves to exactly a type imported from another file
