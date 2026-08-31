@@ -6,6 +6,7 @@ import {
   type EnumDeclaration,
   type TypeAliasDeclaration,
   type InterfaceDeclaration,
+  type ClassDeclaration,
 } from "ts-morph";
 import { resolve as resolvePath, isAbsolute } from "pathe";
 import { realpathSync } from "fs";
@@ -659,8 +660,16 @@ export class ValibotTypeExtractor {
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
       if (explicitType && this.isLocallyDeclaredType(sourceFile, explicitType)) {
-        input = replaceBareTypeName(input, explicitType, `${schemaName}Input`);
-        output = replaceBareTypeName(output, explicitType, `${schemaName}Output`);
+        // Reference the declaration through its own source file when the
+        // resolved type is exactly the explicit identifier (see
+        // rewriteExplicitTypeSelfReference for why).
+        ({ input, output } = this.rewriteExplicitTypeSelfReference(
+          input,
+          output,
+          schemaName,
+          explicitType,
+          () => this.qualifyLocalTypeReference(sourceFile, explicitType) ?? explicitType,
+        ));
       } else if (explicitType) {
         // Not locally declared - but a recursive explicit annotation
         // (v.lazy()) reaching a type imported from another file hits the
@@ -673,22 +682,13 @@ export class ValibotTypeExtractor {
         // type name.
         const importedRef = this.collectFileLocalTypeReferences(sourceFile).get(explicitType);
         if (importedRef && importedRef.file !== sourceFile) {
-          // When the resolved type is exactly the explicit identifier (as
-          // opposed to appearing inside a larger composite type, e.g. a
-          // recursive union member), rewriting it to `<schema>Input`/`Output`
-          // would produce a circular alias like `type FooInput = FooInput`.
-          // Reference it through the same `import("...")` fallback the
-          // cycle-detection path already uses for this name instead.
-          if (input === explicitType) {
-            input = this.referenceFallbackText(importedRef, explicitType);
-          } else {
-            input = replaceBareTypeName(input, explicitType, `${schemaName}Input`);
-          }
-          if (output === explicitType) {
-            output = this.referenceFallbackText(importedRef, explicitType);
-          } else {
-            output = replaceBareTypeName(output, explicitType, `${schemaName}Output`);
-          }
+          ({ input, output } = this.rewriteExplicitTypeSelfReference(
+            input,
+            output,
+            schemaName,
+            explicitType,
+            () => this.referenceFallbackText(importedRef, explicitType),
+          ));
         }
       }
 
@@ -1446,6 +1446,23 @@ export class ValibotTypeExtractor {
   }
 
   /**
+   * Returns the type alias, interface, or class declaration for `typeName`
+   * in `sourceFile`, or undefined if it isn't declared there (e.g. a global
+   * type like `Function`, or a type merely imported into the file).
+   */
+  private getLocalTypeDeclaration(
+    sourceFile: SourceFile,
+    typeName: string,
+  ): TypeAliasDeclaration | InterfaceDeclaration | ClassDeclaration | undefined {
+    if (!this.isValidIdentifier(typeName)) return undefined;
+    return (
+      sourceFile.getTypeAlias(typeName) ??
+      sourceFile.getInterface(typeName) ??
+      sourceFile.getClass(typeName)
+    );
+  }
+
+  /**
    * Checks whether an explicit annotation names a type declared in the same file.
    *
    * A recursive schema annotated `v.GenericSchema<Category>` prints as
@@ -1457,10 +1474,71 @@ export class ValibotTypeExtractor {
    * into a self-reference.
    */
   private isLocallyDeclaredType(sourceFile: SourceFile, typeName: string): boolean {
-    if (!this.isValidIdentifier(typeName)) return false;
-    return (
-      sourceFile.getTypeAlias(typeName) !== undefined ||
-      sourceFile.getInterface(typeName) !== undefined
-    );
+    return this.getLocalTypeDeclaration(sourceFile, typeName) !== undefined;
+  }
+
+  /**
+   * Rewrites every bare occurrence of `typeName` in an explicit annotation's
+   * resolved `input`/`output` text to the schema's own generated
+   * `<schema>Input`/`<schema>Output` name - the self-reference a recursive
+   * schema's own recursion point needs, whether `typeName` is declared in
+   * this file or merely imported into it (the two callers only differ in
+   * which case applies and how to qualify the degenerate one below).
+   *
+   * When the resolved text is exactly `typeName` itself (not embedded in a
+   * larger composite type, e.g. a recursive union member), rewriting it
+   * this way would produce a circular alias like `type FooInput =
+   * FooInput` instead. `qualifyExact` supplies the non-circular form for
+   * that case - an inline `import("...")` reference to the declaration.
+   */
+  private rewriteExplicitTypeSelfReference(
+    input: string,
+    output: string,
+    schemaName: string,
+    typeName: string,
+    qualifyExact: () => string,
+  ): { input: string; output: string } {
+    return {
+      input:
+        input === typeName
+          ? qualifyExact()
+          : replaceBareTypeName(input, typeName, `${schemaName}Input`),
+      output:
+        output === typeName
+          ? qualifyExact()
+          : replaceBareTypeName(output, typeName, `${schemaName}Output`),
+    };
+  }
+
+  /**
+   * When an explicit annotation resolves to exactly a locally declared
+   * class/interface/type (not a composite type it merely appears inside),
+   * rewriting it to `<schema>Input`/`<schema>Output` would produce a
+   * circular alias like `type FooInput = FooInput`. Printing the bare
+   * identifier instead is also wrong, since the generated declaration file
+   * never imports it. Reference it via an inline `import("...")` type
+   * instead - this also sidesteps name collisions in `--outFile` mode,
+   * where multiple source files are combined into one output and a name
+   * like `LocalClass` could collide across files.
+   *
+   * The member accessed on the `import(...)` must be the name the module
+   * actually exports the declaration under, which isn't always `typeName`:
+   * a default export (`export default class LocalClass {}`) is reachable
+   * only as `.default`, and a renamed export (`export { LocalClass as Foo
+   * }`) only as `.Foo`. `getExportedDeclarations()` is keyed by that
+   * external name, so find the key whose declarations include this one.
+   * Returns null (falling back to the bare, still-broken identifier) when
+   * the declaration isn't exported under any name.
+   */
+  private qualifyLocalTypeReference(sourceFile: SourceFile, typeName: string): string | null {
+    const declaration = this.getLocalTypeDeclaration(sourceFile, typeName);
+    if (!declaration) return null;
+
+    const exportedName = [...sourceFile.getExportedDeclarations()].find(([, declarations]) =>
+      declarations.includes(declaration),
+    )?.[0];
+    if (!exportedName) return null;
+
+    return `import("${modulePathFor(sourceFile)}").${exportedName}`;
   }
 }
