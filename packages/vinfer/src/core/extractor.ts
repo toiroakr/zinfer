@@ -20,8 +20,12 @@ import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-refe
 import { ImportResolver } from "./import-resolver.js";
 import { ValibotBindings } from "./valibot-bindings.js";
 import { logDebugError } from "./logger.js";
-import { isEscaped } from "./string-scan.js";
-import { escapeRegExp } from "./regexp.js";
+import {
+  escapeRegExp,
+  isEscaped,
+  isGenericMethodName,
+  replaceBareTypeName,
+} from "@zinfer-monorepo/core";
 import type {
   ExtractResult,
   FileExtractResult,
@@ -264,38 +268,6 @@ function needsParensBeforeSuffix(typeText: string): boolean {
   }
 
   return false;
-}
-
-/**
- * Whether `text[afterIdentifier]` begins a generic method signature's own
- * type parameter list (`<T>(`), not a generic type instantiation (`<Args>`
- * with no method call following). Scans a balanced `<...>` run and checks
- * whether `(` immediately follows the close.
- *
- * A type parameter's constraint or default can itself carry an arrow
- * function type (`<T extends (x: string) => void>`) - that `=>`'s `>` never
- * opened a matching `<`, so it must not be counted as a close, the same
- * `=>` exclusion `needsParensBeforeSuffix` applies for the same
- * reason. Miscounting it would close the scan early, at the arrow's own
- * `>`, and misjudge whatever follows.
- */
-function isGenericMethodSignature(text: string, afterIdentifier: number): boolean {
-  if (text[afterIdentifier] !== "<") return false;
-
-  let depth = 0;
-  let i = afterIdentifier;
-  for (; i < text.length; i++) {
-    if (text[i] === "<") depth++;
-    else if (text[i] === ">" && text[i - 1] !== "=") {
-      depth--;
-      if (depth === 0) {
-        i++;
-        break;
-      }
-    }
-  }
-
-  return text[i] === "(";
 }
 
 /**
@@ -687,8 +659,8 @@ export class ValibotTypeExtractor {
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;
       if (explicitType && this.isLocallyDeclaredType(sourceFile, explicitType)) {
-        input = this.replaceBareTypeName(input, explicitType, `${schemaName}Input`);
-        output = this.replaceBareTypeName(output, explicitType, `${schemaName}Output`);
+        input = replaceBareTypeName(input, explicitType, `${schemaName}Input`);
+        output = replaceBareTypeName(output, explicitType, `${schemaName}Output`);
       } else if (explicitType) {
         // Not locally declared - but a recursive explicit annotation
         // (v.lazy()) reaching a type imported from another file hits the
@@ -710,12 +682,12 @@ export class ValibotTypeExtractor {
           if (input === explicitType) {
             input = this.referenceFallbackText(importedRef, explicitType);
           } else {
-            input = this.replaceBareTypeName(input, explicitType, `${schemaName}Input`);
+            input = replaceBareTypeName(input, explicitType, `${schemaName}Input`);
           }
           if (output === explicitType) {
             output = this.referenceFallbackText(importedRef, explicitType);
           } else {
-            output = this.replaceBareTypeName(output, explicitType, `${schemaName}Output`);
+            output = replaceBareTypeName(output, explicitType, `${schemaName}Output`);
           }
         }
       }
@@ -1222,7 +1194,7 @@ export class ValibotTypeExtractor {
         // `isQualifiedOrGeneric` instead and would strand `<T>(): T` after
         // an `import("...").Name` substitution - invalid syntax, since a
         // method signature's name can never be a qualified expression.
-        const isMethodName = nextChar === "(" || isGenericMethodSignature(text, end);
+        const isMethodName = nextChar === "(" || isGenericMethodName(text, end);
         // `Name.Member` (a qualified name, e.g. an enum member) or
         // `Name<Args>` (a generic instantiation): substituting only `Name`
         // would strand `.Member`/`<Args>` against whatever replaces it.
@@ -1490,66 +1462,5 @@ export class ValibotTypeExtractor {
       sourceFile.getTypeAlias(typeName) !== undefined ||
       sourceFile.getInterface(typeName) !== undefined
     );
-  }
-
-  /**
-   * Rewrites every bare occurrence of `typeName` in `text` to
-   * `replacement` - "bare" meaning a plain type reference, not text that
-   * merely happens to spell the same characters. Skips a quoted string
-   * literal (e.g. a discriminant or literal property value that happens
-   * to match the type's own name), a property key (`name:`/`name?:`), a
-   * method signature's own name (`name(): T`), and a dot-qualified name
-   * (`import("...").typeName` or `Namespace.typeName`, where substituting
-   * only `typeName` would strand the qualifier against the replacement
-   * instead of the declaration it names) - the same syntax positions
-   * `promoteBareTypeReferences` guards below, for the same reason: a
-   * naive word-boundary substitution would otherwise corrupt them instead
-   * of rewriting a reference.
-   */
-  private replaceBareTypeName(text: string, typeName: string, replacement: string): string {
-    let result = "";
-    let quote: string | undefined;
-    let i = 0;
-
-    while (i < text.length) {
-      const char = text[i];
-
-      if (quote) {
-        result += char;
-        if (char === quote && !isEscaped(text, i)) quote = undefined;
-        i++;
-        continue;
-      }
-
-      if (char === '"' || char === "'" || char === "`") {
-        quote = char;
-        result += char;
-        i++;
-        continue;
-      }
-
-      if (/[A-Za-z_$]/.test(char)) {
-        let end = i + 1;
-        while (end < text.length && /[A-Za-z0-9_$]/.test(text[end])) end++;
-        const word = text.slice(i, end);
-
-        const precededByDot = i > 0 && text[i - 1] === ".";
-        const nextChar = text[end];
-        const isPropertyKey = nextChar === ":" || (nextChar === "?" && text[end + 1] === ":");
-        const isMethodName = nextChar === "(" || isGenericMethodSignature(text, end);
-
-        result +=
-          word === typeName && !precededByDot && !isPropertyKey && !isMethodName
-            ? replacement
-            : word;
-        i = end;
-        continue;
-      }
-
-      result += char;
-      i++;
-    }
-
-    return result;
   }
 }

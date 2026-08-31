@@ -18,8 +18,12 @@ import { SchemaDetector } from "./schema-detector.js";
 import { GetterResolver } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver, type ImportedSchemaMap } from "./import-resolver.js";
-import { escapeRegExp } from "./regexp.js";
-import { isEscaped } from "./string-scan.js";
+import {
+  escapeRegExp,
+  isEscaped,
+  isGenericMethodName,
+  replaceBareTypeName,
+} from "@zinfer-monorepo/core";
 import { resolve, isAbsolute } from "pathe";
 import { realpathSync } from "fs";
 import { logDebugError } from "./logger.js";
@@ -1070,8 +1074,7 @@ export class ZodTypeExtractor {
         // otherwise directly follows a bare type reference this scan
         // produces, and neither does a `<...>` type-parameter list that
         // itself is immediately followed by `(`.
-        const isMethodName =
-          nextChar === "(" || (nextChar === "<" && this.isGenericMethodName(text, end));
+        const isMethodName = nextChar === "(" || isGenericMethodName(text, end);
         // `Name.Member` (a qualified name, e.g. an enum member) or
         // `Name<Args>` (a generic instantiation): substituting only `Name`
         // would strand `.Member`/`<Args>` against whatever replaces it.
@@ -1100,42 +1103,6 @@ export class ZodTypeExtractor {
     }
 
     return result;
-  }
-
-  /**
-   * Whether the `<` at `text[angleStart]` opens a generic method signature's
-   * own type-parameter list (`Name<T>(): ...`), i.e. whether the matching
-   * `>` is immediately followed by `(`.
-   *
-   * Mirrors `needsParensBeforeSuffix`'s bracket handling: a `>` that
-   * closes an arrow type's `=>` rather than a `<` doesn't count, and a quote
-   * inside the type-parameter list (e.g. a literal type) doesn't confuse the
-   * scan.
-   */
-  private isGenericMethodName(text: string, angleStart: number): boolean {
-    let depth = 0;
-    let quote: string | undefined;
-
-    for (let i = angleStart; i < text.length; i++) {
-      const char = text[i];
-
-      if (quote) {
-        if (char === quote && text[i - 1] !== "\\") quote = undefined;
-        continue;
-      }
-
-      if (char === '"' || char === "'" || char === "`") {
-        quote = char;
-      } else if (char === "<") {
-        depth++;
-      } else if (char === ">") {
-        if (text[i - 1] === "=") continue;
-        depth--;
-        if (depth === 0) return text[i + 1] === "(";
-      }
-    }
-
-    return false;
   }
 
   /**
@@ -1550,74 +1517,12 @@ export class ZodTypeExtractor {
       input:
         input === typeName
           ? qualifyExact()
-          : this.replaceBareTypeName(input, typeName, `${schemaName}Input`),
+          : replaceBareTypeName(input, typeName, `${schemaName}Input`),
       output:
         output === typeName
           ? qualifyExact()
-          : this.replaceBareTypeName(output, typeName, `${schemaName}Output`),
+          : replaceBareTypeName(output, typeName, `${schemaName}Output`),
     };
-  }
-
-  /**
-   * Rewrites every bare occurrence of `typeName` in `text` to
-   * `replacement` - "bare" meaning a plain type reference, not text that
-   * merely happens to spell the same characters. Skips a quoted string
-   * literal (e.g. a discriminant or literal property value that happens
-   * to match the type's own name), a property key (`name:`/`name?:`), a
-   * method signature's own name (`name(): T`), and a dot-qualified name
-   * (`import("...").typeName` or `Namespace.typeName`, where substituting
-   * only `typeName` would strand the qualifier against the replacement
-   * instead of the declaration it names) - the same syntax positions
-   * `promoteBareTypeReferences` guards below, for the same reason: a
-   * naive word-boundary substitution would otherwise corrupt them instead
-   * of rewriting a reference.
-   */
-  private replaceBareTypeName(text: string, typeName: string, replacement: string): string {
-    let result = "";
-    let quote: string | undefined;
-    let i = 0;
-
-    while (i < text.length) {
-      const char = text[i];
-
-      if (quote) {
-        result += char;
-        if (char === quote && !isEscaped(text, i)) quote = undefined;
-        i++;
-        continue;
-      }
-
-      if (char === '"' || char === "'" || char === "`") {
-        quote = char;
-        result += char;
-        i++;
-        continue;
-      }
-
-      if (/[A-Za-z_$]/.test(char)) {
-        let end = i + 1;
-        while (end < text.length && /[A-Za-z0-9_$]/.test(text[end])) end++;
-        const word = text.slice(i, end);
-
-        const precededByDot = i > 0 && text[i - 1] === ".";
-        const nextChar = text[end];
-        const isPropertyKey = nextChar === ":" || (nextChar === "?" && text[end + 1] === ":");
-        const isMethodName =
-          nextChar === "(" || (nextChar === "<" && this.isGenericMethodName(text, end));
-
-        result +=
-          word === typeName && !precededByDot && !isPropertyKey && !isMethodName
-            ? replacement
-            : word;
-        i = end;
-        continue;
-      }
-
-      result += char;
-      i++;
-    }
-
-    return result;
   }
 
   /**
