@@ -1450,11 +1450,14 @@ export class ValibotTypeExtractor {
    * `replacement` - "bare" meaning a plain type reference, not text that
    * merely happens to spell the same characters. Skips a quoted string
    * literal (e.g. a discriminant or literal property value that happens
-   * to match the type's own name), a property key (`name:`/`name?:`),
-   * and a method signature's own name (`name(): T`) - the same syntax
-   * positions `promoteBareTypeReferences` guards below, for the same
-   * reason: a naive word-boundary substitution would otherwise corrupt
-   * them instead of rewriting a reference.
+   * to match the type's own name), a property key (`name:`/`name?:`), a
+   * method signature's own name (`name(): T`), and a dot-qualified name
+   * (`import("...").typeName` or `Namespace.typeName`, where substituting
+   * only `typeName` would strand the qualifier against the replacement
+   * instead of the declaration it names) - the same syntax positions
+   * `promoteBareTypeReferences` guards below, for the same reason: a
+   * naive word-boundary substitution would otherwise corrupt them instead
+   * of rewriting a reference.
    */
   private replaceBareTypeName(text: string, typeName: string, replacement: string): string {
     let result = "";
@@ -1483,11 +1486,15 @@ export class ValibotTypeExtractor {
         while (end < text.length && /[A-Za-z0-9_$]/.test(text[end])) end++;
         const word = text.slice(i, end);
 
+        const precededByDot = i > 0 && text[i - 1] === ".";
         const nextChar = text[end];
         const isPropertyKey = nextChar === ":" || (nextChar === "?" && text[end + 1] === ":");
         const isMethodName = nextChar === "(" || isGenericMethodSignature(text, end);
 
-        result += word === typeName && !isPropertyKey && !isMethodName ? replacement : word;
+        result +=
+          word === typeName && !precededByDot && !isPropertyKey && !isMethodName
+            ? replacement
+            : word;
         i = end;
         continue;
       }

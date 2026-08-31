@@ -733,6 +733,35 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     );
   });
 
+  describe("qualified-reference-same-name/schema.ts", () => {
+    // A Copilot finding on #505: with --inline-external-types,
+    // MiddleOutput's own structure hits a cycle back to NodeOutput one
+    // level deeper than the schema's own recursion point, so that
+    // occurrence is already qualified as `import("./types").NodeOutput` by
+    // the existing cycle-detection fallback (inlineExternalTypeReferences/
+    // promoteBareTypeReferences). The self-reference rewrite must leave a
+    // dot-qualified occurrence alone - rewriting only the identifier after
+    // the dot would strand the `import("...").` prefix against a name the
+    // module doesn't export.
+    it.skipIf(!isZodV4)(
+      "should not rewrite the identifier in an already-qualified import(...) reference reached through a cycle one level deeper",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "qualified-reference-same-name/schema.ts"),
+          { inlineExternalTypes: true },
+        );
+        const result = results.find((r) => r.schemaName === "NodeSchema");
+
+        expect(result?.input).toContain("child?: NodeSchemaInput");
+        expect(result?.input).not.toMatch(/\.NodeSchemaInput\b/);
+        expect(result?.input).not.toMatch(/\.NodeSchemaOutput\b/);
+        expect(result?.input).toMatch(
+          /import\(".*qualified-reference-same-name\/types"\)\.NodeOutput/,
+        );
+      },
+    );
+  });
+
   describe("degenerate-explicit-type-cross-file/schema.ts", () => {
     // The non-recursive cross-file counterpart to the degenerate-explicit-type
     // fixtures above: an explicit annotation that resolves to exactly a type
