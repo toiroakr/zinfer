@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "fs";
 import { dirname, join, resolve } from "pathe";
 import { createJiti, type Jiti } from "jiti";
-import { globalRegistry } from "zod";
+import { globalRegistry, core } from "zod";
 import { getErrorMessage, logDebugError, logVerbose } from "./logger.js";
 import type { FieldDescription } from "./types.js";
 
@@ -397,7 +397,9 @@ export class DescriptionExtractor {
     }
 
     try {
-      const meta = globalRegistry.get(schema as never) as Record<string, unknown> | undefined;
+      const meta = globalRegistry.get(schema as core.$ZodType) as
+        | Record<string, unknown>
+        | undefined;
       if (meta && typeof meta.description === "string") {
         return meta.description;
       }

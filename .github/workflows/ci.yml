@@ -61,13 +61,15 @@ jobs:
       matrix:
         include:
           # strictTsc gates the "Typecheck (tsc)" step below. It's false only
-          # for zinfer rows that actually move the typescript devDependency
-          # down to its peer floor (the "typescript" and "combined" rows):
-          # at typescript@5.0.2, tsc --noEmit (unlike tsgo) fails with
-          # TS18048 in description-extractor.ts/extractor.ts, an error
-          # absent at the pinned typescript devDependency version. zinfer's
-          # "zod" row leaves typescript pinned, so it stays strict; vinfer's
-          # floor is clean under both checkers at every row.
+          # for zinfer/zinfer-mini rows that actually move the typescript
+          # devDependency down to its peer floor (the "typescript" and
+          # "combined" rows): at typescript@5.0.2, tsc --noEmit (unlike tsgo)
+          # fails with TS18048 in description-extractor.ts/extractor.ts, an
+          # error absent at the pinned typescript devDependency version -
+          # zinfer-mini copies these files from zinfer and reproduces the same
+          # divergence. Each package's "zod"/no-typescript-change row leaves
+          # typescript pinned, so it stays strict; vinfer's floor is clean
+          # under both checkers at every row.
           - package: zinfer
             name: zod
             # typescript stays at the devDependencies-pinned version for this row.

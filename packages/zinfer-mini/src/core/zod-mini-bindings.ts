@@ -1,5 +1,4 @@
 import { Node, type SourceFile } from "ts-morph";
-import { escapeRegExp } from "./regexp.js";
 
 /**
  * Module specifiers that are treated as zod/mini. zod ships the mini API as a
@@ -104,16 +103,6 @@ export class ZodMiniBindings {
   }
 
   /**
-   * A namespace alias already in scope in this file (e.g. `z` from
-   * `import * as z from "zod/mini"`), if any. Undefined when the file only
-   * uses named imports - callers needing `input`/`output` type utilities must
-   * inject their own import in that case instead of assuming an identifier.
-   */
-  existingNamespaceAlias(): string | undefined {
-    return [...this.namespaceAliases][0];
-  }
-
-  /**
    * Returns the zod/mini export name a call expression invokes.
    *
    * Handles both `z.object(...)` (namespace) and `object(...)` (named import).
@@ -146,33 +135,6 @@ export class ZodMiniBindings {
     const callName = this.getCallName(node);
     if (!callName) return false;
     return typeof names === "string" ? callName === names : names.has(callName);
-  }
-
-  /**
-   * Rewrites zod/mini type references in a printed type to their bare names.
-   *
-   * TypeScript qualifies them by however the analyzed file reaches zod/mini -
-   * `z.core.$brand<"UserId">` with a namespace import, `import("zod/mini").../
-   * $brand<"UserId">` without one. `normalizeBrandQualifiers` (shared with
-   * zinfer) already reduces both `$brand<...>` and `BRAND<...>` down to the
-   * bare `BRAND<...>` form the generated file's own `import type { BRAND }
-   * from "zod"` matches, so this only needs to handle the qualifier prefix.
-   */
-  canonicalizeTypeNames(typeText: string): string {
-    if (!typeText.includes(".")) return typeText;
-
-    this.canonicalizePattern ??= this.buildCanonicalizePattern();
-    return typeText.replace(this.canonicalizePattern, "$1");
-  }
-
-  private canonicalizePattern: RegExp | undefined;
-
-  private buildCanonicalizePattern(): RegExp {
-    const qualifiers = [
-      String.raw`import\("[^"]*zod[^"]*"\)(?:\.core)?`,
-      ...[...this.namespaceAliases].map((alias) => `${escapeRegExp(alias)}(?:\\.core)?`),
-    ];
-    return new RegExp(`(?:${qualifiers.join("|")})\\.(\\$brand|BRAND)\\b`, "g");
   }
 }
 
