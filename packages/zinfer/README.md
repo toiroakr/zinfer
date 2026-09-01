@@ -588,7 +588,7 @@ Re-run with `--generate-tests` after modifying schemas to continuously verify ty
 - Optional/Nullable: `.optional()`, `.nullable()`
 - Transform: `.transform()`
 - Refine: `.refine()`, `.superRefine()`
-- Utilities: `.partial()`, `.pick()`, `.omit()`, `.extend()`
+- Utilities: `.partial()`, `.pick()`, `.omit()`, `.extend()`, `z.deepPartial()`, `z.input()`, `z.output()` (zod 4.5+)
 - Circular references: `z.lazy()`, getter patterns
 - Descriptions: `.describe()`
 - Branded types: `.brand()`

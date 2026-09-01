@@ -71,6 +71,32 @@ describe("SchemaDetector", () => {
         "MultilineLazySchema",
       ]);
     });
+
+    it("should detect zod 4.5's top-level z.deepPartial()/z.input()/z.output() builders", () => {
+      // These are function calls (`z.deepPartial(schema)`), not method chains
+      // on an existing schema variable, so they need their own entry in
+      // ZOD_SCHEMA_BUILDERS rather than the zodMethods list.
+      const project = new Project();
+      const sourceFile = project.createSourceFile(
+        "zod-4-5-utilities-schema.ts",
+        [
+          'import { z } from "zod";',
+          "const UserSchema = z.object({ id: z.string() });",
+          "export const DeepPartialUserSchema = z.deepPartial(UserSchema);",
+          "const PipeSchema = z.string().transform((val) => Number(val));",
+          "export const PipeInputSchema = z.input(PipeSchema);",
+          "export const PipeOutputSchema = z.output(PipeSchema);",
+        ].join("\n"),
+      );
+      const names = detector.detectExportedSchemas(sourceFile).map((s) => s.name);
+      expect(names).toEqual([
+        "UserSchema",
+        "DeepPartialUserSchema",
+        "PipeSchema",
+        "PipeInputSchema",
+        "PipeOutputSchema",
+      ]);
+    });
   });
 
   describe("getSchemaNames", () => {

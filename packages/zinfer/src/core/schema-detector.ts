@@ -128,6 +128,12 @@ export class SchemaDetector {
     "brand",
     "strictObject",
     "looseObject",
+    // Zod 4.5 added these as top-level functions taking a schema and
+    // returning a new one (`z.deepPartial(schema)`), unlike the pre-4.5/v3
+    // `.deepPartial()` instance method still matched in zodMethods below.
+    "deepPartial",
+    "input",
+    "output",
   ]);
 
   /**

@@ -18,10 +18,17 @@ const snapshotsDir = resolve(import.meta.dirname, "__file_snapshots__");
 // (zod v3) instead of failing on version-specific behavior that isn't a
 // real compatibility bug.
 const isZodV4 = typeof z.looseObject === "function";
+// z.deepPartial/z.input/z.output only exist from zod 4.5 - narrower than
+// isZodV4, which is also true on the 4.0-4.4 releases that predate them.
+const supportsNativeDeepPartial = typeof z.deepPartial === "function";
 // Fixtures that use zod v4-only schema builders (no v3 equivalent at any
 // version) and therefore can never be imported under the peerDependencies
 // floor.
 const ZOD_V4_ONLY_FIXTURES = ["strict-object-schema.ts"];
+// Fixtures that use zod 4.5-only top-level builders (z.deepPartial/z.input/
+// z.output) and therefore can never be imported below that version,
+// including under the v3 peerDependencies floor.
+const ZOD_45_ONLY_FIXTURES = ["zod-4-5-utilities-schema.ts"];
 // Fixtures whose explicit `z.ZodType<...>` annotations only type-check under
 // zod v4's generic signature. zod v3's ZodType takes a third type parameter
 // (Def, constrained to extend ZodTypeDef) that v4 dropped, so the same
@@ -69,9 +76,18 @@ function createSchemaTest(
   extractor: ZodTypeExtractor,
   schemaName: string,
   description: string = "should generate TypeScript declarations",
-  options: { requiresZodV4?: boolean; context?: ExtractContext; snapshotName?: string } = {},
+  options: {
+    requiresZodV4?: boolean;
+    requiresZod45?: boolean;
+    context?: ExtractContext;
+    snapshotName?: string;
+  } = {},
 ) {
-  const test = options.requiresZodV4 ? it.skipIf(!isZodV4) : it;
+  const test = options.requiresZod45
+    ? it.skipIf(!supportsNativeDeepPartial)
+    : options.requiresZodV4
+      ? it.skipIf(!isZodV4)
+      : it;
   const snapshotName = options.snapshotName ?? schemaName;
   describe(`${schemaName}.ts`, () => {
     test(description, async () => {
@@ -169,8 +185,9 @@ afterAll(() => {
   // getter fixtures' TS7022/TS7023 ("implicitly has type any" on a
   // self-referential getter), or - when running under the zod v3
   // peerDependencies floor - errors from fixtures that intentionally use
-  // zod v4-only builders (no v3 equivalent at any version). Anything else
-  // is a real regression.
+  // zod v4-only builders (no v3 equivalent at any version), or - when
+  // running under a zod version older than 4.5 - errors from fixtures that
+  // use zod 4.5-only top-level builders. Anything else is a real regression.
   const fixtureErrors = errorLines.filter((line: string) => /[\\/]fixtures[\\/]/.test(line));
   const unexpectedFixtureErrors = fixtureErrors.filter((line: string) => {
     if (line.includes("TS7022") || line.includes("TS7023")) return false;
@@ -181,12 +198,26 @@ afterAll(() => {
       )
     )
       return false;
+    if (!supportsNativeDeepPartial && ZOD_45_ONLY_FIXTURES.some((f) => line.includes(f)))
+      return false;
     return true;
   });
   if (unexpectedFixtureErrors.length > 0) {
-    const expected = isZodV4
-      ? "TS7022/TS7023 on unannotated recursive getters"
-      : `TS7022/TS7023 on unannotated recursive getters, or errors from ${[...ZOD_V4_ONLY_FIXTURES, ...ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS].join(", ")} (zod v3 peerDependencies floor)`;
+    const allowedFixtureNotes: string[] = [];
+    if (!isZodV4) {
+      allowedFixtureNotes.push(
+        `errors from ${[...ZOD_V4_ONLY_FIXTURES, ...ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS].join(", ")} (zod v3 peerDependencies floor)`,
+      );
+    }
+    if (!supportsNativeDeepPartial) {
+      allowedFixtureNotes.push(
+        `errors from ${ZOD_45_ONLY_FIXTURES.join(", ")} (zod version older than 4.5)`,
+      );
+    }
+    const expected = [
+      "TS7022/TS7023 on unannotated recursive getters",
+      ...allowedFixtureNotes,
+    ].join(", or ");
     throw new Error(
       `Unexpected type error(s) in tests/fixtures (expected only ${expected}):\n${unexpectedFixtureErrors.join("\n")}`,
     );
@@ -288,6 +319,12 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     extractor,
     "utility-types-schema",
     "should generate TypeScript declarations with utility types",
+  );
+  createSchemaTest(
+    extractor,
+    "zod-4-5-utilities-schema",
+    "should generate TypeScript declarations with zod 4.5's native z.deepPartial()/z.input()/z.output()",
+    { requiresZod45: true },
   );
   createSchemaTest(
     extractor,
@@ -1887,7 +1924,9 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // Skip fixtures that only import under zod v4 when running under the
       // zod v3 peerDependencies floor - an import failure there isn't the
       // regression this sweep guards against.
-      .filter((f) => isZodV4 || !ZOD_V4_ONLY_FIXTURES.includes(f));
+      .filter((f) => isZodV4 || !ZOD_V4_ONLY_FIXTURES.includes(f))
+      // Same idea for fixtures that only import from zod 4.5 onward.
+      .filter((f) => supportsNativeDeepPartial || !ZOD_45_ONLY_FIXTURES.includes(f));
     const descriptionExtractor = new DescriptionExtractor();
 
     it.each(fixtureFiles)(
