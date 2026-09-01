@@ -162,6 +162,58 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  packages/zinfer-mini:
+    dependencies:
+      commander:
+        specifier: ^15.0.0
+        version: 15.0.0
+      glob:
+        specifier: ^13.0.6
+        version: 13.0.6
+      jiti:
+        specifier: ^2.7.0
+        version: 2.7.0
+      pathe:
+        specifier: ^2.0.3
+        version: 2.0.3
+      ts-morph:
+        specifier: ^28.0.0
+        version: 28.0.0
+    devDependencies:
+      '@types/node':
+        specifier: 25.9.5
+        version: 25.9.5
+      '@typescript/native-preview':
+        specifier: 7.0.0-dev.20260707.2
+        version: 7.0.0-dev.20260707.2
+      '@zinfer-monorepo/core':
+        specifier: workspace:*
+        version: link:../core
+      dts-bundle-generator:
+        specifier: ^9.5.1
+        version: 9.5.1
+      knip:
+        specifier: 6.32.2
+        version: 6.32.2
+      oxfmt:
+        specifier: 0.64.0
+        version: 0.64.0
+      oxlint:
+        specifier: 1.79.0
+        version: 1.79.0
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.14)(typescript@7.0.2)(yaml@2.9.0)
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: 4.1.11
+        version: 4.1.11(@types/node@25.9.5)(vite@7.3.1(@types/node@25.9.5)(jiti@2.7.0)(yaml@2.9.0))
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
 packages:
 
   '@changesets/apply-release-plan@8.0.0':

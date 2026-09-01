@@ -102,6 +102,27 @@ jobs:
             # be at both floors simultaneously.
             packages: valibot@1.1.0 typescript@5.0.2
             strictTsc: true
+          - package: zinfer-mini
+            name: zod
+            # typescript stays at the devDependencies-pinned version for this row.
+            # zod 4.0.0 shipped zod/mini but was still missing describe/promise
+            # (fixed by 4.2.0) and exactOptional (added in 4.3.0) - verified
+            # locally against each 4.x.0 release, so 4.3.0 is the actual floor
+            # zinfer-mini's v1 builder surface needs, not zod's own 4.0.0 floor.
+            packages: zod@4.3.0
+            strictTsc: true
+          - package: zinfer-mini
+            name: typescript
+            # 5.0.0 was never published on npm; 5.0.2 is the first release satisfying
+            # peerDependencies.typescript's ">=5.0.0". zod stays at the pinned version here.
+            packages: typescript@5.0.2
+            strictTsc: false
+          - package: zinfer-mini
+            name: combined
+            # Both peerDependencies lower bounds installed together, since consumers can
+            # be at both floors simultaneously.
+            packages: zod@4.3.0 typescript@5.0.2
+            strictTsc: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
