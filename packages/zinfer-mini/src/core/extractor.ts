@@ -7,11 +7,13 @@ import {
   type InterfaceDeclaration,
   type ClassDeclaration,
   type EnumDeclaration,
+  type ImportDeclaration,
 } from "ts-morph";
 import {
   NORMALIZE_TYPE_DEFINITION,
   NORMALIZE_TYPE_NAMES,
   TYPE_UTILITY_INPUT_ALIAS,
+  TYPE_UTILITY_OUTPUT_ALIAS,
   createTempTypeAlias,
   createTypeUtilityImportStatement,
   normalizeBrandQualifiers,
@@ -751,16 +753,7 @@ export class ZodMiniTypeExtractor {
     const moduleSpecifier = ZodMiniBindings.from(sourceFile).moduleSpecifier();
     const alreadyPresent = sourceFile
       .getImportDeclarations()
-      .some(
-        (decl) =>
-          decl.getModuleSpecifierValue() === moduleSpecifier &&
-          decl
-            .getNamedImports()
-            .some(
-              (named) =>
-                (named.getAliasNode()?.getText() ?? named.getName()) === TYPE_UTILITY_INPUT_ALIAS,
-            ),
-      );
+      .some((decl) => this.isInjectedTypeUtilityImport(decl, moduleSpecifier));
     if (!alreadyPresent) {
       sourceFile.addStatements([createTypeUtilityImportStatement(moduleSpecifier)]);
     }
@@ -772,15 +765,24 @@ export class ZodMiniTypeExtractor {
   private cleanupTypeUtilityImport(sourceFile: SourceFile): void {
     const moduleSpecifier = ZodMiniBindings.from(sourceFile).moduleSpecifier();
     for (const decl of sourceFile.getImportDeclarations()) {
-      if (decl.getModuleSpecifierValue() !== moduleSpecifier) continue;
-      const isInjected = decl
-        .getNamedImports()
-        .some(
-          (named) =>
-            (named.getAliasNode()?.getText() ?? named.getName()) === TYPE_UTILITY_INPUT_ALIAS,
-        );
-      if (isInjected) decl.remove();
+      if (this.isInjectedTypeUtilityImport(decl, moduleSpecifier)) decl.remove();
     }
+  }
+
+  /**
+   * Whether an import declaration is exactly the one `createTypeUtilityImportStatement`
+   * injects: both aliases must be present, not just one, and from the same
+   * module specifier. Matching on the input alias alone would treat a
+   * (vanishingly unlikely, but possible) user import that happens to reuse
+   * `__ZinferMiniInput` as "already injected" - leaving `__ZinferMiniOutput`
+   * undefined - and would have cleanup delete that user import outright.
+   */
+  private isInjectedTypeUtilityImport(decl: ImportDeclaration, moduleSpecifier: string): boolean {
+    if (decl.getModuleSpecifierValue() !== moduleSpecifier) return false;
+    const aliases = new Set(
+      decl.getNamedImports().map((named) => named.getAliasNode()?.getText() ?? named.getName()),
+    );
+    return aliases.has(TYPE_UTILITY_INPUT_ALIAS) && aliases.has(TYPE_UTILITY_OUTPUT_ALIAS);
   }
 
   /**
@@ -1685,13 +1687,27 @@ function findReferenceValueEnd(typeStr: string, valueStart: number): number {
 /**
  * Checks whether a printed type is a union or intersection at its top level,
  * which is what decides whether it can carry a `[]` suffix on its own.
+ *
+ * Tracks string literals the same way `needsParensBeforeSuffix` does: this is
+ * called on an approximated-import's raw printed text, which can contain a
+ * literal type (e.g. `"a[b"`) whose bracket would otherwise desync `depth`
+ * and hide (or invent) a top-level union/intersection.
  */
 function hasTopLevelUnion(typeStr: string): boolean {
   let depth = 0;
+  let quote: string | undefined;
 
   for (let index = 0; index < typeStr.length; index++) {
     const char = typeStr[index];
-    if (char === "{" || char === "[" || char === "(" || char === "<") {
+
+    if (quote) {
+      if (char === quote && !isEscaped(typeStr, index)) quote = undefined;
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      quote = char;
+    } else if (char === "{" || char === "[" || char === "(" || char === "<") {
       depth++;
     } else if (char === "}" || char === "]" || char === ")" || char === ">") {
       depth--;

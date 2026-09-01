@@ -18,6 +18,16 @@ const ZOD_MINI_MODULES = new Set(["zod/mini", "zod/v4/mini", "zod/v4-mini"]);
 const DEFAULT_NAMESPACE_ALIASES = ["z"];
 
 /**
+ * Matches any zod entry point ("zod", "zod/v3", "zod/v4", "zod/mini", ...),
+ * used to tell "this file plainly doesn't import zod/mini at all" (where the
+ * default-alias fallback below is appropriate) apart from "this file imports
+ * classic zod, not zod/mini" (where it isn't - assuming its `z` refers to
+ * zod/mini would misread classic-zod schemas as zod/mini ones instead of
+ * correctly reporting that no zod/mini schema exists here).
+ */
+const ZOD_MODULE_PATTERN = /^zod(\/.*)?$/;
+
+/**
  * Resolves how a source file refers to zod/mini's exports.
  *
  * zod/mini is used either through a namespace import (`import * as z from
@@ -52,10 +62,14 @@ export class ZodMiniBindings {
     const namespaceAliases = new Set<string>();
     const namedImports = new Map<string, string>();
     const moduleSpecifiers: string[] = [];
+    let hasNonMiniZodImport = false;
 
     for (const importDecl of sourceFile.getImportDeclarations()) {
       const moduleSpecifier = importDecl.getModuleSpecifierValue();
-      if (!ZOD_MINI_MODULES.has(moduleSpecifier)) continue;
+      if (!ZOD_MINI_MODULES.has(moduleSpecifier)) {
+        if (ZOD_MODULE_PATTERN.test(moduleSpecifier)) hasNonMiniZodImport = true;
+        continue;
+      }
       moduleSpecifiers.push(moduleSpecifier);
 
       const namespaceImport = importDecl.getNamespaceImport();
@@ -76,7 +90,12 @@ export class ZodMiniBindings {
       }
     }
 
-    if (namespaceAliases.size === 0 && namedImports.size === 0) {
+    // Only assume the conventional `z` alias when the file's import list is
+    // genuinely unavailable or silent about zod altogether - a file that
+    // visibly imports classic zod (or another zod subpath) instead of
+    // zod/mini should report "no zod/mini schema found" rather than have its
+    // classic-zod calls misread as zod/mini ones.
+    if (namespaceAliases.size === 0 && namedImports.size === 0 && !hasNonMiniZodImport) {
       for (const alias of DEFAULT_NAMESPACE_ALIASES) {
         namespaceAliases.add(alias);
       }

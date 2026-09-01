@@ -110,7 +110,11 @@ export class SchemaDetector {
    * @param bindings - How the analyzed file refers to zod/mini's exports
    * @returns true if the declaration is a zod/mini schema
    */
-  private isZodMiniSchema(declaration: VariableDeclaration, bindings: ZodMiniBindings): boolean {
+  private isZodMiniSchema(
+    declaration: VariableDeclaration,
+    bindings: ZodMiniBindings,
+    visitedDeclarations?: Set<string>,
+  ): boolean {
     // Explicit zod/mini schema annotation (z.ZodMiniType<T>)
     const typeNode = declaration.getTypeNode();
     if (typeNode && SCHEMA_TYPE_ANNOTATION_PATTERN.test(typeNode.getText())) {
@@ -135,7 +139,7 @@ export class SchemaDetector {
     // (`.check()`, `.with()`, `.clone()`, `.register()`, `.brand()`) rather
     // than top-level functions - all of them return either `this` or a
     // schema derived from it (`.brand()`).
-    return this.endsInSchemaMethodCall(unwrapped);
+    return this.endsInSchemaMethodCall(unwrapped, bindings, visitedDeclarations);
   }
 
   /**
@@ -153,16 +157,51 @@ export class SchemaDetector {
 
   /**
    * Checks whether an expression ends in a call to one of
-   * `SCHEMA_RETURNING_METHODS`, tolerating formatter-inserted
-   * whitespace/newlines around the dot.
+   * `SCHEMA_RETURNING_METHODS` on a receiver that itself looks like a zod/mini
+   * schema, tolerating formatter-inserted whitespace/newlines around the dot.
+   *
+   * The method name alone isn't enough: `check`/`with`/`clone`/`register` are
+   * common enough names (e.g. `registry.clone()`) that accepting any receiver
+   * would misdetect unrelated variables as schemas. The receiver is peeled
+   * the same way one call at a time - through more of the same chain methods,
+   * down to either a zod/mini builder call (`z.string()`) or another
+   * already-declared schema variable in this file.
    */
-  private endsInSchemaMethodCall(node: Node): boolean {
+  private endsInSchemaMethodCall(
+    node: Node,
+    bindings: ZodMiniBindings,
+    visitedDeclarations: Set<string> = new Set(),
+  ): boolean {
     if (!Node.isCallExpression(node)) return false;
     const callee = node.getExpression();
-    return (
-      Node.isPropertyAccessExpression(callee) &&
-      SchemaDetector.SCHEMA_RETURNING_METHODS.has(callee.getName())
-    );
+    if (
+      !Node.isPropertyAccessExpression(callee) ||
+      !SchemaDetector.SCHEMA_RETURNING_METHODS.has(callee.getName())
+    ) {
+      return false;
+    }
+
+    const receiver = unwrapExpression(callee.getExpression());
+
+    if (Node.isCallExpression(receiver)) {
+      const callName = bindings.getCallName(receiver);
+      if (callName !== undefined && ZOD_MINI_SCHEMA_BUILDERS.has(callName)) return true;
+      return this.endsInSchemaMethodCall(receiver, bindings, visitedDeclarations);
+    }
+
+    if (Node.isIdentifier(receiver)) {
+      const receiverDecl = receiver.getSourceFile().getVariableDeclaration(receiver.getText());
+      if (!receiverDecl) return false;
+      // Guards against a pathological mutual reference between two variable
+      // declarations (invalid at runtime, but not something ts-morph's
+      // static AST walk rejects on its own) recursing forever.
+      const key = `${receiverDecl.getSourceFile().getFilePath()}:${receiverDecl.getStart()}`;
+      if (visitedDeclarations.has(key)) return false;
+      visitedDeclarations.add(key);
+      return this.isZodMiniSchema(receiverDecl, bindings, visitedDeclarations);
+    }
+
+    return false;
   }
 
   /**

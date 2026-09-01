@@ -91,6 +91,13 @@ export function analyzeSchemaExpression(
 
     if (ZOD_MINI_OPTIONAL_WRAPPERS.has(callName)) {
       if (args.length === 0) return null;
+      // A wrapper below a collection widens the element, not the field, and
+      // the isOptional/isNullable flags below have nowhere to attach that
+      // distinction to (they describe the field, not "some element inside
+      // it") - z.array(z.nullable(X)) is "array of nullable X", not
+      // "nullable array of X". Leave it inlined, same as the array/record
+      // double-nesting case below.
+      if (isArray || isRecord) return null;
       if (ZOD_MINI_OPTIONAL_KEY_WRAPPERS.has(callName)) isOptional = true;
       if (ZOD_MINI_NULLABLE_WRAPPERS.has(callName)) isNullable = true;
       current = unwrapExpression(args[0]);
