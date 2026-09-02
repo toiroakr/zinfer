@@ -63,6 +63,15 @@ interface RawSchemaType {
    * rather than what TypeScript gave up on.
    */
   isApproximatedImport?: boolean;
+  /**
+   * The form to inline this schema as when its own name cannot be used.
+   *
+   * Only a same-file recursive schema that gets no generated type of its own
+   * (not exported) needs one: its self-reference prints its own name, which
+   * is meaningless in a file that never declares that name, so a reference to
+   * it has to be widened to the shape the getter describes instead.
+   */
+  approximation?: { input: string; output: string };
 }
 
 /**
@@ -332,29 +341,55 @@ export class ZodTypeExtractor {
         // Resolve getter-based self-references. getterFieldMap is keyed by
         // declared (local variable) name, not the exported name.
         const getterFields = getterFieldMap.get(declaredName);
+        let approximation: RawSchemaType["approximation"];
         if (getterFields && this.getterResolver.hasSelfReferences(getterFields)) {
           const inputTypeName = `${schemaName}Input`;
           const outputTypeName = `${schemaName}Output`;
-          const originalInputType = inputType;
+          const rawInputType = inputType;
+          const rawOutputType = outputType === "any" ? rawInputType : outputType;
 
-          inputType = this.getterResolver.resolveAnyTypes(inputType, getterFields, inputTypeName);
+          inputType = this.getterResolver.resolveAnyTypes(
+            rawInputType,
+            getterFields,
+            inputTypeName,
+          );
+          outputType = this.getterResolver.resolveAnyTypes(
+            rawOutputType,
+            getterFields,
+            outputTypeName,
+          );
 
-          if (outputType === "any") {
-            outputType = this.getterResolver.resolveAnyTypes(
-              originalInputType,
-              getterFields,
-              outputTypeName,
-            );
-          } else {
-            outputType = this.getterResolver.resolveAnyTypes(
-              outputType,
-              getterFields,
-              outputTypeName,
-            );
+          if (!isExported) {
+            // Nothing will declare this schema's types, so a reference to it
+            // has to be inlined - and an inlined recursive type can only ever
+            // be an approximation. Keep one whose recursion point is the
+            // index signature or array the getter describes, rather than the
+            // `<schema>Input`/`<schema>Output` self-reference above, which
+            // nothing here declares.
+            const options = { collapseInlinedCopies: false };
+            approximation = {
+              input: this.getterResolver.resolveAnyTypes(
+                rawInputType,
+                getterFields,
+                "any",
+                options,
+              ),
+              output: this.getterResolver.resolveAnyTypes(
+                rawOutputType,
+                getterFields,
+                "any",
+                options,
+              ),
+            };
           }
         }
 
-        rawTypes.set(schemaName, { input: inputType, output: outputType, isExported });
+        rawTypes.set(schemaName, {
+          input: inputType,
+          output: outputType,
+          isExported,
+          approximation,
+        });
       } finally {
         this.cleanupTemporaryTypes(sourceFile);
       }
@@ -480,9 +515,23 @@ export class ZodTypeExtractor {
           // gets a chance to rewrite on its own (it's only ever printed as
           // part of whatever schema inlines it, never resolved independently).
           const resolvedRef = resolveSchemaTypes(refExportName);
-          if (resolvedRef) {
-            input = this.replaceSchemaReference(input, ref, refRaw.input, resolvedRef.input);
-            output = this.replaceSchemaReference(output, ref, refRaw.output, resolvedRef.output);
+          const inlineInput = this.inlinableForm(
+            resolvedRef?.input,
+            refRaw,
+            refExportName,
+            "Input",
+          );
+          const inlineOutput = this.inlinableForm(
+            resolvedRef?.output,
+            refRaw,
+            refExportName,
+            "Output",
+          );
+          if (inlineInput !== undefined) {
+            input = this.replaceSchemaReference(input, ref, refRaw.input, inlineInput);
+          }
+          if (inlineOutput !== undefined) {
+            output = this.replaceSchemaReference(output, ref, refRaw.output, inlineOutput);
           }
         }
       }
@@ -564,6 +613,43 @@ export class ZodTypeExtractor {
     }
 
     return results;
+  }
+
+  /**
+   * Picks the form a same-file schema whose types nothing declares is inlined
+   * as.
+   *
+   * @returns The type to inline, or undefined to leave the reference as
+   *   TypeScript printed it
+   */
+  private inlinableForm(
+    resolved: string | undefined,
+    raw: RawSchemaType,
+    refSchema: string,
+    kind: "Input" | "Output",
+  ): string | undefined {
+    const printed = kind === "Input" ? raw.input : raw.output;
+    const approximation = kind === "Input" ? raw.approximation?.input : raw.approximation?.output;
+    const candidate = resolved ?? printed;
+
+    // A recursive schema names itself, and nothing declares that name here, so
+    // only the approximation can be inlined.
+    if (new RegExp(`\\b${escapeRegExp(`${refSchema}${kind}`)}\\b`).test(candidate)) {
+      return approximation;
+    }
+
+    // The schema's own printed form is already an approximation - it is a
+    // recursive one that gets no generated types - and says more than what
+    // TypeScript printed here, which lost the recursion entirely.
+    if (approximation !== undefined) {
+      return approximation;
+    }
+
+    // Otherwise only a form that resolving actually changed is worth inlining:
+    // it carries names TypeScript could not have printed. When resolving
+    // changed nothing, what TypeScript expanded at the reference site is the
+    // more faithful of the two.
+    return candidate !== printed ? candidate : undefined;
   }
 
   /**

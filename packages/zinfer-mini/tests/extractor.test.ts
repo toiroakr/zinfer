@@ -151,6 +151,35 @@ describe("ZodMiniTypeExtractor - Generated TypeScript Declarations", () => {
     "should resolve an annotated z.lazy() recursive schema",
   );
 
+  describe("lazy-cross-file-explicit-type/schema.ts", () => {
+    // #455: a z.lazy() recursive schema whose explicit z.ZodMiniType<T>
+    // annotation reaches a type declared in another file. At the recursion
+    // point TypeScript's printer can't expand NodeOutput's structure again,
+    // so it falls back to the bare identifier "NodeOutput" - visible only
+    // via this file's own `import type`. Left as-is, the generated
+    // declaration references a name it never imports and doesn't type-check
+    // standalone; it should be rewritten to the schema's own self-reference.
+    it("should rewrite a cross-file recursion point to the schema's own generated type name instead of a bare unimported identifier", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "lazy-cross-file-explicit-type/schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "NodeSchema");
+
+      expect(result?.input).not.toContain("NodeOutput");
+      expect(result?.output).not.toContain("NodeOutput");
+      expect(result?.input).toBe("{ value: string; children?: Record<string, NodeSchemaInput>; }");
+      expect(result?.output).toBe(
+        "{ value: string; children?: Record<string, NodeSchemaOutput>; }",
+      );
+    });
+  });
+
+  createSchemaTest(
+    extractor,
+    "lazy-cross-file-explicit-type/schema",
+    "should generate a type-checkable recursive declaration when the explicit annotation reaches another file",
+  );
+
   describe("lazy-cross-file-explicit-type-non-exported/schema.ts", () => {
     // #518: a z.lazy() recursive schema with an explicit z.ZodMiniType<T>
     // annotation reaching a type declared in another file, where the schema
@@ -179,6 +208,36 @@ describe("ZodMiniTypeExtractor - Generated TypeScript Declarations", () => {
     extractor,
     "lazy-cross-file-explicit-type-non-exported/schema",
     "should generate a type-checkable declaration when a non-exported recursive schema's explicit annotation reaches another file",
+  );
+
+  describe("nonexported-recursive-getter-schema.ts", () => {
+    // A getter-based self-reference that is itself not exported and reached
+    // only inline through another schema. Nothing declares a name for
+    // LocalRecursiveSchema, so its own raw self-reference
+    // ("LocalRecursiveSchemaInput"/"Output") stays as an internal marker, but
+    // a reference to it from another schema has to be widened to `any` at
+    // the recursion point instead of inlining that dangling marker.
+    it("should widen a non-exported recursive schema's own recursion point to any when it is inlined elsewhere", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "nonexported-recursive-getter-schema.ts"),
+      );
+      const container = results.find((r) => r.schemaName === "NonexportedRecursiveContainerSchema");
+
+      expect(container?.input).not.toContain("LocalRecursiveSchemaInput");
+      expect(container?.output).not.toContain("LocalRecursiveSchemaOutput");
+      expect(container?.input).toBe(
+        "{ localRecursive: { label: string; kids: { [x: string]: any; }; }; }",
+      );
+      expect(container?.output).toBe(
+        "{ localRecursive: { label: string; kids: { [x: string]: any; }; }; }",
+      );
+    });
+  });
+
+  createSchemaTest(
+    extractor,
+    "nonexported-recursive-getter-schema",
+    "should generate a type-checkable declaration for a non-exported, self-referencing recursive schema",
   );
 
   createSchemaTest(extractor, "builders-schema", "should cover the full v1 builder surface");

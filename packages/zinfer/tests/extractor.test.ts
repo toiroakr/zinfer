@@ -1718,6 +1718,46 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     );
   });
 
+  describe("nonexported-recursive-getter-schema.ts", () => {
+    // The recursive counterpart of same-file-nongenerated-recursive-schema.ts's
+    // non-recursive intermediate: LocalRecursiveSchema is itself recursive
+    // (getter-based self-reference) AND not exported, reached only inline
+    // through NonexportedRecursiveContainerSchema. Nothing declares a name for
+    // it, so its own raw self-reference ("LocalRecursiveSchemaInput"/"Output")
+    // stays as an internal marker (used by union-composing and cycle
+    // detection elsewhere), but a reference to it from another schema has to
+    // be widened to `any` at the recursion point instead of inlining that
+    // dangling marker - the same-file counterpart of what the cross-file
+    // isApproximatedImport case already does for an imported schema.
+    it.skipIf(!isZodV4)(
+      "should widen a non-exported recursive schema's own recursion point to any when it is inlined elsewhere",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "nonexported-recursive-getter-schema.ts"),
+        );
+        const container = results.find(
+          (r) => r.schemaName === "NonexportedRecursiveContainerSchema",
+        );
+
+        expect(container?.input).not.toContain("LocalRecursiveSchemaInput");
+        expect(container?.output).not.toContain("LocalRecursiveSchemaOutput");
+        expect(container?.input).toBe(
+          "{ localRecursive: { label: string; kids: { [x: string]: any; }; }; }",
+        );
+        expect(container?.output).toBe(
+          "{ localRecursive: { label: string; kids: { [x: string]: any; }; }; }",
+        );
+      },
+    );
+  });
+
+  createSchemaTest(
+    extractor,
+    "nonexported-recursive-getter-schema",
+    "should generate a type-checkable declaration for a non-exported, self-referencing recursive schema",
+    { requiresZodV4: true },
+  );
+
   describe("duplicate-field-name-schema.ts", () => {
     // zod v3 prints these keys differently; see the snapshot test above.
     it.skipIf(!isZodV4)(
