@@ -277,6 +277,7 @@ function findValueEnd(typeStr: string, valueStart: number): number {
 
   while (index < typeStr.length) {
     const char = typeStr[index];
+    const prevChar = typeStr[index - 1];
 
     if ((char === '"' || char === "'" || char === "`") && !isEscaped(typeStr, index)) {
       if (!inString) {
@@ -292,6 +293,12 @@ function findValueEnd(typeStr: string, valueStart: number): number {
       if (char === "{" || char === "[" || char === "(" || char === "<") {
         depth++;
       } else if (char === "}" || char === "]" || char === ")" || char === ">") {
+        // The `>` of an arrow type closes nothing - a function type's `=>`
+        // would otherwise cut the value short.
+        if (char === ">" && prevChar === "=") {
+          index++;
+          continue;
+        }
         if (depth === 0) break;
         depth--;
       } else if (char === ";" && depth === 0) {
