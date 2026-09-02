@@ -323,19 +323,32 @@ export class SchemaReferenceAnalyzer {
   }
 
   /**
-   * Finds all zod/mini object calls in a node (including the node itself).
+   * Finds all zod/mini object calls in a node (including the node itself),
+   * treating each one found as describing fields of the schema being
+   * analyzed - correct for sibling composition calls (e.g. an `extend`'s
+   * shape argument), but not for an object() call nested inside another
+   * object() call's own shape: that inner call describes a sub-schema's
+   * fields, already handled in their own right-scoped fieldPath by
+   * `findObjectLiteralReferences`. Descent stops at each found call's own
+   * arguments so those inner fields are never re-collected and flattened
+   * into the outer schema's reference list under the wrong fieldPath.
    */
   private findObjectCalls(node: Node, bindings: ZodMiniBindings): CallExpression[] {
     const calls: CallExpression[] = [];
 
-    const checkNode = (n: Node) => {
-      if (Node.isCallExpression(n) && bindings.isCallTo(n, ZOD_MINI_OBJECT_BUILDERS)) {
-        calls.push(n);
-      }
-    };
+    const isObjectCall = (n: Node) =>
+      Node.isCallExpression(n) && bindings.isCallTo(n, ZOD_MINI_OBJECT_BUILDERS);
 
-    checkNode(node);
-    node.forEachDescendant(checkNode);
+    if (isObjectCall(node)) {
+      calls.push(node as CallExpression);
+    } else {
+      node.forEachDescendant((n, traversal) => {
+        if (isObjectCall(n)) {
+          calls.push(n as CallExpression);
+          traversal.skip();
+        }
+      });
+    }
 
     return calls;
   }

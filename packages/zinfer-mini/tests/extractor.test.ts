@@ -161,6 +161,11 @@ describe("ZodMiniTypeExtractor - Generated TypeScript Declarations", () => {
     "unrelated-zod-mini-type-schema",
     "should not mistake a same-named, unrelated ZodMiniType annotation for zod/mini's own type",
   );
+  createSchemaTest(
+    extractor,
+    "nested-object-reference-schema",
+    "should not conflate a reference nested inside another object()'s field with an unrelated same-named top-level field",
+  );
 });
 
 describe("described-schema.ts - descriptions", () => {
