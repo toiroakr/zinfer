@@ -150,6 +150,37 @@ describe("ZodMiniTypeExtractor - Generated TypeScript Declarations", () => {
     "lazy-schema",
     "should resolve an annotated z.lazy() recursive schema",
   );
+
+  describe("lazy-cross-file-explicit-type-non-exported/schema.ts", () => {
+    // #518: a z.lazy() recursive schema with an explicit z.ZodMiniType<T>
+    // annotation reaching a type declared in another file, where the schema
+    // itself is never exported and reached only inline through
+    // ContainerSchema. At the recursion point TypeScript's printer falls
+    // back to the bare "NodeOutput" identifier; rewriting that to
+    // "NodeSchemaInput"/"NodeSchemaOutput" would just trade one undeclared
+    // identifier for another, since a non-exported schema gets no
+    // declaration of its own. It should widen to `any` instead.
+    it("should widen a non-exported schema's cross-file recursion point to any instead of an undeclared schema name", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "lazy-cross-file-explicit-type-non-exported/schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "NodeSchema");
+
+      expect(result?.input).not.toContain("NodeOutput");
+      expect(result?.output).not.toContain("NodeOutput");
+      expect(result?.input).not.toContain("NodeSchemaInput");
+      expect(result?.output).not.toContain("NodeSchemaOutput");
+      expect(result?.input).toBe("{ value: string; children?: Record<string, any>; }");
+      expect(result?.output).toBe("{ value: string; children?: Record<string, any>; }");
+    });
+  });
+
+  createSchemaTest(
+    extractor,
+    "lazy-cross-file-explicit-type-non-exported/schema",
+    "should generate a type-checkable declaration when a non-exported recursive schema's explicit annotation reaches another file",
+  );
+
   createSchemaTest(extractor, "builders-schema", "should cover the full v1 builder surface");
   createSchemaTest(
     extractor,

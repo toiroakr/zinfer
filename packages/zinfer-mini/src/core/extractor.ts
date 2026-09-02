@@ -507,6 +507,7 @@ export class ZodMiniTypeExtractor {
           output,
           schemaName,
           explicitType,
+          raw.isExported,
           () => this.qualifyLocalTypeReference(sourceFile, explicitType) ?? explicitType,
         ));
       } else if (explicitType) {
@@ -526,6 +527,7 @@ export class ZodMiniTypeExtractor {
             output,
             schemaName,
             explicitType,
+            raw.isExported,
             () => this.referenceFallbackText(importedRef, explicitType),
           ));
         }
@@ -1559,28 +1561,37 @@ export class ZodMiniTypeExtractor {
    * this file or merely imported into it (the two callers only differ in
    * which case applies and how to qualify the degenerate one below).
    *
+   * `<schema>Input`/`<schema>Output` is only a name something actually
+   * declares when the schema itself is exported (the type-printer emits no
+   * declaration for a schema that is neither exported nor imported from
+   * elsewhere - see `formatMultipleAsDeclarations`). A non-exported schema
+   * reached only inline through another schema (#518) would otherwise trade
+   * one undeclared bare identifier for another; widen the recursion point to
+   * `any` instead, the same "no name to point at" fallback a getter-based
+   * self-reference with no declared name already falls back to.
+   *
    * When the resolved text is exactly `typeName` itself (not embedded in a
    * larger composite type, e.g. a recursive union member), rewriting it
    * this way would produce a circular alias like `type FooInput =
    * FooInput` instead. `qualifyExact` supplies the non-circular form for
-   * that case - an inline `import("...")` reference to the declaration.
+   * that case - an inline `import("...")` reference to the declaration,
+   * which points at the annotation's own type rather than the schema's
+   * generated name, so it stays valid whether or not the schema is exported.
    */
   private rewriteExplicitTypeSelfReference(
     input: string,
     output: string,
     schemaName: string,
     typeName: string,
+    isExported: boolean,
     qualifyExact: () => string,
   ): { input: string; output: string } {
+    const selfInput = isExported ? `${schemaName}Input` : "any";
+    const selfOutput = isExported ? `${schemaName}Output` : "any";
     return {
-      input:
-        input === typeName
-          ? qualifyExact()
-          : replaceBareTypeName(input, typeName, `${schemaName}Input`),
+      input: input === typeName ? qualifyExact() : replaceBareTypeName(input, typeName, selfInput),
       output:
-        output === typeName
-          ? qualifyExact()
-          : replaceBareTypeName(output, typeName, `${schemaName}Output`),
+        output === typeName ? qualifyExact() : replaceBareTypeName(output, typeName, selfOutput),
     };
   }
 

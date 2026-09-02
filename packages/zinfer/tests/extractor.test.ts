@@ -686,6 +686,37 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     { requiresZodV4: true },
   );
 
+  describe("lazy-cross-file-explicit-type-non-exported/schema.ts", () => {
+    // #518: the non-exported variant of #455. NodeSchema is never exported
+    // and reached only inline through ContainerSchema, so it gets no
+    // "NodeSchemaInput"/"NodeSchemaOutput" declaration of its own - rewriting
+    // the bare "NodeOutput" fallback to that name would just trade one
+    // undeclared identifier for another. It should widen to `any` instead.
+    it.skipIf(!isZodV4)(
+      "should widen a non-exported schema's cross-file recursion point to any instead of an undeclared schema name",
+      () => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "lazy-cross-file-explicit-type-non-exported/schema.ts"),
+        );
+        const result = results.find((r) => r.schemaName === "NodeSchema");
+
+        expect(result?.input).not.toContain("NodeOutput");
+        expect(result?.output).not.toContain("NodeOutput");
+        expect(result?.input).not.toContain("NodeSchemaInput");
+        expect(result?.output).not.toContain("NodeSchemaOutput");
+        expect(result?.input).toBe("{ value: string; children?: Record<string, any>; }");
+        expect(result?.output).toBe("{ value: string; children?: Record<string, any>; }");
+      },
+    );
+  });
+
+  createSchemaTest(
+    extractor,
+    "lazy-cross-file-explicit-type-non-exported/schema",
+    "should generate a type-checkable declaration when a non-exported recursive schema's explicit annotation reaches another file",
+    { requiresZodV4: true },
+  );
+
   describe("dollar-identifier-explicit-type/schema.ts", () => {
     // `\b` is defined in terms of `\w` ([A-Za-z0-9_]), which excludes `$`
     // (legal at the start of a JS/TS identifier), so a naive `\b`-bounded
