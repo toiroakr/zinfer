@@ -131,6 +131,11 @@ describe("ZodMiniTypeExtractor - Generated TypeScript Declarations", () => {
   );
   createSchemaTest(
     extractor,
+    "standalone-mini-package-schema",
+    "should work with the standalone @zod/mini package, not just zod's zod/mini subpath",
+  );
+  createSchemaTest(
+    extractor,
     "cross-ref-schema",
     "should resolve cross-schema references, unions, and brand",
   );

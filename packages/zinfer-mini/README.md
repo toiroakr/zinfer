@@ -128,8 +128,11 @@ zinfer-mini's v1 covers the schemas most codebases actually write:
 - Descriptions set via `.check(z.describe(...))`, `z.meta(...)`, or `.register(z.globalRegistry, {...})` -
   read from zod's shared `globalRegistry` at runtime, since (unlike classic zod) `ZodMiniType` has no
   `.meta()`/`.describe()` instance method of its own
-- Both `import * as z from "zod/mini"` and named imports, across all three equivalent specifiers
-  (`zod/mini`, `zod/v4/mini`, `zod/v4-mini`)
+- Both `import * as z from "zod/mini"` and named imports, across all equivalent specifiers -
+  `zod/mini`, `zod/v4/mini`, `zod/v4-mini` (all subpaths of the `zod` package), and
+  [`@zod/mini`](https://www.npmjs.com/package/@zod/mini), the standalone package some projects install
+  instead (it's `export * from "zod/mini"` under the hood, and itself depends on `zod`, so it's supported
+  identically)
 
 \* `merge` is detected like any other builder, but is itself deprecated upstream in favor of `extend` - and, in
 zod 4.4.3, its two-full-schema form (`z.merge(a, b)`, matching its own type signature) crashes at runtime; only

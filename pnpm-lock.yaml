@@ -189,6 +189,9 @@ importers:
       '@zinfer-monorepo/core':
         specifier: workspace:*
         version: link:../core
+      '@zod/mini':
+        specifier: 4.5.4
+        version: 4.5.4(zod@4.5.4)
       dts-bundle-generator:
         specifier: ^9.5.1
         version: 9.5.1
@@ -211,8 +214,8 @@ importers:
         specifier: 4.1.11
         version: 4.1.11(@types/node@25.9.5)(vite@7.3.1(@types/node@25.9.5)(jiti@2.7.0)(yaml@2.9.0))
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
 
 packages:
 
@@ -1312,6 +1315,11 @@ packages:
   '@vitest/utils@4.1.11':
     resolution: {integrity: sha512-zTCVGpyFsGWBhllOyKlTw/vnr6D9qxsfSDyfbyZmTyjHw5N/VuvzHpHoQjm2ZJzn4RJgx5w4r7V0er69CmLgPQ==}
 
+  '@zod/mini@4.5.4':
+    resolution: {integrity: sha512-/LFQsBM2q92NTOozWQRmun1NfqMDEiNVf52P0znYSHItcyr7HzFW5hJC1y8+x2o0A3D4PZilwoP8DfJ5f5QTiQ==}
+    peerDependencies:
+      zod: ^4.5.0
+
   acorn@8.18.0:
     resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
     engines: {node: '>=0.4.0'}
@@ -1963,6 +1971,9 @@ packages:
 
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+
+  zod@4.5.4:
+    resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
 
 snapshots:
 
@@ -2681,6 +2692,10 @@ snapshots:
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.0
 
+  '@zod/mini@4.5.4(zod@4.5.4)':
+    dependencies:
+      zod: 4.5.4
+
   acorn@8.18.0: {}
 
   ansi-regex@5.0.1: {}
@@ -2859,7 +2874,7 @@ snapshots:
       tinyglobby: 0.2.17
       unbash: 4.0.10
       yaml: 2.9.0
-      zod: 4.4.3
+      zod: 4.5.4
 
   launch-editor@2.14.1:
     dependencies:
@@ -3325,3 +3340,5 @@ snapshots:
       yargs-parser: 21.1.1
 
   zod@4.4.3: {}
+
+  zod@4.5.4: {}

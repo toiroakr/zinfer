@@ -2,10 +2,16 @@ import { Node, type SourceFile } from "ts-morph";
 
 /**
  * Module specifiers that are treated as zod/mini. zod ships the mini API as a
- * subpath of the single `zod` npm package (not a separate package), reachable
- * under three equivalent specifiers.
+ * subpath of the single `zod` npm package, reachable under three equivalent
+ * specifiers, plus a fourth: `@zod/mini` is a standalone package published
+ * separately on npm, but its entire implementation is `export * from
+ * "zod/mini"` - same classes, same `input`/`output` type utilities, same
+ * `$brand` marker - and it declares `zod` as a peerDependency itself, so a
+ * file using it is guaranteed to have the classic `zod` package physically
+ * installed too (needed for e.g. the `BRAND` type this tool imports in
+ * generated output).
  */
-const ZOD_MINI_MODULES = new Set(["zod/mini", "zod/v4/mini", "zod/v4-mini"]);
+const ZOD_MINI_MODULES = new Set(["zod/mini", "zod/v4/mini", "zod/v4-mini", "@zod/mini"]);
 
 /**
  * Namespace aliases assumed when a file has no visible zod/mini import.
