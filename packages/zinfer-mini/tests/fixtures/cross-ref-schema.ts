@@ -5,11 +5,24 @@ export const AddressSchema = z.object({
   zip: z.string(),
 });
 
+export const TagSchema = z.object({
+  slug: z.string(),
+});
+
+export const LabelSchema = z.object({
+  text: z.string(),
+});
+
 export const UserSchema = z.object({
   id: z.string(),
   address: AddressSchema,
   previousAddresses: z.array(AddressSchema),
   billingAddress: z.optional(AddressSchema),
+  // Regression: "tag" is a suffix of "petTag" - findReferenceOccurrence's
+  // field-name regex must not match "tag: " *inside* "petTag: " and
+  // substitute the wrong schema's reference into either field.
+  tag: TagSchema,
+  petTag: LabelSchema,
 });
 
 export const CatSchema = z.object({

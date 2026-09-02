@@ -12,10 +12,28 @@ export type AddressOutput = {
   zip: string;
 };
 
+export type TagInput = {
+  slug: string;
+};
+
+export type TagOutput = {
+  slug: string;
+};
+
+export type LabelInput = {
+  text: string;
+};
+
+export type LabelOutput = {
+  text: string;
+};
+
 export type UserInput = {
   id: string;
   address: AddressInput;
   previousAddresses: AddressInput[];
+  tag: TagInput;
+  petTag: LabelInput;
   billingAddress?: AddressInput;
 };
 
@@ -23,6 +41,8 @@ export type UserOutput = {
   id: string;
   address: AddressOutput;
   previousAddresses: AddressOutput[];
+  tag: TagOutput;
+  petTag: LabelOutput;
   billingAddress?: AddressOutput;
 };
 

@@ -627,7 +627,10 @@ export class ZodMiniTypeExtractor {
   ):
     | { valueStart: number; valueEnd: number; currentValue: string; printedArray: boolean }
     | undefined {
-    const pattern = new RegExp(`${escapeRegExp(fieldPath)}\\??: `, "g");
+    // Anchored the same way getter-resolver.ts's findFieldValue is: without
+    // this, a search for e.g. "id" would also match inside "someId: ", since
+    // the field name alone is not required to start at a field boundary.
+    const pattern = new RegExp(`(?:^|[{;|(]\\s*)${escapeRegExp(fieldPath)}\\??: `, "g");
     let best:
       | { valueStart: number; valueEnd: number; currentValue: string; printedArray: boolean }
       | undefined;
@@ -649,9 +652,15 @@ export class ZodMiniTypeExtractor {
       // than an expanded shape. The field is known to hold that schema, so the
       // name says strictly more than the placeholder does. It is the weakest
       // signal of the three, since a placeholder says nothing about the schema.
-      const placeholder = /^(?:readonly\s+)?(?:any|unknown)(\[\])?(?:\s*\|\s*undefined)?$/.exec(
-        currentValue,
-      );
+      // A wrapper that widens the value's type (optional/nullable/nullish)
+      // leaves that widening attached to the placeholder regardless of order
+      // or repetition - stripped here the same way getter-resolver.ts's
+      // isAnyPlaceholder does - before checking for the bare placeholder.
+      const strippedPlaceholder = currentValue
+        .replace(/^readonly\s+/, "")
+        .replace(/(?:\s*\|\s*(?:null|undefined))+$/, "")
+        .trim();
+      const placeholder = /^(?:any|unknown)(\[\])?$/.exec(strippedPlaceholder);
 
       let score = 0;
       if (valueToCheck === refTypeStr) score = 3;

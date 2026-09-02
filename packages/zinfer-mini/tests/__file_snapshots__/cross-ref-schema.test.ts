@@ -5,10 +5,14 @@ import { describe, it, expectTypeOf } from "vitest";
 import type { z } from "zod";
 
 // --- cross-ref-schema ---
-import { AddressSchema as CrossRefSchemaAddressSchema, UserSchema as CrossRefSchemaUserSchema, CatSchema as CrossRefSchemaCatSchema, DogSchema as CrossRefSchemaDogSchema, PetSchema as CrossRefSchemaPetSchema, TreeSchema as CrossRefSchemaTreeSchema, UserIdSchema as CrossRefSchemaUserIdSchema } from "../fixtures/cross-ref-schema";
+import { AddressSchema as CrossRefSchemaAddressSchema, TagSchema as CrossRefSchemaTagSchema, LabelSchema as CrossRefSchemaLabelSchema, UserSchema as CrossRefSchemaUserSchema, CatSchema as CrossRefSchemaCatSchema, DogSchema as CrossRefSchemaDogSchema, PetSchema as CrossRefSchemaPetSchema, TreeSchema as CrossRefSchemaTreeSchema, UserIdSchema as CrossRefSchemaUserIdSchema } from "../fixtures/cross-ref-schema";
 import type {
   AddressInput as CrossRefSchemaAddressInput,
   AddressOutput as CrossRefSchemaAddressOutput,
+  TagInput as CrossRefSchemaTagInput,
+  TagOutput as CrossRefSchemaTagOutput,
+  LabelInput as CrossRefSchemaLabelInput,
+  LabelOutput as CrossRefSchemaLabelOutput,
   UserInput as CrossRefSchemaUserInput,
   UserOutput as CrossRefSchemaUserOutput,
   CatInput as CrossRefSchemaCatInput,
@@ -31,6 +35,22 @@ describe("Type equality tests", () => {
 
     it("AddressSchema output matches z.output", () => {
       expectTypeOf<CrossRefSchemaAddressOutput>().toEqualTypeOf<z.output<typeof CrossRefSchemaAddressSchema>>();
+    });
+
+    it("TagSchema input matches z.input", () => {
+      expectTypeOf<CrossRefSchemaTagInput>().toEqualTypeOf<z.input<typeof CrossRefSchemaTagSchema>>();
+    });
+
+    it("TagSchema output matches z.output", () => {
+      expectTypeOf<CrossRefSchemaTagOutput>().toEqualTypeOf<z.output<typeof CrossRefSchemaTagSchema>>();
+    });
+
+    it("LabelSchema input matches z.input", () => {
+      expectTypeOf<CrossRefSchemaLabelInput>().toEqualTypeOf<z.input<typeof CrossRefSchemaLabelSchema>>();
+    });
+
+    it("LabelSchema output matches z.output", () => {
+      expectTypeOf<CrossRefSchemaLabelOutput>().toEqualTypeOf<z.output<typeof CrossRefSchemaLabelSchema>>();
     });
 
     it("UserSchema input matches z.input", () => {
