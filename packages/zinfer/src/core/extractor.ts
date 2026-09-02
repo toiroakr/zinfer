@@ -633,8 +633,12 @@ export class ZodTypeExtractor {
     const candidate = resolved ?? printed;
 
     // A recursive schema names itself, and nothing declares that name here, so
-    // only the approximation can be inlined.
-    if (new RegExp(`\\b${escapeRegExp(`${refSchema}${kind}`)}\\b`).test(candidate)) {
+    // only the approximation can be inlined. Detected through
+    // replaceBareTypeName rather than a \b-bounded regex: \b is defined in
+    // terms of \w ([A-Za-z0-9_]), which excludes $ - legal at the start of a
+    // JS/TS identifier - so a schema named e.g. $LocalRecursiveSchema would
+    // never match and its dangling self-reference would leak through unfixed.
+    if (replaceBareTypeName(candidate, `${refSchema}${kind}`, "\0") !== candidate) {
       return approximation;
     }
 

@@ -21,12 +21,7 @@ import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-refe
 import { ImportResolver } from "./import-resolver.js";
 import { ValibotBindings } from "./valibot-bindings.js";
 import { logDebugError } from "./logger.js";
-import {
-  escapeRegExp,
-  isEscaped,
-  isGenericMethodName,
-  replaceBareTypeName,
-} from "@zinfer-monorepo/core";
+import { isEscaped, isGenericMethodName, replaceBareTypeName } from "@zinfer-monorepo/core";
 import type {
   ExtractResult,
   FileExtractResult,
@@ -753,8 +748,12 @@ export class ValibotTypeExtractor {
     const candidate = resolved ?? printed;
 
     // A recursive schema names itself, and nothing declares that name here, so
-    // only the approximation can be inlined.
-    if (new RegExp(`\\b${escapeRegExp(`${refSchema}${kind}`)}\\b`).test(candidate)) {
+    // only the approximation can be inlined. Detected through
+    // replaceBareTypeName rather than a \b-bounded regex: \b is defined in
+    // terms of \w ([A-Za-z0-9_]), which excludes $ - legal at the start of a
+    // JS/TS identifier - so a schema named e.g. $LocalRecursiveSchema would
+    // never match.
+    if (replaceBareTypeName(candidate, `${refSchema}${kind}`, "\0") !== candidate) {
       return approximation;
     }
 
