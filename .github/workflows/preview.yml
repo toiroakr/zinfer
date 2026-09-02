@@ -33,4 +33,4 @@ jobs:
       - name: Build
         run: pnpm -r build
       - name: Publish preview
-        run: pnpm dlx pkg-pr-new publish ./packages/zinfer ./packages/vinfer
+        run: pnpm dlx pkg-pr-new publish ./packages/zinfer ./packages/vinfer ./packages/zinfer-mini

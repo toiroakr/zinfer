@@ -1,0 +1,355 @@
+import { SourceFile, Node, CallExpression } from "ts-morph";
+import {
+  ZodMiniBindings,
+  ZOD_MINI_OBJECT_BUILDERS,
+  ZOD_MINI_UNION_BUILDERS,
+  ZOD_MINI_DISCRIMINATED_UNION_BUILDERS,
+} from "./zod-mini-bindings.js";
+import { analyzeSchemaExpression, unwrapExpression } from "./schema-expression.js";
+
+/**
+ * Information about a schema reference within another schema.
+ */
+export interface SchemaReferenceInfo {
+  /** The object property key where the reference occurs (e.g., "address") */
+  fieldPath: string;
+  /** The referenced schema name */
+  refSchema: string;
+  /** Whether wrapped in `z.array()` */
+  isArray: boolean;
+  /** Whether wrapped in `z.record()` */
+  isRecord: boolean;
+  /** Whether optional */
+  isOptional: boolean;
+  /** Whether the value type includes `null` */
+  isNullable: boolean;
+}
+
+/**
+ * Information about union member references.
+ */
+export interface UnionReferenceInfo {
+  /** The referenced schema names (members of the union) */
+  memberSchemas: string[];
+  /** Whether the union also contains members that are not named schema references */
+  hasInlineMembers: boolean;
+  /** Whether this is a `z.discriminatedUnion(...)` */
+  isDiscriminated: boolean;
+  /** The discriminator key for a discriminated union */
+  discriminatorKey?: string;
+}
+
+/**
+ * Map of schema name to its references to other schemas.
+ */
+export type SchemaReferenceMap = Map<string, SchemaReferenceInfo[]>;
+
+/**
+ * Map of schema name to its union member references.
+ */
+export type UnionReferenceMap = Map<string, UnionReferenceInfo>;
+
+/**
+ * Analyzes schema references to detect cross-schema dependencies.
+ */
+export class SchemaReferenceAnalyzer {
+  /**
+   * Analyzes a source file to find all schema references and union references in a single pass.
+   */
+  analyzeAllReferences(
+    sourceFile: SourceFile,
+    schemaNames: Set<string>,
+  ): { references: SchemaReferenceMap; unionReferences: UnionReferenceMap } {
+    const references: SchemaReferenceMap = new Map();
+    const unionReferences: UnionReferenceMap = new Map();
+    const bindings = ZodMiniBindings.from(sourceFile);
+
+    const statements = sourceFile.getVariableStatements();
+    for (const stmt of statements) {
+      for (const decl of stmt.getDeclarations()) {
+        const schemaName = decl.getName();
+        if (!schemaNames.has(schemaName)) continue;
+
+        const init = decl.getInitializer();
+        if (!init) continue;
+
+        const refs = this.findSchemaReferences(init, schemaNames, schemaName, bindings);
+        if (refs.length > 0) {
+          references.set(schemaName, refs);
+        }
+
+        const unionRef = this.findUnionReference(init, schemaNames, schemaName, bindings);
+        if (unionRef) {
+          unionReferences.set(schemaName, unionRef);
+        }
+      }
+    }
+
+    return { references, unionReferences };
+  }
+
+  /**
+   * Finds union references in a schema definition.
+   */
+  private findUnionReference(
+    node: Node,
+    schemaNames: Set<string>,
+    currentSchema: string,
+    bindings: ZodMiniBindings,
+  ): UnionReferenceInfo | undefined {
+    const current = unwrapExpression(node);
+
+    if (!Node.isCallExpression(current)) {
+      return undefined;
+    }
+
+    const callName = bindings.getCallName(current);
+    if (!callName) {
+      return undefined;
+    }
+
+    if (ZOD_MINI_DISCRIMINATED_UNION_BUILDERS.has(callName)) {
+      return this.parseDiscriminatedUnion(current, schemaNames, currentSchema);
+    }
+
+    if (ZOD_MINI_UNION_BUILDERS.has(callName)) {
+      return this.parseUnion(current, schemaNames, currentSchema);
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Parses a `z.discriminatedUnion("key", [...])` call.
+   */
+  private parseDiscriminatedUnion(
+    node: CallExpression,
+    schemaNames: Set<string>,
+    currentSchema: string,
+  ): UnionReferenceInfo | undefined {
+    const args = node.getArguments();
+    if (args.length < 2) {
+      return undefined;
+    }
+
+    // First arg is the discriminator key
+    const discriminatorArg = args[0];
+    let discriminatorKey: string | undefined;
+    if (Node.isStringLiteral(discriminatorArg)) {
+      discriminatorKey = discriminatorArg.getLiteralText();
+    }
+
+    // Second arg is the array of schemas
+    const { memberSchemas, hasInlineMembers } = this.extractSchemaArrayMembers(
+      args[1],
+      schemaNames,
+      currentSchema,
+    );
+
+    if (memberSchemas.length === 0) {
+      return undefined;
+    }
+
+    return {
+      memberSchemas,
+      hasInlineMembers,
+      isDiscriminated: true,
+      discriminatorKey,
+    };
+  }
+
+  /**
+   * Parses a `z.union([...])` call.
+   */
+  private parseUnion(
+    node: CallExpression,
+    schemaNames: Set<string>,
+    currentSchema: string,
+  ): UnionReferenceInfo | undefined {
+    const args = node.getArguments();
+    if (args.length < 1) {
+      return undefined;
+    }
+
+    // First arg is the array of schemas
+    const { memberSchemas, hasInlineMembers } = this.extractSchemaArrayMembers(
+      args[0],
+      schemaNames,
+      currentSchema,
+    );
+
+    if (memberSchemas.length === 0) {
+      return undefined;
+    }
+
+    return {
+      memberSchemas,
+      hasInlineMembers,
+      isDiscriminated: false,
+    };
+  }
+
+  /**
+   * Extracts schema names from an array expression.
+   */
+  private extractSchemaArrayMembers(
+    node: Node,
+    schemaNames: Set<string>,
+    currentSchema: string,
+  ): { memberSchemas: string[]; hasInlineMembers: boolean } {
+    const arrayLiteral = unwrapExpression(node);
+    if (!Node.isArrayLiteralExpression(arrayLiteral)) {
+      return { memberSchemas: [], hasInlineMembers: true };
+    }
+
+    const members: string[] = [];
+    let hasInlineMembers = false;
+    for (const element of arrayLiteral.getElements()) {
+      const unwrapped = unwrapExpression(element);
+      if (Node.isIdentifier(unwrapped)) {
+        const name = unwrapped.getText();
+        if (schemaNames.has(name) && name !== currentSchema) {
+          members.push(name);
+          continue;
+        }
+      }
+      hasInlineMembers = true;
+    }
+
+    return { memberSchemas: members, hasInlineMembers };
+  }
+
+  /**
+   * Finds all references to other schemas within a schema definition.
+   */
+  private findSchemaReferences(
+    node: Node,
+    schemaNames: Set<string>,
+    currentSchema: string,
+    bindings: ZodMiniBindings,
+  ): SchemaReferenceInfo[] {
+    const refs: SchemaReferenceInfo[] = [];
+
+    // Find zod/mini object calls
+    const objectCalls = this.findObjectCalls(node, bindings);
+
+    for (const objectCall of objectCalls) {
+      const args = objectCall.getArguments();
+      if (args.length === 0) continue;
+
+      const entries = unwrapExpression(args[0]);
+      if (!Node.isObjectLiteralExpression(entries)) continue;
+
+      const fields = this.findObjectLiteralReferences(
+        entries,
+        schemaNames,
+        currentSchema,
+        bindings,
+        new Set(),
+      );
+      refs.push(...[...fields.values()].filter((ref): ref is SchemaReferenceInfo => ref !== null));
+    }
+
+    return refs;
+  }
+
+  /**
+   * Finds schema references in an entries object, including same-file object-literal spreads.
+   * Later properties override earlier spread entries, matching JavaScript object semantics.
+   */
+  private findObjectLiteralReferences(
+    objectLiteral: Node,
+    schemaNames: Set<string>,
+    currentSchema: string,
+    bindings: ZodMiniBindings,
+    visitedShapes: Set<string>,
+  ): Map<string, SchemaReferenceInfo | null> {
+    if (!Node.isObjectLiteralExpression(objectLiteral)) {
+      return new Map();
+    }
+
+    const refsByField = new Map<string, SchemaReferenceInfo | null>();
+
+    for (const prop of objectLiteral.getProperties()) {
+      if (Node.isSpreadAssignment(prop)) {
+        const expression = prop.getExpression();
+        if (!Node.isIdentifier(expression)) {
+          refsByField.clear();
+          continue;
+        }
+
+        const declaration = objectLiteral
+          .getSourceFile()
+          .getVariableDeclaration(expression.getText());
+        const initializer = declaration?.getInitializer();
+        const shape = initializer ? unwrapExpression(initializer) : undefined;
+        if (!declaration || !shape || !Node.isObjectLiteralExpression(shape)) {
+          refsByField.clear();
+          continue;
+        }
+
+        const shapeId = `${declaration.getSourceFile().getFilePath()}:${declaration.getStart()}`;
+        if (visitedShapes.has(shapeId)) continue;
+
+        const nextVisitedShapes = new Set(visitedShapes);
+        nextVisitedShapes.add(shapeId);
+        for (const [fieldName, ref] of this.findObjectLiteralReferences(
+          shape,
+          schemaNames,
+          currentSchema,
+          bindings,
+          nextVisitedShapes,
+        )) {
+          refsByField.set(fieldName, ref);
+        }
+        continue;
+      }
+
+      if (!Node.isPropertyAssignment(prop)) continue;
+
+      const fieldName = prop.getName();
+      const initializer = prop.getInitializer();
+      if (!initializer) continue;
+
+      const ref = analyzeSchemaExpression(
+        initializer,
+        bindings,
+        (name) => schemaNames.has(name) && name !== currentSchema,
+      );
+      refsByField.set(fieldName, ref ? { fieldPath: fieldName, ...ref } : null);
+    }
+
+    return refsByField;
+  }
+
+  /**
+   * Finds all zod/mini object calls in a node (including the node itself),
+   * treating each one found as describing fields of the schema being
+   * analyzed - correct for sibling composition calls (e.g. an `extend`'s
+   * shape argument), but not for an object() call nested inside another
+   * object() call's own shape: that inner call describes a sub-schema's
+   * fields, already handled in their own right-scoped fieldPath by
+   * `findObjectLiteralReferences`. Descent stops at each found call's own
+   * arguments so those inner fields are never re-collected and flattened
+   * into the outer schema's reference list under the wrong fieldPath.
+   */
+  private findObjectCalls(node: Node, bindings: ZodMiniBindings): CallExpression[] {
+    const calls: CallExpression[] = [];
+
+    const isObjectCall = (n: Node) =>
+      Node.isCallExpression(n) && bindings.isCallTo(n, ZOD_MINI_OBJECT_BUILDERS);
+
+    if (isObjectCall(node)) {
+      calls.push(node as CallExpression);
+    } else {
+      node.forEachDescendant((n, traversal) => {
+        if (isObjectCall(n)) {
+          calls.push(n as CallExpression);
+          traversal.skip();
+        }
+      });
+    }
+
+    return calls;
+  }
+}
