@@ -11,7 +11,7 @@ import { analyzeSchemaExpression, unwrapExpression } from "./schema-expression.j
  * Information about a schema reference within another schema.
  */
 export interface SchemaReferenceInfo {
-  /** The field path where the reference occurs (e.g., "output", "input") */
+  /** The object property key where the reference occurs (e.g., "address") */
   fieldPath: string;
   /** The referenced schema name */
   refSchema: string;
