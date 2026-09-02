@@ -156,6 +156,11 @@ describe("ZodMiniTypeExtractor - Generated TypeScript Declarations", () => {
     "explicit-function-type-schema",
     "should extract a full function type from a z.ZodMiniType<T, I> annotation without truncating at the arrow",
   );
+  createSchemaTest(
+    extractor,
+    "unrelated-zod-mini-type-schema",
+    "should not mistake a same-named, unrelated ZodMiniType annotation for zod/mini's own type",
+  );
 });
 
 describe("described-schema.ts - descriptions", () => {

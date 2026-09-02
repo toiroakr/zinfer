@@ -120,6 +120,16 @@ export class ZodMiniBindings {
   }
 
   /**
+   * Resolves a local identifier bound by a named import to the zod/mini
+   * export name it actually refers to (accounting for `import { X as Y }`
+   * aliasing), or undefined when it isn't a named import from this file's
+   * zod/mini module(s) at all.
+   */
+  namedImportExport(localName: string): string | undefined {
+    return this.namedImports.get(localName);
+  }
+
+  /**
    * The module specifier this file imports zod/mini from (e.g. `"zod/mini"`),
    * defaulting to `"zod/mini"` when the file has no visible import of its own.
    */

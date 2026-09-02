@@ -117,7 +117,7 @@ export class SchemaDetector {
   ): boolean {
     // Explicit zod/mini schema annotation (z.ZodMiniType<T>)
     const typeNode = declaration.getTypeNode();
-    if (typeNode && SCHEMA_TYPE_ANNOTATION_PATTERN.test(typeNode.getText())) {
+    if (typeNode && this.isZodMiniTypeAnnotation(typeNode, bindings)) {
       return true;
     }
 
@@ -140,6 +140,34 @@ export class SchemaDetector {
     // than top-level functions - all of them return either `this` or a
     // schema derived from it (`.brand()`).
     return this.endsInSchemaMethodCall(unwrapped, bindings, visitedDeclarations);
+  }
+
+  /**
+   * Checks whether a type annotation is zod/mini's `ZodMiniType<T>`, resolved
+   * through this file's actual zod/mini bindings rather than by text alone -
+   * a same-named `ZodMiniType` imported from an unrelated package (e.g.
+   * `import type { ZodMiniType } from "other-package"`) must not be mistaken
+   * for zod/mini's own type.
+   */
+  private isZodMiniTypeAnnotation(typeNode: Node, bindings: ZodMiniBindings): boolean {
+    if (!Node.isTypeReference(typeNode)) return false;
+    const typeName = typeNode.getTypeName();
+
+    if (Node.isQualifiedName(typeName)) {
+      const left = typeName.getLeft();
+      return (
+        Node.isIdentifier(left) &&
+        bindings.isNamespace(left.getText()) &&
+        SCHEMA_TYPE_ANNOTATIONS.includes(typeName.getRight().getText())
+      );
+    }
+
+    if (Node.isIdentifier(typeName)) {
+      const exportName = bindings.namedImportExport(typeName.getText());
+      return exportName !== undefined && SCHEMA_TYPE_ANNOTATIONS.includes(exportName);
+    }
+
+    return false;
   }
 
   /**
