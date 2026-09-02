@@ -7,3 +7,11 @@ import * as z from "zod/mini";
 export const CallbackSchema: z.ZodMiniType<(value: string) => number, unknown> = z.custom(
   (val) => typeof val === "function",
 );
+
+// Regression test for hasTopLevelUnion: CallbackSchema's raw type is an
+// unparenthesized arrow function type. Wrapping it in `[]` without first
+// checking whether it needs parens produces `(value: string) => number[]`,
+// which TypeScript parses as "a function returning number[]" rather than the
+// intended "an array of functions" - hasTopLevelUnion must therefore treat a
+// top-level `=>` as itself requiring parens, the same as a top-level `|`/`&`.
+export const CallbackListSchema = z.array(CallbackSchema);

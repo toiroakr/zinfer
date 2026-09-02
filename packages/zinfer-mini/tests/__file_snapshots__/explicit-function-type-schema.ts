@@ -3,3 +3,7 @@
 export type CallbackInput = (value: string) => number;
 
 export type CallbackOutput = (value: string) => number;
+
+export type CallbackListInput = unknown[];
+
+export type CallbackListOutput = ((value: string) => number)[];

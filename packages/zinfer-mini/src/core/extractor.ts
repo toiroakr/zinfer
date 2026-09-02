@@ -12,8 +12,6 @@ import {
 import {
   NORMALIZE_TYPE_DEFINITION,
   NORMALIZE_TYPE_NAMES,
-  TYPE_UTILITY_INPUT_ALIAS,
-  TYPE_UTILITY_OUTPUT_ALIAS,
   createTempTypeAlias,
   createTypeUtilityImportStatement,
   normalizeBrandQualifiers,
@@ -101,6 +99,8 @@ export class ZodMiniTypeExtractor {
   private referenceAnalyzer: SchemaReferenceAnalyzer;
   private importResolver: ImportResolver;
   private importedSchemaCache = new Map<string, Omit<RawSchemaType, "isExported">>();
+  /** The exact import declaration `ensureTypeUtilityImport` injected into each source file, if any. */
+  private injectedTypeUtilityImports = new WeakMap<SourceFile, ImportDeclaration>();
 
   /**
    * Creates a new ZodMiniTypeExtractor instance.
@@ -757,41 +757,31 @@ export class ZodMiniTypeExtractor {
    * a zod/mini file commonly uses only named imports (tree-shaking a bundle
    * down is the whole point of zod/mini), so there may be no such identifier
    * at all.
+   *
+   * Tracks the exact declaration it creates in `injectedTypeUtilityImports`
+   * (keyed by source file) rather than re-detecting it later by shape:
+   * matching by alias names alone would treat a (vanishingly unlikely, but
+   * possible) user import that happens to reuse both `__ZinferMiniInput` and
+   * `__ZinferMiniOutput` as "already injected" - and have cleanup delete that
+   * user import outright.
    */
   private ensureTypeUtilityImport(sourceFile: SourceFile): void {
+    if (this.injectedTypeUtilityImports.has(sourceFile)) return;
+
     const moduleSpecifier = ZodMiniBindings.from(sourceFile).moduleSpecifier();
-    const alreadyPresent = sourceFile
-      .getImportDeclarations()
-      .some((decl) => this.isInjectedTypeUtilityImport(decl, moduleSpecifier));
-    if (!alreadyPresent) {
-      sourceFile.addStatements([createTypeUtilityImportStatement(moduleSpecifier)]);
-    }
+    const [added] = sourceFile.addStatements([createTypeUtilityImportStatement(moduleSpecifier)]);
+    this.injectedTypeUtilityImports.set(sourceFile, added as ImportDeclaration);
   }
 
   /**
-   * Removes the private type-utility import injected by `ensureTypeUtilityImport`.
+   * Removes the private type-utility import injected by `ensureTypeUtilityImport`
+   * - exactly that declaration, never a lookalike.
    */
   private cleanupTypeUtilityImport(sourceFile: SourceFile): void {
-    const moduleSpecifier = ZodMiniBindings.from(sourceFile).moduleSpecifier();
-    for (const decl of sourceFile.getImportDeclarations()) {
-      if (this.isInjectedTypeUtilityImport(decl, moduleSpecifier)) decl.remove();
-    }
-  }
-
-  /**
-   * Whether an import declaration is exactly the one `createTypeUtilityImportStatement`
-   * injects: both aliases must be present, not just one, and from the same
-   * module specifier. Matching on the input alias alone would treat a
-   * (vanishingly unlikely, but possible) user import that happens to reuse
-   * `__ZinferMiniInput` as "already injected" - leaving `__ZinferMiniOutput`
-   * undefined - and would have cleanup delete that user import outright.
-   */
-  private isInjectedTypeUtilityImport(decl: ImportDeclaration, moduleSpecifier: string): boolean {
-    if (decl.getModuleSpecifierValue() !== moduleSpecifier) return false;
-    const aliases = new Set(
-      decl.getNamedImports().map((named) => named.getAliasNode()?.getText() ?? named.getName()),
-    );
-    return aliases.has(TYPE_UTILITY_INPUT_ALIAS) && aliases.has(TYPE_UTILITY_OUTPUT_ALIAS);
+    const injected = this.injectedTypeUtilityImports.get(sourceFile);
+    if (!injected) return;
+    injected.remove();
+    this.injectedTypeUtilityImports.delete(sourceFile);
   }
 
   /**
@@ -1718,8 +1708,19 @@ function hasTopLevelUnion(typeStr: string): boolean {
       quote = char;
     } else if (char === "{" || char === "[" || char === "(" || char === "<") {
       depth++;
-    } else if (char === "}" || char === "]" || char === ")" || char === ">") {
+    } else if (char === "}" || char === "]" || char === ")") {
       depth--;
+    } else if (char === ">") {
+      // The `>` of an arrow function type's `=>` never opened a matching
+      // `<` - decrementing depth for it would desync depth tracking for the
+      // rest of the string. A top-level arrow type itself needs the same
+      // parenthesization as a union/intersection (e.g. as an array element),
+      // so it's recognized as its own signal here instead.
+      if (typeStr[index - 1] === "=") {
+        if (depth === 0) return true;
+      } else {
+        depth--;
+      }
     } else if ((char === "|" || char === "&") && depth === 0) {
       return true;
     }

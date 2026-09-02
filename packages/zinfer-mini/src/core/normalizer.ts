@@ -51,7 +51,7 @@ export function createTempTypeAlias(schemaName: string, typeKind: "input" | "out
  */
 export function normalizeBrandQualifiers(typeStr: string): string {
   return typeStr.replace(
-    /(?:[\w$]+(?:\.[\w$]+)*\.|import\([^)]*\)\.)?(?:\$brand|BRAND)</g,
+    /(?:[\w$]+(?:\.[\w$]+)*\.|import\([^)]*\)(?:\.[\w$]+)*\.)?(?:\$brand|BRAND)</g,
     "BRAND<",
   );
 }
