@@ -268,6 +268,11 @@ export class SchemaDetector {
       if (!inString) {
         if (char === "<" || char === "{" || char === "[" || char === "(") {
           depth++;
+        } else if (char === ">" && typeText[endIdx - 1] === "=") {
+          // The `>` of an arrow function type's `=>` never opened a matching
+          // `<` - decrementing depth for it would close the scan early (or
+          // desync depth tracking for the rest of the string), e.g. for
+          // `ZodMiniType<(value: string) => number, unknown>`.
         } else if (char === ">" || char === "}" || char === "]" || char === ")") {
           depth--;
           if (depth === 0) break;

@@ -44,6 +44,8 @@ const KNOWN_TYPE_DIFFERENCES: Record<string, string> = {
   "lazy-schema.test.ts": "Same annotated-recursive-getter divergence as cross-ref-schema.test.ts.",
   "builders-schema.test.ts":
     "z.intersection() infers `A & B`; zinfer-mini flattens it into a single object literal, which is not nominally equal to the intersection (same documented divergence as classic zinfer's intersection-schema.test.ts).",
+  "explicit-function-type-schema.test.ts":
+    "CallbackSchema is built from a bare z.custom(fn) with no type argument of its own; z.output<> picks up the explicit z.ZodMiniType<T, I> annotation via contextual typing, but z.input<> resolves to unknown instead - zinfer-mini extracts the annotation's declared input type directly rather than what z.input<> alone would infer. Only the input assertion diverges; output matches.",
 };
 
 // After all tests, type-check every generated snapshot and companion
@@ -144,6 +146,11 @@ describe("ZodMiniTypeExtractor - Generated TypeScript Declarations", () => {
     "should resolve an annotated z.lazy() recursive schema",
   );
   createSchemaTest(extractor, "builders-schema", "should cover the full v1 builder surface");
+  createSchemaTest(
+    extractor,
+    "explicit-function-type-schema",
+    "should extract a full function type from a z.ZodMiniType<T, I> annotation without truncating at the arrow",
+  );
 });
 
 describe("described-schema.ts - descriptions", () => {
