@@ -1017,11 +1017,21 @@ function realpathExisting(path: string): string {
 }
 
 /**
- * Converts absolute `import("...")` paths in generated type content to relative paths.
+ * Converts absolute `import("...")` paths in generated type content to relative paths,
+ * and drops the qualifier entirely when it points back at this very output file.
  *
  * TypeScript's type printer may emit absolute file paths in `import()` type syntax
  * (e.g., `import("/Users/foo/bar/src/types/plugin").SomeType`).
  * These must be converted to relative paths so the output is portable across machines.
+ *
+ * A schema typed against a type this file previously generated for itself (the
+ * standard recursive-schema pattern, where the type is imported from the tool's
+ * own prior output) can carry references to *sibling* schemas that this same run
+ * also declares in this very file - printed as `import("<this file>").Sibling`
+ * only because the field's printing location doesn't see `Sibling` locally, not
+ * because it truly lives elsewhere. Once the qualifier resolves to this output
+ * file's own path, the reference is collapsed to bare, matching every other
+ * same-file reference already printed without one.
  *
  * @param content - The generated file content
  * @param outputFilePath - Absolute path to the output file
@@ -1034,8 +1044,9 @@ export function relativizeImportPaths(content: string, outputFilePath: string): 
   // must be resolved from the same symlink base for `relative()` below to
   // compute a short, correct path instead of walking up through the root.
   const outputDir = realpathExisting(dirname(outputFilePath));
+  const selfSpecifier = `./${basename(outputFilePath).replace(/\.d\.ts$|\.ts$/, "")}`;
 
-  return content.replace(/import\("([^"]+)"\)/g, (_match, importPath: string) => {
+  return content.replace(/import\("([^"]+)"\)(\.?)/g, (_match, importPath: string, dot: string) => {
     if (!isAbsolute(importPath)) {
       return _match;
     }
@@ -1043,6 +1054,12 @@ export function relativizeImportPaths(content: string, outputFilePath: string): 
     if (!rel.startsWith(".")) {
       rel = "./" + rel;
     }
-    return `import("${rel}")`;
+    // Only collapse a genuine qualified access (`import("...").Sibling`), never
+    // a bare `import("...")` on its own (e.g. `typeof import("...")`) - dropping
+    // that would leave a dangling keyword with nothing after it.
+    if (rel === selfSpecifier && dot === ".") {
+      return "";
+    }
+    return `import("${rel}")${dot}`;
   });
 }

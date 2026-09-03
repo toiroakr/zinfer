@@ -885,6 +885,82 @@ export const CoordWrapperSchema = z
       expect(tree).not.toContain("RenamedNodeSchema");
       expect(tree).not.toContain("any");
     });
+
+    it("prints bare names for same-file siblings reached through a re-run's own explicit z.ZodType<T> annotation (#519)", async () => {
+      // A schema promoted to a real generation target is commonly typed
+      // z.ZodType<T> against a type imported from the file zinfer itself
+      // last generated - the standard way to type a recursive Zod schema
+      // without an inline circular type. On a re-run, that imported type's
+      // own fields (metadata, relation) name two *other* schemas the same
+      // source file also declares - both landing in this very output file -
+      // so referencing them by import() is both unnecessary and wrong: the
+      // printer only reaches for import() because Metadata/Relation (the
+      // unified names the prior run's file declares) aren't visible from
+      // schema.ts, not because they truly live elsewhere.
+      workDir = mkdtempSync(join(tmpdir(), "zinfer-cli-runner-"));
+      symlinkSync(
+        resolve(import.meta.dirname, "../node_modules"),
+        join(workDir, "node_modules"),
+        "junction",
+      );
+      mkdirSync(join(workDir, "src"), { recursive: true });
+      mkdirSync(join(workDir, "types"), { recursive: true });
+
+      // The prior run's output - what schema.ts's explicit annotation imports.
+      writeFileSync(
+        join(workDir, "types/src.generated.ts"),
+        [
+          "export type Metadata = { label: string };",
+          "export type MetadataInput = Metadata;",
+          "export type MetadataOutput = Metadata;",
+          "export type Relation = { table: string };",
+          "export type RelationInput = Relation;",
+          "export type RelationOutput = Relation;",
+          "export type NodeOutput = {",
+          "  metadata: Metadata;",
+          "  relation?: Relation;",
+          "  children?: Record<string, NodeOutput>;",
+          "};",
+          "export type NodeOutputInput = NodeOutput;",
+          "export type NodeOutputOutput = NodeOutput;",
+          "",
+        ].join("\n"),
+      );
+
+      writeFileSync(
+        join(workDir, "src/schema.ts"),
+        [
+          'import { z } from "zod";',
+          'import type { NodeOutput } from "../types/src.generated";',
+          "",
+          "export const MetadataSchema = z.strictObject({ label: z.string() });",
+          "export const RelationSchema = z.strictObject({ table: z.string() });",
+          "",
+          "export const NodeSchema: z.ZodType<NodeOutput> = z.lazy(() =>",
+          "  z.object({",
+          "    metadata: MetadataSchema,",
+          "    relation: RelationSchema.optional(),",
+          "    children: z.record(z.string(), NodeSchema).optional(),",
+          "  }),",
+          ");",
+          "",
+        ].join("\n"),
+      );
+      process.chdir(workDir);
+
+      await runCLI(["src/schema.ts"], {
+        outDir: "types",
+        outPattern: "[dir].generated[ext]",
+        suffix: "Schema",
+        map: "NodeSchema:NodeOutput",
+        mergeSame: true,
+      });
+
+      const generated = readFileSync(join(workDir, "types/src.generated.ts"), "utf-8");
+      expect(generated).toContain("metadata: Metadata;");
+      expect(generated).toContain("relation?: Relation;");
+      expect(generated).not.toContain("import(");
+    });
   });
 
   describe("--outFile with a schema one file declares and another imports", () => {
