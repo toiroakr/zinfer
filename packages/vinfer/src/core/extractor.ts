@@ -21,12 +21,7 @@ import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-refe
 import { ImportResolver } from "./import-resolver.js";
 import { ValibotBindings } from "./valibot-bindings.js";
 import { logDebugError } from "./logger.js";
-import {
-  escapeRegExp,
-  isEscaped,
-  isGenericMethodName,
-  replaceBareTypeName,
-} from "@zinfer-monorepo/core";
+import { isEscaped, isGenericMethodName, replaceBareTypeName } from "@zinfer-monorepo/core";
 import type {
   ExtractResult,
   FileExtractResult,
@@ -668,6 +663,7 @@ export class ValibotTypeExtractor {
           output,
           schemaName,
           explicitType,
+          raw.isExported,
           () => this.qualifyLocalTypeReference(sourceFile, explicitType) ?? explicitType,
         ));
       } else if (explicitType) {
@@ -687,6 +683,7 @@ export class ValibotTypeExtractor {
             output,
             schemaName,
             explicitType,
+            raw.isExported,
             () => this.referenceFallbackText(importedRef, explicitType),
           ));
         }
@@ -751,8 +748,12 @@ export class ValibotTypeExtractor {
     const candidate = resolved ?? printed;
 
     // A recursive schema names itself, and nothing declares that name here, so
-    // only the approximation can be inlined.
-    if (new RegExp(`\\b${escapeRegExp(`${refSchema}${kind}`)}\\b`).test(candidate)) {
+    // only the approximation can be inlined. Detected through
+    // replaceBareTypeName rather than a \b-bounded regex: \b is defined in
+    // terms of \w ([A-Za-z0-9_]), which excludes $ - legal at the start of a
+    // JS/TS identifier - so a schema named e.g. $LocalRecursiveSchema would
+    // never match.
+    if (replaceBareTypeName(candidate, `${refSchema}${kind}`, "\0") !== candidate) {
       return approximation;
     }
 
@@ -1485,28 +1486,37 @@ export class ValibotTypeExtractor {
    * this file or merely imported into it (the two callers only differ in
    * which case applies and how to qualify the degenerate one below).
    *
+   * `<schema>Input`/`<schema>Output` is only a name something actually
+   * declares when the schema itself is exported (the type-printer emits no
+   * declaration for a schema that is neither exported nor imported from
+   * elsewhere - see `formatMultipleAsDeclarations`). A non-exported schema
+   * reached only inline through another schema (#518) would otherwise trade
+   * one undeclared bare identifier for another; widen the recursion point to
+   * `any` instead, the same "no name to point at" fallback a getter-based
+   * self-reference with no declared name already falls back to.
+   *
    * When the resolved text is exactly `typeName` itself (not embedded in a
    * larger composite type, e.g. a recursive union member), rewriting it
    * this way would produce a circular alias like `type FooInput =
    * FooInput` instead. `qualifyExact` supplies the non-circular form for
-   * that case - an inline `import("...")` reference to the declaration.
+   * that case - an inline `import("...")` reference to the declaration,
+   * which points at the annotation's own type rather than the schema's
+   * generated name, so it stays valid whether or not the schema is exported.
    */
   private rewriteExplicitTypeSelfReference(
     input: string,
     output: string,
     schemaName: string,
     typeName: string,
+    isExported: boolean,
     qualifyExact: () => string,
   ): { input: string; output: string } {
+    const selfInput = isExported ? `${schemaName}Input` : "any";
+    const selfOutput = isExported ? `${schemaName}Output` : "any";
     return {
-      input:
-        input === typeName
-          ? qualifyExact()
-          : replaceBareTypeName(input, typeName, `${schemaName}Input`),
+      input: input === typeName ? qualifyExact() : replaceBareTypeName(input, typeName, selfInput),
       output:
-        output === typeName
-          ? qualifyExact()
-          : replaceBareTypeName(output, typeName, `${schemaName}Output`),
+        output === typeName ? qualifyExact() : replaceBareTypeName(output, typeName, selfOutput),
     };
   }
 
