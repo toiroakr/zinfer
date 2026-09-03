@@ -882,7 +882,10 @@ export function relativizeImportPaths(content: string, outputFilePath: string): 
     if (!rel.startsWith(".")) {
       rel = "./" + rel;
     }
-    if (rel === selfSpecifier) {
+    // Only collapse a genuine qualified access (`import("...").Sibling`), never
+    // a bare `import("...")` on its own (e.g. `typeof import("...")`) - dropping
+    // that would leave a dangling keyword with nothing after it.
+    if (rel === selfSpecifier && dot === ".") {
       return "";
     }
     return `import("${rel}")${dot}`;

@@ -78,4 +78,17 @@ describe("relativizeImportPaths", () => {
 
     expect(result).toBe(`export type Foo = { sibling: Sibling };`);
   });
+
+  it("does not collapse a self-referencing import() that is not a qualified access (Copilot review on #524)", () => {
+    // A bare `import("...")` with nothing after it (e.g. `typeof import("...")`)
+    // denotes the whole module's namespace type, not a named member - dropping
+    // it the same way a qualified `import("...").Sibling` is dropped would
+    // leave a dangling `typeof ` with no operand, which is invalid TypeScript.
+    const content = `export type Foo = { self: typeof import("/Users/dev/project/src/types/foo.generated") };`;
+    const outputPath = "/Users/dev/project/src/types/foo.generated.ts";
+
+    const result = relativizeImportPaths(content, outputPath);
+
+    expect(result).toBe(`export type Foo = { self: typeof import("./foo.generated") };`);
+  });
 });
