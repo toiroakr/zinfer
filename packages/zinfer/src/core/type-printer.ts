@@ -472,14 +472,15 @@ export function formatMultipleAsDeclarations(
   // collides with something already reserved (including another promoted
   // local) is disambiguated with a numeric suffix.
   //
-  // Known gap: this dedups by the mapped *name*, not by the schema's own
-  // (unavailable here) source file - two distinct, same-named non-exported
-  // self-recursive schemas from two different files combined into one
-  // `--outFile` run still collide (the second is silently skipped by the
-  // `typeNameMap.has` check below, the same way two same-named *exported*
-  // schemas from different files already do today). Disambiguating that
-  // case would need `ExtractResult` to carry file identity, which it
-  // currently does not.
+  // Known gap: the `typeNameMap.has` check below keys this dedup on the
+  // schema's own (raw) `schemaName` string, not on which file declared it -
+  // two distinct, same-named non-exported self-recursive schemas from two
+  // different files combined into one `--outFile` run still collide (the
+  // second's `schemaName` already has an entry from the first, so it never
+  // even reaches `uniqueMappedName` to get its own disambiguated name - the
+  // same way two same-named *exported* schemas from different files already
+  // do today). Disambiguating that case would need `ExtractResult` to carry
+  // file identity, which it currently does not.
   const reservedNames = new Set<string>();
   for (const mapped of typeNameMap.values()) {
     reservedNames.add(mapped.inputName);
