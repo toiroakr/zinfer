@@ -118,6 +118,14 @@ export interface ExtractResult {
    * inlined. The generated file has to `import type` them from there.
    */
   importedFrom?: string;
+  /**
+   * Set when the schema is not exported but still gets its own (non-exported)
+   * type declaration in the output file - because it is self-recursive and
+   * reached only inline through another schema, so its recursion point (and
+   * every other reference to it) needs a declared name to point at instead of
+   * being widened to `any`.
+   */
+  declaredLocally?: boolean;
   /** Schema-level description */
   description?: string;
   /** Field descriptions */

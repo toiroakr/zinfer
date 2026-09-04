@@ -54,12 +54,22 @@ interface RawSchemaType {
   /**
    * The form to inline this schema as when its own name cannot be used.
    *
-   * Only recursive schemas that no file declares types for need one: their
-   * printed type names themselves, which is meaningless in a file that never
-   * declares that name, so the recursion point is widened to the shape the
-   * getter describes instead.
+   * Only a recursive schema imported from a file that gets no generated
+   * types of its own needs one: its printed type names itself, which is
+   * meaningless in a file that never declares that name, so the recursion
+   * point is widened to the shape the getter describes instead. A same-file
+   * self-recursive schema no longer needs this - see `declaredLocally`.
    */
   approximation?: { input: string; output: string };
+  /**
+   * Set when the schema is not exported but is self-recursive, so it still
+   * gets its own (non-exported) declaration in the output file: its own
+   * recursion point, and every other same-file reference to it, keep
+   * pointing at its `<schema>Input`/`<schema>Output` marker instead of being
+   * widened to `any` (see formatMultipleAsDeclarations in type-printer.ts,
+   * which now declares this schema too, minus the `export` keyword).
+   */
+  declaredLocally?: boolean;
 }
 
 /**
@@ -489,10 +499,21 @@ export class ValibotTypeExtractor {
             "__TempExplicit",
             context.inlineTypeReferences,
           );
+          // A non-exported schema whose explicit annotation names a locally
+          // declared type that recurses back to itself still needs a name
+          // for its own recursion point (and every other same-file
+          // reference to it) to point at - see rewriteExplicitTypeSelfReference,
+          // which is what actually detects and rewrites the same bare
+          // occurrence this only checks for.
+          const declaredLocally =
+            !isExported &&
+            this.isLocallyDeclaredType(sourceFile, explicitType) &&
+            replaceBareTypeName(resolvedType, explicitType, "\0") !== resolvedType;
           rawTypes.set(schemaName, {
             input: resolvedType,
             output: resolvedType,
             isExported,
+            ...(declaredLocally ? { declaredLocally } : {}),
           });
         } finally {
           this.cleanupExplicitType(sourceFile);
@@ -512,7 +533,7 @@ export class ValibotTypeExtractor {
 
         let input = rawInput;
         let output = rawOutput;
-        let approximation: RawSchemaType["approximation"];
+        let declaredLocally = false;
 
         // Resolve getter-based self-references
         const getterFields = getterFieldMap.get(schemaName);
@@ -524,20 +545,19 @@ export class ValibotTypeExtractor {
             `${schemaName}Output`,
           );
 
-          if (!isExported) {
-            // Nothing will declare this schema's types, so a reference to it has
-            // to be inlined - and an inlined recursive type can only ever be an
-            // approximation. Keep one whose recursion point is the index
-            // signature or array the getter describes, rather than a bare `any`.
-            const options = { collapseInlinedCopies: false };
-            approximation = {
-              input: this.getterResolver.resolveAnyTypes(rawInput, getterFields, "any", options),
-              output: this.getterResolver.resolveAnyTypes(rawOutput, getterFields, "any", options),
-            };
-          }
+          // A non-exported, self-recursive schema still needs a name for its
+          // own recursion point - and every other same-file reference to it -
+          // to point at, so it gets its own (non-exported) declaration too;
+          // see formatMultipleAsDeclarations in type-printer.ts.
+          declaredLocally = !isExported;
         }
 
-        rawTypes.set(schemaName, { input, output, isExported, approximation });
+        rawTypes.set(schemaName, {
+          input,
+          output,
+          isExported,
+          ...(declaredLocally ? { declaredLocally } : {}),
+        });
       } finally {
         this.cleanupTemporaryTypes(sourceFile);
       }
@@ -570,13 +590,13 @@ export class ValibotTypeExtractor {
       const shouldComposeUnion =
         unionRef &&
         unionRef.memberSchemas.length > 0 &&
-        (unionRef.memberSchemas.every((member) => rawTypes.get(member)?.isExported) ||
+        (unionRef.memberSchemas.every((member) => hasDeclaredName(rawTypes.get(member))) ||
           (!unionRef.hasInlineMembers &&
             (unionRef.memberSchemas.some((member) => importedSchemas.has(member)) ||
               unionRef.memberSchemas.some((member) => {
-                if (rawTypes.get(member)?.isExported) return false;
-                return (referenceMap.get(member) ?? []).some(
-                  (ref) => rawTypes.get(ref.refSchema)?.isExported,
+                if (hasDeclaredName(rawTypes.get(member))) return false;
+                return (referenceMap.get(member) ?? []).some((ref) =>
+                  hasDeclaredName(rawTypes.get(ref.refSchema)),
                 );
               }))));
 
@@ -589,7 +609,7 @@ export class ValibotTypeExtractor {
           const memberRaw = rawTypes.get(member);
           if (!memberRaw) continue;
 
-          if (memberRaw.isExported) {
+          if (hasDeclaredName(memberRaw)) {
             inputMembers.push(`${member}Input`);
             outputMembers.push(`${member}Output`);
             continue;
@@ -619,9 +639,11 @@ export class ValibotTypeExtractor {
         const refRaw = rawTypes.get(ref.refSchema);
         if (!refRaw) continue;
 
-        // A schema is referenced by name when this file declares its types, or
-        // when another generated file does and they can be imported from there.
-        if (refRaw.isExported || refRaw.importedFrom) {
+        // A schema is referenced by name when this file declares its types
+        // (exported, or a promoted non-exported self-recursive schema - see
+        // hasDeclaredName), or when another generated file does and they can
+        // be imported from there.
+        if (hasDeclaredName(refRaw) || refRaw.importedFrom) {
           input = this.replaceSchemaReference(input, ref, refRaw.input, `${ref.refSchema}Input`);
           output = this.replaceSchemaReference(
             output,
@@ -663,7 +685,7 @@ export class ValibotTypeExtractor {
           output,
           schemaName,
           explicitType,
-          raw.isExported,
+          hasDeclaredName(raw),
           () => this.qualifyLocalTypeReference(sourceFile, explicitType) ?? explicitType,
         ));
       } else if (explicitType) {
@@ -683,7 +705,7 @@ export class ValibotTypeExtractor {
             output,
             schemaName,
             explicitType,
-            raw.isExported,
+            hasDeclaredName(raw),
             () => this.referenceFallbackText(importedRef, explicitType),
           ));
         }
@@ -725,6 +747,7 @@ export class ValibotTypeExtractor {
         input: resolved.input,
         output: resolved.output,
         isExported: raw.isExported,
+        ...(raw.declaredLocally ? { declaredLocally: raw.declaredLocally } : {}),
       });
     }
 
@@ -1487,13 +1510,17 @@ export class ValibotTypeExtractor {
    * which case applies and how to qualify the degenerate one below).
    *
    * `<schema>Input`/`<schema>Output` is only a name something actually
-   * declares when the schema itself is exported (the type-printer emits no
-   * declaration for a schema that is neither exported nor imported from
-   * elsewhere - see `formatMultipleAsDeclarations`). A non-exported schema
-   * reached only inline through another schema (#518) would otherwise trade
-   * one undeclared bare identifier for another; widen the recursion point to
-   * `any` instead, the same "no name to point at" fallback a getter-based
-   * self-reference with no declared name already falls back to.
+   * declares when the schema itself is exported, or is a non-exported
+   * schema promoted to its own local declaration for being self-recursive
+   * (see `declaredLocally` on `RawSchemaType`) - the type-printer emits no
+   * declaration for any other schema that is neither exported nor imported
+   * from elsewhere (see `formatMultipleAsDeclarations`). A non-exported,
+   * non-promoted schema reached only inline through another schema (#518),
+   * e.g. one whose annotation reaches another file (#527 left this case
+   * out of promotion), would otherwise trade one undeclared bare identifier
+   * for another; widen the recursion point to `any` instead, the same "no
+   * name to point at" fallback a getter-based self-reference with no
+   * declared name already falls back to.
    *
    * When the resolved text is exactly `typeName` itself (not embedded in a
    * larger composite type, e.g. a recursive union member), rewriting it
@@ -1501,18 +1528,18 @@ export class ValibotTypeExtractor {
    * FooInput` instead. `qualifyExact` supplies the non-circular form for
    * that case - an inline `import("...")` reference to the declaration,
    * which points at the annotation's own type rather than the schema's
-   * generated name, so it stays valid whether or not the schema is exported.
+   * generated name, so it stays valid whether or not the schema has one.
    */
   private rewriteExplicitTypeSelfReference(
     input: string,
     output: string,
     schemaName: string,
     typeName: string,
-    isExported: boolean,
+    hasDeclaration: boolean,
     qualifyExact: () => string,
   ): { input: string; output: string } {
-    const selfInput = isExported ? `${schemaName}Input` : "any";
-    const selfOutput = isExported ? `${schemaName}Output` : "any";
+    const selfInput = hasDeclaration ? `${schemaName}Input` : "any";
+    const selfOutput = hasDeclaration ? `${schemaName}Output` : "any";
     return {
       input: input === typeName ? qualifyExact() : replaceBareTypeName(input, typeName, selfInput),
       output:
@@ -1551,4 +1578,14 @@ export class ValibotTypeExtractor {
 
     return `import("${modulePathFor(sourceFile)}").${exportedName}`;
   }
+}
+
+/**
+ * Whether a schema has a name something can reference - either because it is
+ * exported, or because it is a non-exported, self-recursive schema that
+ * still gets its own (non-exported) declaration (see the `declaredLocally`
+ * field on `RawSchemaType`).
+ */
+function hasDeclaredName(raw: RawSchemaType | undefined): boolean {
+  return raw?.isExported === true || raw?.declaredLocally === true;
 }

@@ -67,14 +67,14 @@ interface RawSchemaType {
    */
   isApproximatedImport?: boolean;
   /**
-   * The form to inline this schema as when its own name cannot be used.
-   *
-   * Only a same-file recursive schema that gets no generated type of its own
-   * (not exported) needs one: its self-reference prints its own name, which
-   * is meaningless in a file that never declares that name, so a reference to
-   * it has to be widened to the shape the getter describes instead.
+   * Set when the schema is not exported but is self-recursive, so it still
+   * gets its own (non-exported) declaration in the output file: its own
+   * recursion point, and every other same-file reference to it, keep
+   * pointing at its `<schema>Input`/`<schema>Output` marker instead of being
+   * widened to `any` (see formatMultipleAsDeclarations in type-printer.ts,
+   * which now declares this schema too, minus the `export` keyword).
    */
-  approximation?: { input: string; output: string };
+  declaredLocally?: boolean;
 }
 
 /**
@@ -330,10 +330,21 @@ export class ZodMiniTypeExtractor {
             "__TempExplicit",
             context.inlineTypeReferences,
           );
+          // A non-exported schema whose explicit annotation names a locally
+          // declared type that recurses back to itself still needs a name
+          // for its own recursion point (and every other same-file
+          // reference to it) to point at - see rewriteExplicitTypeSelfReference,
+          // which is what actually detects and rewrites the same bare
+          // occurrence this only checks for.
+          const declaredLocally =
+            !isExported &&
+            this.isLocallyDeclaredType(sourceFile, explicitType) &&
+            replaceBareTypeName(resolvedType, explicitType, "\0") !== resolvedType;
           rawTypes.set(schemaName, {
             input: resolvedType,
             output: resolvedType,
             isExported,
+            ...(declaredLocally ? { declaredLocally } : {}),
           });
         } finally {
           this.cleanupExplicitType(sourceFile);
@@ -349,7 +360,7 @@ export class ZodMiniTypeExtractor {
         // Resolve getter-based self-references. getterFieldMap is keyed by
         // declared (local variable) name, not the exported name.
         const getterFields = getterFieldMap.get(declaredName);
-        let approximation: RawSchemaType["approximation"];
+        let declaredLocally = false;
         if (getterFields && this.getterResolver.hasSelfReferences(getterFields)) {
           const inputTypeName = `${schemaName}Input`;
           const outputTypeName = `${schemaName}Output`;
@@ -367,36 +378,18 @@ export class ZodMiniTypeExtractor {
             outputTypeName,
           );
 
-          if (!isExported) {
-            // Nothing will declare this schema's types, so a reference to it
-            // has to be inlined - and an inlined recursive type can only ever
-            // be an approximation. Keep one whose recursion point is the
-            // index signature or array the getter describes, rather than the
-            // `<schema>Input`/`<schema>Output` self-reference above, which
-            // nothing here declares.
-            const options = { collapseInlinedCopies: false };
-            approximation = {
-              input: this.getterResolver.resolveAnyTypes(
-                rawInputType,
-                getterFields,
-                "any",
-                options,
-              ),
-              output: this.getterResolver.resolveAnyTypes(
-                rawOutputType,
-                getterFields,
-                "any",
-                options,
-              ),
-            };
-          }
+          // A non-exported, self-recursive schema still needs a name for its
+          // own recursion point - and every other same-file reference to it -
+          // to point at, so it gets its own (non-exported) declaration too;
+          // see formatMultipleAsDeclarations in type-printer.ts.
+          declaredLocally = !isExported;
         }
 
         rawTypes.set(schemaName, {
           input: inputType,
           output: outputType,
           isExported,
-          approximation,
+          ...(declaredLocally ? { declaredLocally } : {}),
         });
       } finally {
         this.cleanupTemporaryTypes(sourceFile);
@@ -448,15 +441,15 @@ export class ZodMiniTypeExtractor {
       const shouldComposeUnion =
         unionRef &&
         unionRef.memberSchemas.length > 0 &&
-        (unionRef.memberSchemas.every(
-          (member) => rawTypes.get(resolveExportName(member))?.isExported,
+        (unionRef.memberSchemas.every((member) =>
+          hasDeclaredName(rawTypes.get(resolveExportName(member))),
         ) ||
           (!unionRef.hasInlineMembers &&
             (unionRef.memberSchemas.some((member) => importedSchemas.has(member)) ||
               unionRef.memberSchemas.some((member) => {
-                if (rawTypes.get(resolveExportName(member))?.isExported) return false;
-                return (referenceMap.get(member) ?? []).some(
-                  (ref) => rawTypes.get(resolveExportName(ref.refSchema))?.isExported,
+                if (hasDeclaredName(rawTypes.get(resolveExportName(member)))) return false;
+                return (referenceMap.get(member) ?? []).some((ref) =>
+                  hasDeclaredName(rawTypes.get(resolveExportName(ref.refSchema))),
                 );
               }))));
 
@@ -470,7 +463,7 @@ export class ZodMiniTypeExtractor {
           const memberRaw = rawTypes.get(memberExportName);
           if (!memberRaw) continue;
 
-          if (memberRaw.isExported) {
+          if (hasDeclaredName(memberRaw)) {
             inputMembers.push(`${memberExportName}Input`);
             outputMembers.push(`${memberExportName}Output`);
             continue;
@@ -501,12 +494,13 @@ export class ZodMiniTypeExtractor {
         const refRaw = rawTypes.get(refExportName);
         if (!refRaw) continue;
 
-        // A schema is referenced by name when this file declares its types, or
-        // when another generated file does and they can be imported from
-        // there - under the name that file exports it under, which for an
-        // aliased import (`import { X as Y }`) differs from the local name
-        // the reference is written with here.
-        if (refRaw.isExported || refRaw.importedFrom) {
+        // A schema is referenced by name when this file declares its types
+        // (exported, or a promoted non-exported self-recursive schema - see
+        // hasDeclaredName), or when another generated file does and they can
+        // be imported from there - under the name that file exports it
+        // under, which for an aliased import (`import { X as Y }`) differs
+        // from the local name the reference is written with here.
+        if (hasDeclaredName(refRaw) || refRaw.importedFrom) {
           const printedName = refRaw.exportedName ?? refExportName;
           input = this.replaceSchemaReference(input, ref, refRaw.input, `${printedName}Input`);
           output = this.replaceSchemaReference(output, ref, refRaw.output, `${printedName}Output`);
@@ -556,7 +550,7 @@ export class ZodMiniTypeExtractor {
           output,
           schemaName,
           explicitType,
-          raw.isExported,
+          hasDeclaredName(raw),
           () => this.qualifyLocalTypeReference(sourceFile, explicitType) ?? explicitType,
         ));
       } else if (explicitType) {
@@ -576,7 +570,7 @@ export class ZodMiniTypeExtractor {
             output,
             schemaName,
             explicitType,
-            raw.isExported,
+            hasDeclaredName(raw),
             () => this.referenceFallbackText(importedRef, explicitType),
           ));
         }
@@ -619,6 +613,7 @@ export class ZodMiniTypeExtractor {
         input: resolved.input,
         output: resolved.output,
         isExported: raw.isExported,
+        ...(raw.declaredLocally ? { declaredLocally: raw.declaredLocally } : {}),
       });
     }
 
@@ -628,6 +623,12 @@ export class ZodMiniTypeExtractor {
   /**
    * Picks the form a same-file schema whose types nothing declares is inlined
    * as.
+   *
+   * A self-recursive schema is never inlined this way - it is promoted to
+   * its own (non-exported) declaration instead (`declaredLocally`) and
+   * referenced by name, like an exported schema, before this is ever
+   * reached. The defensive check below only guards against inlining a
+   * dangling self-reference should that invariant ever not hold.
    *
    * @returns The type to inline, or undefined to leave the reference as
    *   TypeScript printed it
@@ -639,24 +640,15 @@ export class ZodMiniTypeExtractor {
     kind: "Input" | "Output",
   ): string | undefined {
     const printed = kind === "Input" ? raw.input : raw.output;
-    const approximation = kind === "Input" ? raw.approximation?.input : raw.approximation?.output;
     const candidate = resolved ?? printed;
 
-    // A recursive schema names itself, and nothing declares that name here, so
-    // only the approximation can be inlined. Detected through
-    // replaceBareTypeName rather than a \b-bounded regex: \b is defined in
-    // terms of \w ([A-Za-z0-9_]), which excludes $ - legal at the start of a
-    // JS/TS identifier - so a schema named e.g. $LocalRecursiveSchema would
-    // never match and its dangling self-reference would leak through unfixed.
+    // Detected through replaceBareTypeName rather than a \b-bounded regex:
+    // \b is defined in terms of \w ([A-Za-z0-9_]), which excludes $ - legal
+    // at the start of a JS/TS identifier - so a schema named e.g.
+    // $LocalRecursiveSchema would never match and its dangling
+    // self-reference would leak through unfixed.
     if (replaceBareTypeName(candidate, `${refSchema}${kind}`, "\0") !== candidate) {
-      return approximation;
-    }
-
-    // The schema's own printed form is already an approximation - it is a
-    // recursive one that gets no generated types - and says more than what
-    // TypeScript printed here, which lost the recursion entirely.
-    if (approximation !== undefined) {
-      return approximation;
+      return undefined;
     }
 
     // Otherwise only a form that resolving actually changed is worth inlining:
@@ -1652,13 +1644,17 @@ export class ZodMiniTypeExtractor {
    * which case applies and how to qualify the degenerate one below).
    *
    * `<schema>Input`/`<schema>Output` is only a name something actually
-   * declares when the schema itself is exported (the type-printer emits no
-   * declaration for a schema that is neither exported nor imported from
-   * elsewhere - see `formatMultipleAsDeclarations`). A non-exported schema
-   * reached only inline through another schema (#518) would otherwise trade
-   * one undeclared bare identifier for another; widen the recursion point to
-   * `any` instead, the same "no name to point at" fallback a getter-based
-   * self-reference with no declared name already falls back to.
+   * declares when the schema itself is exported, or is a non-exported
+   * schema promoted to its own local declaration for being self-recursive
+   * (see `declaredLocally` on `RawSchemaType`) - the type-printer emits no
+   * declaration for any other schema that is neither exported nor imported
+   * from elsewhere (see `formatMultipleAsDeclarations`). A non-exported,
+   * non-promoted schema reached only inline through another schema (#518),
+   * e.g. one whose annotation reaches another file (#527 left this case
+   * out of promotion), would otherwise trade one undeclared bare identifier
+   * for another; widen the recursion point to `any` instead, the same "no
+   * name to point at" fallback a getter-based self-reference with no
+   * declared name already falls back to.
    *
    * When the resolved text is exactly `typeName` itself (not embedded in a
    * larger composite type, e.g. a recursive union member), rewriting it
@@ -1666,18 +1662,18 @@ export class ZodMiniTypeExtractor {
    * FooInput` instead. `qualifyExact` supplies the non-circular form for
    * that case - an inline `import("...")` reference to the declaration,
    * which points at the annotation's own type rather than the schema's
-   * generated name, so it stays valid whether or not the schema is exported.
+   * generated name, so it stays valid whether or not the schema has one.
    */
   private rewriteExplicitTypeSelfReference(
     input: string,
     output: string,
     schemaName: string,
     typeName: string,
-    isExported: boolean,
+    hasDeclaration: boolean,
     qualifyExact: () => string,
   ): { input: string; output: string } {
-    const selfInput = isExported ? `${schemaName}Input` : "any";
-    const selfOutput = isExported ? `${schemaName}Output` : "any";
+    const selfInput = hasDeclaration ? `${schemaName}Input` : "any";
+    const selfOutput = hasDeclaration ? `${schemaName}Output` : "any";
     return {
       input: input === typeName ? qualifyExact() : replaceBareTypeName(input, typeName, selfInput),
       output:
@@ -1745,6 +1741,16 @@ export class ZodMiniTypeExtractor {
       "",
     );
   }
+}
+
+/**
+ * Whether a schema has a name something can reference - either because it is
+ * exported, or because it is a non-exported, self-recursive schema that
+ * still gets its own (non-exported) declaration (see the `declaredLocally`
+ * field on `RawSchemaType`).
+ */
+function hasDeclaredName(raw: RawSchemaType | undefined): boolean {
+  return raw?.isExported === true || raw?.declaredLocally === true;
 }
 
 /**

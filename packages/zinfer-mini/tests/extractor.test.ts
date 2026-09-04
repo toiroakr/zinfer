@@ -212,25 +212,45 @@ describe("ZodMiniTypeExtractor - Generated TypeScript Declarations", () => {
 
   describe("nonexported-recursive-getter-schema.ts", () => {
     // A getter-based self-reference that is itself not exported and reached
-    // only inline through another schema. Nothing declares a name for
-    // LocalRecursiveSchema, so its own raw self-reference
-    // ("LocalRecursiveSchemaInput"/"Output") stays as an internal marker, but
-    // a reference to it from another schema has to be widened to `any` at
-    // the recursion point instead of inlining that dangling marker.
-    it("should widen a non-exported recursive schema's own recursion point to any when it is inlined elsewhere", () => {
+    // only inline through another schema. #527: rather than widening the
+    // reference (and LocalRecursiveSchema's own recursion point) to `any`,
+    // LocalRecursiveSchema is promoted to its own non-exported declaration
+    // (declaredLocally) - the same treatment an exported schema gets, minus
+    // the `export` keyword - so both stay fully typed.
+    it("should reference a non-exported recursive schema's own generated type name, not widen it to any, when it is inlined elsewhere", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "nonexported-recursive-getter-schema.ts"),
       );
       const container = results.find((r) => r.schemaName === "NonexportedRecursiveContainerSchema");
+      const localRecursive = results.find((r) => r.schemaName === "LocalRecursiveSchema");
 
-      expect(container?.input).not.toContain("LocalRecursiveSchemaInput");
-      expect(container?.output).not.toContain("LocalRecursiveSchemaOutput");
-      expect(container?.input).toBe(
-        "{ localRecursive: { label: string; kids: { [x: string]: any; }; }; }",
+      expect(container?.input).not.toContain("any");
+      expect(container?.output).not.toContain("any");
+      expect(container?.input).toBe("{ localRecursive: LocalRecursiveSchemaInput; }");
+      expect(container?.output).toBe("{ localRecursive: LocalRecursiveSchemaOutput; }");
+
+      expect(localRecursive?.isExported).toBe(false);
+      expect(localRecursive?.declaredLocally).toBe(true);
+      expect(localRecursive?.input).toBe(
+        "{ label: string; kids: { [x: string]: LocalRecursiveSchemaInput; }; }",
       );
-      expect(container?.output).toBe(
-        "{ localRecursive: { label: string; kids: { [x: string]: any; }; }; }",
+      expect(localRecursive?.output).toBe(
+        "{ label: string; kids: { [x: string]: LocalRecursiveSchemaOutput; }; }",
       );
+    });
+
+    it("should declare the promoted local without exporting it, in the generated declaration file", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "nonexported-recursive-getter-schema.ts"),
+      );
+      const output = generateDeclarationFile(results, mapName);
+
+      expect(output).toContain("type LocalRecursiveInput = {");
+      expect(output).toContain("type LocalRecursiveOutput = {");
+      expect(output).not.toContain("export type LocalRecursive");
+      expect(output).toContain("localRecursive: LocalRecursiveInput;");
+      expect(output).toContain("localRecursive: LocalRecursiveOutput;");
+      expect(output).not.toContain("any");
     });
   });
 
@@ -239,6 +259,79 @@ describe("ZodMiniTypeExtractor - Generated TypeScript Declarations", () => {
     "nonexported-recursive-getter-schema",
     "should generate a type-checkable declaration for a non-exported, self-referencing recursive schema",
   );
+
+  describe("nonexported-recursive-explicit-type-schema.ts", () => {
+    // #527's own repro: a same-file explicit z.ZodMiniType<T> self-recursive
+    // schema (NodeSchema) that is itself not exported and reached only
+    // inline through ContainerSchema. Both NodeSchema's own recursion point
+    // and ContainerSchema's reference to it should point at NodeSchema's own
+    // promoted local declaration, not widen to `any`.
+    it("should reference a non-exported, same-file explicit-annotation self-recursive schema's own generated type name instead of widening to any", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "nonexported-recursive-explicit-type-schema.ts"),
+      );
+      const container = results.find((r) => r.schemaName === "ContainerSchema");
+      const node = results.find((r) => r.schemaName === "NodeSchema");
+
+      expect(container?.input).not.toContain("any");
+      expect(container?.output).not.toContain("any");
+      expect(container?.input).toBe("{ name: string; root: NodeSchemaInput; }");
+      expect(container?.output).toBe("{ name: string; root: NodeSchemaOutput; }");
+
+      expect(node?.isExported).toBe(false);
+      expect(node?.declaredLocally).toBe(true);
+      expect(node?.input).toBe("{ value: string; children?: Record<string, NodeSchemaInput>; }");
+      expect(node?.output).toBe("{ value: string; children?: Record<string, NodeSchemaOutput>; }");
+    });
+
+    it("should declare the promoted local without exporting it, in the generated declaration file", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "nonexported-recursive-explicit-type-schema.ts"),
+      );
+      const output = generateDeclarationFile(results, mapName);
+
+      expect(output).toContain("type NodeInput = {");
+      expect(output).toContain("type NodeOutput = {");
+      expect(output).not.toContain("export type Node ");
+      expect(output).toContain("root: NodeInput;");
+      expect(output).toContain("root: NodeOutput;");
+      expect(output).not.toContain("any");
+    });
+  });
+
+  createSchemaTest(
+    extractor,
+    "nonexported-recursive-explicit-type-schema",
+    "should generate a type-checkable declaration for a non-exported, same-file explicit-annotation self-recursive schema",
+  );
+
+  describe("nonexported-recursive-name-collision-schema.ts", () => {
+    // #527: NodeSchema and Node are two different, unrelated self-recursive
+    // schemas that both map to the base name "Node" once promoted to their
+    // own local declaration. The second one to be assigned a name must be
+    // disambiguated rather than silently colliding with (and being
+    // overwritten by, or overwriting) the first.
+    it("should disambiguate two promoted locals whose mapped names collide", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "nonexported-recursive-name-collision-schema.ts"),
+      );
+      const output = generateDeclarationFile(results, mapName);
+
+      expect(output).toContain("type NodeInput = {");
+      expect(output).toContain("type NodeOutput = {");
+      expect(output).toContain("type NodeInput2 = {");
+      expect(output).toContain("type NodeOutput2 = {");
+      expect(output).toContain("label: string;");
+      expect(output).toContain("title: string;");
+      expect(output).not.toContain("any");
+
+      expect(output).toContain("a: NodeInput;");
+      expect(output).toContain("b: NodeInput2;");
+
+      const container = results.find((r) => r.schemaName === "CollisionContainerSchema");
+      expect(container?.input).toBe("{ a: NodeSchemaInput; b: NodeInput; }");
+    });
+  });
 
   createSchemaTest(extractor, "builders-schema", "should cover the full v1 builder surface");
   createSchemaTest(

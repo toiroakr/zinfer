@@ -14,6 +14,20 @@ export type IntermediateNodeOutput = {
   };
 };
 
+type LocalRecursiveInput = {
+  label: string;
+  kids: {
+    [x: string]: LocalRecursiveInput;
+  };
+};
+
+type LocalRecursiveOutput = {
+  label: string;
+  kids: {
+    [x: string]: LocalRecursiveOutput;
+  };
+};
+
 export type OrganizationInput = {
   direct: IntermediateNodeInput;
   viaGroup: {
@@ -32,17 +46,7 @@ export type OrganizationInput = {
       lead?: IntermediateNodeInput;
     };
   };
-  localRecursive: {
-    label: string;
-    kids: {
-      [x: string]: {
-        label: string;
-        kids: {
-          [x: string]: any;
-        };
-      };
-    };
-  };
+  localRecursive: LocalRecursiveInput;
 };
 
 export type OrganizationOutput = {
@@ -63,15 +67,5 @@ export type OrganizationOutput = {
       lead?: IntermediateNodeOutput;
     };
   };
-  localRecursive: {
-    label: string;
-    kids: {
-      [x: string]: {
-        label: string;
-        kids: {
-          [x: string]: any;
-        };
-      };
-    };
-  };
+  localRecursive: LocalRecursiveOutput;
 };

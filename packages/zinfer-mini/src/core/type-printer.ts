@@ -408,6 +408,38 @@ export function formatAsDeclaration(
 }
 
 /**
+ * Maps a promoted local's schema name, renaming it with a numeric suffix
+ * until none of its input/output/unified names collide with a name already
+ * reserved by an exported/imported type or an earlier promoted local.
+ */
+function uniqueMappedName(
+  schemaName: string,
+  mapName: (schemaName: string) => MappedTypeName,
+  reservedNames: Set<string>,
+): MappedTypeName {
+  const base = mapName(schemaName);
+  let mapped = base;
+  let suffix = 2;
+  while (
+    reservedNames.has(mapped.inputName) ||
+    reservedNames.has(mapped.outputName) ||
+    reservedNames.has(mapped.unifiedName)
+  ) {
+    mapped = {
+      originalName: schemaName,
+      inputName: `${base.inputName}${suffix}`,
+      outputName: `${base.outputName}${suffix}`,
+      unifiedName: `${base.unifiedName}${suffix}`,
+    };
+    suffix++;
+  }
+  reservedNames.add(mapped.inputName);
+  reservedNames.add(mapped.outputName);
+  reservedNames.add(mapped.unifiedName);
+  return mapped;
+}
+
+/**
  * Formats multiple extraction results as TypeScript type declarations.
  *
  * @param results - Array of extraction results
@@ -430,23 +462,64 @@ export function formatMultipleAsDeclarations(
     typeNameMap.set(result.schemaName, mapName(result.schemaName));
   }
 
-  // Pass 1: Replace schema references with correct type names
-  let fixedResults = results.map((result) => {
-    let input = result.input;
-    let output = result.output;
+  // A non-exported, self-recursive schema reached only inline through
+  // another schema still needs a name for its own recursion point - and
+  // every other reference to it - to point at, so it gets a name here too
+  // (formatAsDeclaration below omits `export` for it). Assigned only after
+  // every exported/imported name is already reserved, so a promoted local
+  // never steals a name an exported type owns; one whose own mapped name
+  // collides with something already reserved (including another promoted
+  // local) is disambiguated with a numeric suffix.
+  //
+  // Known gap: this dedups by the mapped *name*, not by the schema's own
+  // (unavailable here) source file - two distinct, same-named non-exported
+  // self-recursive schemas from two different files combined into one
+  // `--outFile` run still collide (the second is silently skipped by the
+  // `typeNameMap.has` check below, the same way two same-named *exported*
+  // schemas from different files already do today). Disambiguating that
+  // case would need `ExtractResult` to carry file identity, which it
+  // currently does not.
+  const reservedNames = new Set<string>();
+  for (const mapped of typeNameMap.values()) {
+    reservedNames.add(mapped.inputName);
+    reservedNames.add(mapped.outputName);
+    reservedNames.add(mapped.unifiedName);
+  }
+  for (const result of results) {
+    if (!result.declaredLocally) continue;
+    if (typeNameMap.has(result.schemaName)) continue;
+    typeNameMap.set(result.schemaName, uniqueMappedName(result.schemaName, mapName, reservedNames));
+  }
 
-    for (const [schemaName, mappedName] of typeNameMap) {
-      const escapedSchemaName = escapeRegExp(schemaName);
+  // Pass 1: Replace schema references with correct type names. Built as one
+  // combined regex + a single simultaneous replace, rather than looping over
+  // typeNameMap and calling String#replace once per entry, so that one
+  // schema's own marker can never collide with another schema's
+  // already-substituted mapped name mid-pass - e.g. a schema literally named
+  // "Node" (self-reference marker "NodeInput") and a promoted local
+  // "NodeSchema" mapped to "NodeInput" would otherwise have the second
+  // substitution silently eat the first's output. `\b` on both sides of the
+  // alternation means at most one alternative can ever match a given
+  // identifier, so a simultaneous replace is unambiguous.
+  const markerToFinalName = new Map<string, string>();
+  for (const [schemaName, mappedName] of typeNameMap) {
+    markerToFinalName.set(`${schemaName}Input`, mappedName.inputName);
+    markerToFinalName.set(`${schemaName}Output`, mappedName.outputName);
+  }
+  const markerPattern =
+    markerToFinalName.size > 0
+      ? new RegExp(`\\b(?:${[...markerToFinalName.keys()].map(escapeRegExp).join("|")})\\b`, "g")
+      : undefined;
+  const replaceMarkers = (text: string): string =>
+    markerPattern
+      ? text.replace(markerPattern, (marker) => markerToFinalName.get(marker) ?? marker)
+      : text;
 
-      const inputPattern = new RegExp(`\\b${escapedSchemaName}Input\\b`, "g");
-      input = input.replace(inputPattern, mappedName.inputName);
-
-      const outputPattern = new RegExp(`\\b${escapedSchemaName}Output\\b`, "g");
-      output = output.replace(outputPattern, mappedName.outputName);
-    }
-
-    return { ...result, input, output };
-  });
+  let fixedResults = results.map((result) => ({
+    ...result,
+    input: replaceMarkers(result.input),
+    output: replaceMarkers(result.output),
+  }));
 
   // Pass 2: When mergeSame is enabled, determine which schemas can be merged and
   // replace input/output-specific names with unified names.
@@ -576,12 +649,17 @@ export function formatMultipleAsDeclarations(
 
   const declarations: string[] = [];
 
-  // Only generate declarations for exported schemas
+  // Generate declarations for exported schemas, and for a promoted local
+  // (non-exported but declaredLocally, see the typeNameMap build above) -
+  // formatAsDeclaration omits `export` for the latter based on isExported.
+  // Looked up from typeNameMap (rather than calling mapName again) so a
+  // promoted local whose name collided and was disambiguated is declared
+  // under that same disambiguated name.
   for (const result of fixedResults) {
-    if (!result.isExported) {
+    if (!result.isExported && !result.declaredLocally) {
       continue;
     }
-    const typeName = mapName(result.schemaName);
+    const typeName = typeNameMap.get(result.schemaName) ?? mapName(result.schemaName);
     const declaration = formatAsDeclaration(result, typeName, options);
     declarations.push(declaration);
   }
@@ -720,14 +798,15 @@ export function containsBrandMarker(typeStr: string): boolean {
 
 /**
  * Checks if any result's *emitted* type(s) contain a printed brand marker.
- * Only scans exported results (generateDeclarationFile skips non-exported
- * ones entirely) and, within those, only the input/output side(s) that will
- * actually be printed for the given options.
+ * Only scans results that actually get a declaration (exported, or a
+ * promoted local - generateDeclarationFile/formatMultipleAsDeclarations skip
+ * every other non-exported result entirely) and, within those, only the
+ * input/output side(s) that will actually be printed for the given options.
  */
 function hasBrands(results: ExtractResult[], options: DeclarationOptions = {}): boolean {
   const { inputOnly, outputOnly, mergeSame } = options;
   return results.some((r) => {
-    if (!r.isExported) return false;
+    if (!r.isExported && !r.declaredLocally) return false;
     if (mergeSame && r.input === r.output) return containsBrandMarker(r.input);
     if (outputOnly) return containsBrandMarker(r.output);
     if (inputOnly) return containsBrandMarker(r.input);
