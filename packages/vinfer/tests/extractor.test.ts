@@ -59,12 +59,8 @@ const KNOWN_TYPE_DIFFERENCES: Record<string, string> = {
     "v.intersect() infers `A & B`; vinfer flattens it into a single object literal.",
   "strict-object-schema.test.ts":
     "v.looseObject() / v.objectWithRest() infer `entries & { [key: string]: ... }`; vinfer flattens the index signature into the object.",
-  "non-generated-intermediate-schema.test.ts":
-    "OrganizationSchema holds a recursive schema that is not exported: nothing declares a name for it, so its recursion is inlined as far as it goes and approximated at the recursion point. Everything else in the fixture - including the references reached through the non-generated intermediates - matches exactly.",
   "recursive-record-schema.test.ts":
     "Same as getter-schema.test.ts: a getter that refers back to its own schema is typed as any (or, when annotated, as one inlined copy of the schema) until vinfer rebuilds it from the AST.",
-  "mixed-union-reference-schema.test.ts":
-    "RecursiveUnionSchema's non-exported recursive member is inlined, and its recursion collapses to any[].",
 };
 
 /**
@@ -1239,30 +1235,27 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       expect(output).toContain("members: IntermediateNodeOutput[];");
     });
 
-    it("approximates a recursive schema no file declares a name for", async () => {
+    it("#527: promotes a non-exported recursive schema to its own local declaration instead of widening to any", async () => {
       const output = await generateWithDescriptions();
 
-      // Nothing declares this one, so it stays inlined - but the recursion point
-      // keeps its index signature, without which property access would go
-      // unchecked, and no undeclared name leaks out.
+      // LocalRecursiveSchema is self-recursive and not exported, reached
+      // only inline through OrganizationSchema - so it is promoted to its
+      // own (non-exported) declaration, and OrganizationSchema references it
+      // by name, the same way it already references the exported
+      // IntermediateNodeSchema above.
+      expect(output).toContain("localRecursive: LocalRecursiveInput;");
+      expect(output).toContain("localRecursive: LocalRecursiveOutput;");
       expect(output).toContain(
         [
-          "  localRecursive: {",
-          "    /** The local label */",
-          "    label: string;",
-          "    kids: {",
-          "      [x: string]: {",
-          "        /** The local label */",
-          "        label: string;",
-          "        kids: {",
-          "          [x: string]: any;",
-          "        };",
-          "      };",
-          "    };",
+          "type LocalRecursiveInput = {",
+          "  label: string;",
+          "  kids: {",
+          "    [x: string]: LocalRecursiveInput;",
           "  };",
+          "};",
         ].join("\n"),
       );
-      expect(output).not.toContain("LocalRecursive");
+      expect(output).not.toContain("export type LocalRecursive");
       expect(output).not.toMatch(/kids: any/);
     });
 
@@ -1272,9 +1265,87 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       // `viaDepartment.group` is the only field this description sits on, so it
       // appears once per direction.
       expect(output.match(/\/\*\* The group \*\//g)).toHaveLength(2);
-      // Depth 0 and the level below the index signature, in both directions.
-      expect(output.match(/\/\*\* The local label \*\//g)).toHaveLength(4);
+      // #527: LocalRecursiveSchema is no longer inlined - it is promoted to
+      // its own declaration, referenced by name from OrganizationSchema. Its
+      // description is lost in the process: --with-descriptions reads field
+      // descriptions by importing the fixture module at runtime and reading
+      // its exported bindings (see DescriptionExtractor.extractDescriptions),
+      // and a promoted local is deliberately never exported - there is no
+      // runtime binding to read a description off. This is a known,
+      // pre-existing limitation of --with-descriptions for a promoted local,
+      // not a regression this PR needs to fix.
+      expect(output.match(/\/\*\* The local label \*\//g)).toBeNull();
       expect(output.match(/\/\*\* The node name \*\//g)).toHaveLength(2);
+    });
+  });
+
+  describe("nonexported-recursive-explicit-type-schema.ts", () => {
+    // #527's own repro: a same-file explicit v.GenericSchema<T>
+    // self-recursive schema (NodeSchema) that is itself not exported and
+    // reached only inline through ContainerSchema. Both NodeSchema's own
+    // recursion point and ContainerSchema's reference to it should point at
+    // NodeSchema's own promoted local declaration, not widen to `any`.
+    it("should reference a non-exported, same-file explicit-annotation self-recursive schema's own generated type name instead of widening to any", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "nonexported-recursive-explicit-type-schema.ts"),
+      );
+      const container = results.find((r) => r.schemaName === "ContainerSchema");
+      const node = results.find((r) => r.schemaName === "NodeSchema");
+
+      expect(container?.input).not.toContain("any");
+      expect(container?.output).not.toContain("any");
+      expect(container?.input).toBe("{ name: string; root: NodeSchemaInput; }");
+      expect(container?.output).toBe("{ name: string; root: NodeSchemaOutput; }");
+
+      expect(node?.isExported).toBe(false);
+      expect(node?.declaredLocally).toBe(true);
+      expect(node?.input).toBe("{ value: string; children?: Record<string, NodeSchemaInput>; }");
+      expect(node?.output).toBe("{ value: string; children?: Record<string, NodeSchemaOutput>; }");
+    });
+
+    it("should declare the promoted local without exporting it, in the generated declaration file", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "nonexported-recursive-explicit-type-schema.ts"),
+      );
+      const output = generateDeclarationFile(results, mapName);
+
+      expect(output).toContain("type NodeInput = {");
+      expect(output).toContain("type NodeOutput = {");
+      expect(output).not.toContain("export type Node ");
+      expect(output).toContain("root: NodeInput;");
+      expect(output).toContain("root: NodeOutput;");
+      expect(output).not.toContain("any");
+    });
+  });
+
+  describe("nonexported-recursive-name-collision-schema.ts", () => {
+    // #527: NodeSchema and Node are two different, unrelated self-recursive
+    // schemas that both map to the base name "Node" once promoted to their
+    // own local declaration. The second one to be assigned a name must be
+    // disambiguated rather than silently colliding with (and being
+    // overwritten by, or overwriting) the first.
+    it("should disambiguate two promoted locals whose mapped names collide", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "nonexported-recursive-name-collision-schema.ts"),
+      );
+      const output = generateDeclarationFile(results, mapName);
+
+      expect(output).toContain("type NodeInput = {");
+      expect(output).toContain("type NodeOutput = {");
+      expect(output).toContain("type NodeInput2 = {");
+      expect(output).toContain("type NodeOutput2 = {");
+      expect(output).toContain("label: string;");
+      expect(output).toContain("title: string;");
+      expect(output).not.toContain("any");
+
+      // The container's two fields must each point at their own promoted
+      // local (NodeSchema, declared first, keeps the unsuffixed name; Node
+      // is disambiguated), not both collapse onto the same declaration.
+      expect(output).toContain("a: NodeInput;");
+      expect(output).toContain("b: NodeInput2;");
+
+      const container = results.find((r) => r.schemaName === "CollisionContainerSchema");
+      expect(container?.input).toBe("{ a: NodeSchemaInput; b: NodeInput; }");
     });
   });
 
@@ -1393,8 +1464,12 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       expect(satisfiedSpreadOverride?.output).toBe(
         "{ value?: { [x: string]: unknown; } | undefined; }",
       );
-      expect(recursiveUnion?.input).not.toContain("InternalNodeSchemaInput");
-      expect(recursiveUnion?.output).not.toContain("InternalNodeSchemaOutput");
+      // InternalNodeSchema is itself non-exported and self-recursive (#527),
+      // so it is promoted to its own local declaration and the union
+      // composes by name, the same as an exported member would - not
+      // inlined as an approximated `any`-widened member.
+      expect(recursiveUnion?.input).toBe("InternalNodeSchemaInput | RecursiveLeafSchemaInput");
+      expect(recursiveUnion?.output).toBe("InternalNodeSchemaOutput | RecursiveLeafSchemaOutput");
       expect(mixedPlainUnion?.input).not.toContain("PublicPlainSchemaInput");
       expect(mixedPlainUnion?.output).not.toContain("PublicPlainSchemaOutput");
       expect(inlineImportedUnion?.input).toContain("string");

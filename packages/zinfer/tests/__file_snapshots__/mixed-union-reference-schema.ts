@@ -76,6 +76,14 @@ export type SatisfiedSpreadOverrideOutput = {
   } | undefined;
 };
 
+type InternalNodeInput = {
+  children: InternalNodeInput[];
+};
+
+type InternalNodeOutput = {
+  children: InternalNodeOutput[];
+};
+
 export type RecursiveLeafInput = {
   value: string;
 };
@@ -84,17 +92,9 @@ export type RecursiveLeafOutput = {
   value: string;
 };
 
-export type RecursiveUnionInput = {
-  children: any[];
-} | {
-  value: string;
-};
+export type RecursiveUnionInput = InternalNodeInput | RecursiveLeafInput;
 
-export type RecursiveUnionOutput = {
-  children: any[];
-} | {
-  value: string;
-};
+export type RecursiveUnionOutput = InternalNodeOutput | RecursiveLeafOutput;
 
 export type PublicPlainInput = {
   public: string;

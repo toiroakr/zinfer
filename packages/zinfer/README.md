@@ -437,6 +437,50 @@ No import is needed here, since `Node` is generated in this same file - unlike t
 cross-file case above, this works regardless of whether the intermediate's own file
 is part of the run.
 
+### Non-Exported, Self-Recursive Schemas
+
+A non-exported schema that is itself recursive still needs a name for its own
+recursion point - and every other reference to it - to point at, so it gets its
+own local declaration in the output file too, without the `export` keyword an
+exported schema's declaration gets:
+
+```typescript
+type NodeOutput = {
+  value: string;
+  children?: Record<string, NodeOutput>;
+};
+
+// Not exported, but self-recursive - still gets its own local declaration
+const NodeSchema: z.ZodType<NodeOutput> = z.lazy(() =>
+  z.object({
+    value: z.string(),
+    children: z.record(z.string(), NodeSchema).optional(),
+  }),
+);
+
+export const ContainerSchema = z.object({
+  name: z.string(),
+  root: NodeSchema,
+});
+```
+
+```typescript
+type Node = {
+  value: string;
+  children?: Record<string, Node>;
+};
+
+export type Container = {
+  name: string;
+  root: Node;
+};
+```
+
+Two promoted locals whose names would otherwise collide are disambiguated with a
+numeric suffix. This only applies within the same file - a non-exported,
+self-recursive schema whose explicit annotation reaches a type declared in
+another file still widens its recursion point to `any`, as described above.
+
 ## Library API
 
 ### extractZodTypes

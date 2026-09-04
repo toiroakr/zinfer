@@ -30,7 +30,13 @@ export { setVerbose, logVerbose, logDebugError, logProgress, getErrorMessage } f
 
 export { NORMALIZE_TYPE_DEFINITION, NORMALIZE_TYPE_NAMES } from "./normalizer.js";
 
-export { escapeRegExp, isEscaped, isGenericMethodName, replaceBareTypeName } from "./text-scan.js";
+export {
+  escapeRegExp,
+  isEscaped,
+  isGenericMethodName,
+  replaceBareTypeName,
+  replaceBareTypeNames,
+} from "./text-scan.js";
 
 export type {
   ExtractOptions,

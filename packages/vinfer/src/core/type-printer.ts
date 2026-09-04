@@ -466,6 +466,57 @@ function identifierPattern(name: string, flags = ""): RegExp {
   );
 }
 
+/**
+ * Builds one pattern matching any of `names` as a whole identifier, sharing
+ * the same lookarounds `identifierPattern` uses for a single name. Used for
+ * a single simultaneous replace over every schema marker at once (see Pass
+ * 1 below) rather than looping and calling `identifierPattern` + replace
+ * once per name - a sequential replace can let one schema's own marker
+ * collide with another schema's already-substituted mapped name mid-pass.
+ * Returns undefined for an empty `names` (an empty alternation matches
+ * everything).
+ */
+function combinedIdentifierPattern(names: Iterable<string>): RegExp | undefined {
+  const alternatives = [...names].map(escapeRegExp);
+  if (alternatives.length === 0) return undefined;
+  return new RegExp(
+    `${NOT_TYPEOF_OPERAND}${NOT_BEFORE_IDENTIFIER}(?:${alternatives.join("|")})${NOT_AFTER_IDENTIFIER}${NOT_METHOD_NAME}`,
+    "gu",
+  );
+}
+
+/**
+ * Maps a promoted local's schema name, renaming it with a numeric suffix
+ * until none of its input/output/unified names collide with a name already
+ * reserved by an exported/imported type or an earlier promoted local.
+ */
+function uniqueMappedName(
+  schemaName: string,
+  mapName: (schemaName: string) => MappedTypeName,
+  reservedNames: Set<string>,
+): MappedTypeName {
+  const base = mapName(schemaName);
+  let mapped = base;
+  let suffix = 2;
+  while (
+    reservedNames.has(mapped.inputName) ||
+    reservedNames.has(mapped.outputName) ||
+    reservedNames.has(mapped.unifiedName)
+  ) {
+    mapped = {
+      originalName: schemaName,
+      inputName: `${base.inputName}${suffix}`,
+      outputName: `${base.outputName}${suffix}`,
+      unifiedName: `${base.unifiedName}${suffix}`,
+    };
+    suffix++;
+  }
+  reservedNames.add(mapped.inputName);
+  reservedNames.add(mapped.outputName);
+  reservedNames.add(mapped.unifiedName);
+  return mapped;
+}
+
 export function formatMultipleAsDeclarations(
   results: ExtractResult[],
   mapName: (schemaName: string) => MappedTypeName,
@@ -481,21 +532,58 @@ export function formatMultipleAsDeclarations(
     typeNameMap.set(result.schemaName, mapName(result.schemaName));
   }
 
-  // Pass 1: Replace schema references with correct type names
-  let fixedResults = results.map((result) => {
-    let input = result.input;
-    let output = result.output;
+  // A non-exported, self-recursive schema reached only inline through
+  // another schema still needs a name for its own recursion point - and
+  // every other reference to it - to point at, so it gets a name here too
+  // (formatAsDeclaration below omits `export` for it). Assigned only after
+  // every exported/imported name is already reserved, so a promoted local
+  // never steals a name an exported type owns; one whose own mapped name
+  // collides with something already reserved (including another promoted
+  // local) is disambiguated with a numeric suffix.
+  //
+  // Known gap: the `typeNameMap.has` check below keys this dedup on the
+  // schema's own (raw) `schemaName` string, not on which file declared it -
+  // two distinct, same-named non-exported self-recursive schemas from two
+  // different files combined into one `--outFile` run still collide (the
+  // second's `schemaName` already has an entry from the first, so it never
+  // even reaches `uniqueMappedName` to get its own disambiguated name - the
+  // same way two same-named *exported* schemas from different files already
+  // do today). Disambiguating that case would need `ExtractResult` to carry
+  // file identity, which it currently does not.
+  const reservedNames = new Set<string>();
+  for (const mapped of typeNameMap.values()) {
+    reservedNames.add(mapped.inputName);
+    reservedNames.add(mapped.outputName);
+    reservedNames.add(mapped.unifiedName);
+  }
+  for (const result of results) {
+    if (!result.declaredLocally) continue;
+    if (typeNameMap.has(result.schemaName)) continue;
+    typeNameMap.set(result.schemaName, uniqueMappedName(result.schemaName, mapName, reservedNames));
+  }
 
-    for (const [schemaName, mappedName] of typeNameMap) {
-      const inputPattern = identifierPattern(`${schemaName}Input`, "g");
-      input = input.replace(inputPattern, mappedName.inputName);
+  // Pass 1: Replace schema references with correct type names. Built as one
+  // combined regex + a single simultaneous replace, rather than looping over
+  // typeNameMap and calling String#replace once per entry, so that one
+  // schema's own marker can never collide with another schema's
+  // already-substituted mapped name mid-pass (see combinedIdentifierPattern).
+  const markerToFinalName = new Map<string, string>();
+  for (const [schemaName, mappedName] of typeNameMap) {
+    markerToFinalName.set(`${schemaName}Input`, mappedName.inputName);
+    markerToFinalName.set(`${schemaName}Output`, mappedName.outputName);
+  }
+  const markerPattern = combinedIdentifierPattern(markerToFinalName.keys());
+  const replaceMarkers = (text: string): string => {
+    if (!markerPattern) return text;
+    markerPattern.lastIndex = 0;
+    return text.replace(markerPattern, (marker) => markerToFinalName.get(marker) ?? marker);
+  };
 
-      const outputPattern = identifierPattern(`${schemaName}Output`, "g");
-      output = output.replace(outputPattern, mappedName.outputName);
-    }
-
-    return { ...result, input, output };
-  });
+  let fixedResults = results.map((result) => ({
+    ...result,
+    input: replaceMarkers(result.input),
+    output: replaceMarkers(result.output),
+  }));
 
   // Pass 2: When mergeSame is enabled, determine which schemas can be merged and
   // replace input/output-specific names with unified names.
@@ -623,12 +711,17 @@ export function formatMultipleAsDeclarations(
 
   const declarations: string[] = [];
 
-  // Only generate declarations for exported schemas
+  // Generate declarations for exported schemas, and for a promoted local
+  // (non-exported but declaredLocally, see the typeNameMap build above) -
+  // formatAsDeclaration omits `export` for the latter based on isExported.
+  // Looked up from typeNameMap (rather than calling mapName again) so a
+  // promoted local whose name collided and was disambiguated is declared
+  // under that same disambiguated name.
   for (const result of fixedResults) {
-    if (!result.isExported) {
+    if (!result.isExported && !result.declaredLocally) {
       continue;
     }
-    const typeName = mapName(result.schemaName);
+    const typeName = typeNameMap.get(result.schemaName) ?? mapName(result.schemaName);
     const declaration = formatAsDeclaration(result, typeName, options);
     declarations.push(declaration);
   }
@@ -842,9 +935,10 @@ function scanBrandMarkers(typeStr: string): Set<"Brand" | "Flavor"> {
 
 /**
  * Finds which real `Brand<`/`Flavor<` markers show up across every result's
- * *emitted* type(s). Only scans exported results (generateDeclarationFile
- * skips non-exported ones), and only the sides that are actually emitted
- * under `inputOnly`/`outputOnly`/`mergeSame`.
+ * *emitted* type(s). Only scans results that actually get a declaration
+ * (exported, or a promoted local - generateDeclarationFile skips every other
+ * non-exported result), and only the sides that are actually emitted under
+ * `inputOnly`/`outputOnly`/`mergeSame`.
  */
 function usedBrandMarkers(
   results: ExtractResult[],
@@ -854,7 +948,7 @@ function usedBrandMarkers(
   const found = new Set<"Brand" | "Flavor">();
 
   for (const r of results) {
-    if (!r.isExported) continue;
+    if (!r.isExported && !r.declaredLocally) continue;
 
     const texts: string[] = [];
     if (mergeSame && r.input === r.output) {
