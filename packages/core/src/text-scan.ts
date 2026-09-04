@@ -75,6 +75,25 @@ export function isGenericMethodName(text: string, afterIdentifier: number): bool
  * rewriting a reference.
  */
 export function replaceBareTypeName(text: string, typeName: string, replacement: string): string {
+  return replaceBareTypeNames(text, new Map([[typeName, replacement]]));
+}
+
+/**
+ * Like `replaceBareTypeName`, but rewrites every bare occurrence of any key
+ * in `replacements` to its mapped value in one simultaneous pass over
+ * `text`, rather than looping and calling `replaceBareTypeName` once per
+ * key. A sequential replace can let one key's own bare occurrence collide
+ * with a *result* an earlier key's substitution just wrote - e.g. replacing
+ * `"Node"` with `"NodeInput"` first would make a later, unrelated key
+ * literally named `"NodeInput"` match text this same call just produced.
+ * Word-detection (identifier characters including a leading `$`, so a
+ * schema literally named `$Node` is matched too) and the same exclusions
+ * (string literals, property keys, method names, a dot-qualified name) are
+ * otherwise identical to `replaceBareTypeName`.
+ */
+export function replaceBareTypeNames(text: string, replacements: Map<string, string>): string {
+  if (replacements.size === 0) return text;
+
   let result = "";
   let quote: string | undefined;
   let i = 0;
@@ -106,8 +125,11 @@ export function replaceBareTypeName(text: string, typeName: string, replacement:
       const isPropertyKey = nextChar === ":" || (nextChar === "?" && text[end + 1] === ":");
       const isMethodName = nextChar === "(" || isGenericMethodName(text, end);
 
+      const replacement = replacements.get(word);
       result +=
-        word === typeName && !precededByDot && !isPropertyKey && !isMethodName ? replacement : word;
+        replacement !== undefined && !precededByDot && !isPropertyKey && !isMethodName
+          ? replacement
+          : word;
       i = end;
       continue;
     }

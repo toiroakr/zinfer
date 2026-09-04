@@ -333,6 +333,30 @@ describe("ZodMiniTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("dollar-identifier-nonexported-recursive-schema.ts", () => {
+    // #529 review finding: `\b` is defined in terms of `\w` ([A-Za-z0-9_]),
+    // which excludes `$` (legal at the start of a JS/TS identifier). A
+    // promoted local's own marker text needs the same `$`-aware rewrite the
+    // same-file self-reference rewrite already gets - otherwise
+    // "$NodeSchemaInput"/"$NodeSchemaOutput" leaks through unresolved
+    // instead of being rewritten to the promoted local's generated name.
+    it("should rewrite a promoted local's own marker even when its schema name starts with $", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "dollar-identifier-nonexported-recursive-schema.ts"),
+      );
+      const output = generateDeclarationFile(results, mapName);
+
+      expect(output).not.toContain("$NodeSchemaInput");
+      expect(output).not.toContain("$NodeSchemaOutput");
+      // mapName only strips the "Schema" suffix, so the promoted local's
+      // generated name keeps the schema's own leading $.
+      expect(output).toContain("type $NodeInput = {");
+      expect(output).toContain("type $NodeOutput = {");
+      expect(output).toContain("root: $NodeInput;");
+      expect(output).toContain("root: $NodeOutput;");
+    });
+  });
+
   createSchemaTest(extractor, "builders-schema", "should cover the full v1 builder surface");
   createSchemaTest(
     extractor,

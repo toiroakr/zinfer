@@ -8,6 +8,7 @@ import type {
 } from "./types.js";
 import { escapeRegExp } from "./regexp.js";
 import { isEscaped } from "./string-scan.js";
+import { replaceBareTypeNames } from "@zinfer-monorepo/core";
 
 /**
  * Options for formatting type output.
@@ -492,33 +493,28 @@ export function formatMultipleAsDeclarations(
   }
 
   // Pass 1: Replace schema references with correct type names. Built as one
-  // combined regex + a single simultaneous replace, rather than looping over
-  // typeNameMap and calling String#replace once per entry, so that one
+  // simultaneous `replaceBareTypeNames` pass (rather than looping over
+  // typeNameMap and calling String#replace once per entry), so that one
   // schema's own marker can never collide with another schema's
   // already-substituted mapped name mid-pass - e.g. a schema literally named
   // "Node" (self-reference marker "NodeInput") and a promoted local
   // "NodeSchema" mapped to "NodeInput" would otherwise have the second
-  // substitution silently eat the first's output. `\b` on both sides of the
-  // alternation means at most one alternative can ever match a given
-  // identifier, so a simultaneous replace is unambiguous.
+  // substitution silently eat the first's output. `replaceBareTypeNames`
+  // (shared with extractor.ts's own self-reference rewriting) also skips a
+  // marker that shows up as a string literal, a property key, a method
+  // name, or after a dot - a plain regex replace would corrupt those - and
+  // correctly matches a marker for a schema named with a leading `$`
+  // (legal in JS/TS, but not a `\b` word character).
   const markerToFinalName = new Map<string, string>();
   for (const [schemaName, mappedName] of typeNameMap) {
     markerToFinalName.set(`${schemaName}Input`, mappedName.inputName);
     markerToFinalName.set(`${schemaName}Output`, mappedName.outputName);
   }
-  const markerPattern =
-    markerToFinalName.size > 0
-      ? new RegExp(`\\b(?:${[...markerToFinalName.keys()].map(escapeRegExp).join("|")})\\b`, "g")
-      : undefined;
-  const replaceMarkers = (text: string): string =>
-    markerPattern
-      ? text.replace(markerPattern, (marker) => markerToFinalName.get(marker) ?? marker)
-      : text;
 
   let fixedResults = results.map((result) => ({
     ...result,
-    input: replaceMarkers(result.input),
-    output: replaceMarkers(result.output),
+    input: replaceBareTypeNames(result.input, markerToFinalName),
+    output: replaceBareTypeNames(result.output, markerToFinalName),
   }));
 
   // Pass 2: When mergeSame is enabled, determine which schemas can be merged and
