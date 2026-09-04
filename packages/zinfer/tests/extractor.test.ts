@@ -854,6 +854,33 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "should generate a type-checkable inline import for a bare identifier reached via a nested .transform() cast",
   );
 
+  describe("unique-symbol-cross-file-transform/schema.ts (--inline-type-references)", () => {
+    // Under --inline-type-references, promoteBareTypeReferences hands the
+    // bare `Named` reference to resolveReferenceOrFallback, which attempts a
+    // full expansion before falling back to the qualified import. Expanding
+    // Named's own declaration (from within types.ts, where its `unique
+    // symbol` computed key IS in scope) prints `{ [brand]: true; value:
+    // string }` - `brand` has no expressible form outside types.ts at all,
+    // so embedding that expansion here would leave `brand` undeclared in
+    // the generated output. The qualified `import("...").Named` reference
+    // has to be kept instead, exactly as when the flag is off.
+    it.each(["project", "all"] as const)(
+      "should keep the qualified import instead of expanding a type whose structure depends on an unexported unique symbol (scope: %s)",
+      (scope) => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "unique-symbol-cross-file-transform/schema.ts"),
+          { inlineTypeReferences: scope },
+        );
+        const result = results.find((r) => r.schemaName === "FooSchema");
+
+        const expected =
+          /^\{\s*value: import\(".*unique-symbol-cross-file-transform\/types"\)\.Named;\s*\}$/;
+        expect(result?.output).toMatch(expected);
+        expect(result?.output).not.toContain("brand");
+      },
+    );
+  });
+
   describe("branded-cross-file-transform/schema.ts", () => {
     // A `.brand()`ed type reached only through a `.transform()` return-type
     // assertion, nested inside a larger object type, in a *different* file

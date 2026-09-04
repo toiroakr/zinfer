@@ -1071,7 +1071,9 @@ export class ZodTypeExtractor {
   /**
    * The `import("path").Name` matched-text branch of `inlineExternalTypeReferences`:
    * expand `typeName` in `targetFile`, or fall back to `originalText`
-   * unchanged (on a cycle, or when it isn't a plain type declaration).
+   * unchanged (on a cycle, when it isn't a plain type declaration, or when
+   * the expansion carries an unresolvable computed property key - see
+   * `hasUnresolvableComputedKey`).
    */
   private resolveOrKeepImportText(
     targetFile: SourceFile,
@@ -1087,6 +1089,11 @@ export class ZodTypeExtractor {
     try {
       const expanded = this.resolveExternalTypeReference(targetFile, typeName, visiting, scope);
       if (expanded === undefined) return originalText;
+      if (
+        this.hasUnresolvableComputedKey(expanded, this.collectFileLocalTypeReferences(targetFile))
+      ) {
+        return originalText;
+      }
       return this.needsParensBeforeSuffix(expanded) ? `(${expanded})` : expanded;
     } finally {
       visiting.delete(key);
@@ -1241,10 +1248,11 @@ export class ZodTypeExtractor {
   /**
    * Resolves one entry from `collectFileLocalTypeReferences`: expands it
    * (recursing, with the same cycle handling as `inlineExternalTypeReferences`),
-   * or - on a cycle, or when no `scope` was requested (expansion across
-   * files is opt-in via `--inline-type-references`) - falls back to an
-   * `import(...)` reference if one is valid, else the original bare
-   * identifier.
+   * or - on a cycle, when no `scope` was requested (expansion across files
+   * is opt-in via `--inline-type-references`), or when the expansion carries
+   * an unresolvable computed property key (see `hasUnresolvableComputedKey`)
+   * - falls back to an `import(...)` reference if one is valid, else the
+   * original bare identifier.
    */
   private resolveReferenceOrFallback(
     reference: LocalTypeReference,
@@ -1266,10 +1274,73 @@ export class ZodTypeExtractor {
         scope,
       );
       if (expanded === undefined) return fallback;
+      if (
+        this.hasUnresolvableComputedKey(
+          expanded,
+          this.collectFileLocalTypeReferences(reference.file),
+        )
+      ) {
+        return fallback;
+      }
       return this.needsParensBeforeSuffix(expanded) ? `(${expanded})` : expanded;
     } finally {
       visiting.delete(key);
     }
+  }
+
+  /**
+   * True when `text` - the result of expanding an external declaration -
+   * still contains a bare identifier used as a computed property key (e.g.
+   * `{ [brand]: true; ... }`) that isn't tracked by
+   * `collectFileLocalTypeReferences`. A `unique symbol`-typed `const` used
+   * this way is the one shape a printed type can carry that can never be
+   * promoted to a resolvable form: unlike a type reference, the value
+   * binding it names has no expressible spelling from outside its declaring
+   * file at all (not even `import("...").brand` when it isn't exported - and
+   * importing a value just to key off it would be an odd thing for a
+   * generated declaration to depend on even when it is exported). This is
+   * exactly why the checker itself refuses to expand such a type inline when
+   * printing it from anywhere but its own declaring file, falling back to
+   * the bare name instead (see the `promoteBareTypeReferences` comment in
+   * `resolveType`) - `expandExternalDeclaration` has no such restraint,
+   * since it always prints a declaration's structure relative to its own
+   * file. The caller should discard an expansion this flags and keep the
+   * safe, self-contained reference to the type itself instead.
+   *
+   * Scans with quote awareness, the same as `promoteBareTypeReferences`, so
+   * a string literal that happens to contain bracketed text (e.g.
+   * `"[brand]"`) is left alone.
+   */
+  private hasUnresolvableComputedKey(
+    text: string,
+    references: Map<string, LocalTypeReference>,
+  ): boolean {
+    let quote: string | undefined;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+
+      if (quote) {
+        if (char === quote && !isEscaped(text, i)) quote = undefined;
+        continue;
+      }
+
+      if (char === '"' || char === "'" || char === "`") {
+        quote = char;
+        continue;
+      }
+
+      if (char !== "[" || !/[A-Za-z_$]/.test(text[i + 1] ?? "")) continue;
+
+      let end = i + 2;
+      while (end < text.length && /[A-Za-z0-9_$]/.test(text[end])) end++;
+      if (text[end] !== "]") continue;
+
+      const word = text.slice(i + 1, end);
+      if (!references.has(word)) return true;
+    }
+
+    return false;
   }
 
   /**
