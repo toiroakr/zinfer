@@ -317,10 +317,28 @@ export class ZodTypeExtractor {
       if (explicitType) {
         this.injectExplicitType(sourceFile, explicitType);
         try {
+          // Only suppress promotion when the annotation is "degenerate" -
+          // explicitType resolves to exactly a single identifier that's
+          // either locally declared or reached through this file's own
+          // import (the same two conditions rewriteExplicitTypeSelfReference
+          // is gated on below). That shape is a self-reference/recursion
+          // point rewriteExplicitTypeSelfReference still needs to see as an
+          // untouched bare name, to rewrite it to this schema's own
+          // generated name. A composite annotation (e.g. `{ id: string;
+          // value: Named }`) never matches either check - a raw type
+          // expression isn't a valid identifier at all -
+          // rewriteExplicitTypeSelfReference never runs for it, so
+          // suppressing promotion for the whole thing would only leave its
+          // other, unrelated nested bare references (like `Named`) dangling
+          // for no benefit.
+          const isDegenerateSelfReference =
+            this.isLocallyDeclaredType(sourceFile, explicitType) ||
+            this.collectFileLocalTypeReferences(sourceFile).has(explicitType);
           const resolvedType = this.resolveType(
             sourceFile,
             "__TempExplicit",
             context.inlineTypeReferences,
+            !isDegenerateSelfReference,
           );
           // A non-exported schema whose explicit annotation names a locally
           // declared type that recurses back to itself still needs a name
@@ -833,6 +851,7 @@ export class ZodTypeExtractor {
     sourceFile: SourceFile,
     typeName: string,
     scope?: TypeReferenceScope,
+    promoteBareReferences: boolean = true,
   ): string {
     const typeAlias = sourceFile.getTypeAlias(typeName);
     if (!typeAlias) {
@@ -859,6 +878,33 @@ export class ZodTypeExtractor {
       }
     }
 
+    // Simplify Zod internal function types and canonicalize printed brand
+    // qualifiers (e.g. `z.core.$brand<"Tag">`) before the bare-reference
+    // promotion below runs - both match a literal `z.core....`/`$brand`/
+    // `BRAND` prefix textually, which promoting `z` (this file's own,
+    // non-type-only `import { z } from "zod"`) to `import("zod").z` first
+    // would leave unrecognizable to either.
+    rawType = normalizeBrandQualifiers(this.simplifyZodFunctionTypes(rawType));
+
+    // The checker can print a name that's only valid in `sourceFile`'s own
+    // scope - a bare identifier resolving through its `import type { ... }`
+    // - instead of expanding it inline, e.g. when the named type isn't
+    // expressible from outside its declaring file (a `unique symbol`
+    // computed property key). Promote any such bare reference to a
+    // resolvable form the same way `expandExternalDeclaration` already does
+    // for references found while expanding a *nested* external declaration,
+    // so the top-level result is never a dangling identifier - regardless
+    // of whether `--inline-type-references` is set.
+    //
+    // Skipped for an explicit `z.ZodType<T>` annotation's own type
+    // (`promoteBareReferences: false`, passed by its `__TempExplicit`
+    // caller): there, a bare reference to the annotation's own name is a
+    // recursion point `rewriteExplicitTypeSelfReference` still needs to see
+    // untouched, to rewrite to this schema's own generated name instead.
+    if (promoteBareReferences) {
+      rawType = this.promoteBareTypeReferences(rawType, sourceFile, new Set(), scope);
+    }
+
     if (scope) {
       rawType = this.inlineExternalTypeReferences(
         rawType,
@@ -866,11 +912,19 @@ export class ZodTypeExtractor {
         scope,
         sourceFile.getFilePath(),
       );
+
+      // Expanding an external declaration (expandExternalDeclaration) prints
+      // that declaration's own structure as-is, without normalizing it - so
+      // a brand qualifier or Zod internal function type declared in the
+      // *other* file (e.g. a cross-file `.brand()`ed type reached through
+      // --inline-type-references) can still be sitting in `rawType`
+      // unnormalized at this point, even though the pass above already
+      // normalized this file's own printed text. Run it again to canonicalize
+      // whatever nested expansion just inlined.
+      rawType = normalizeBrandQualifiers(this.simplifyZodFunctionTypes(rawType));
     }
 
-    // Post-process to simplify Zod internal function types and canonicalize
-    // printed brand qualifiers
-    return normalizeBrandQualifiers(this.simplifyZodFunctionTypes(rawType));
+    return rawType;
   }
 
   /**
@@ -1022,7 +1076,9 @@ export class ZodTypeExtractor {
   /**
    * The `import("path").Name` matched-text branch of `inlineExternalTypeReferences`:
    * expand `typeName` in `targetFile`, or fall back to `originalText`
-   * unchanged (on a cycle, or when it isn't a plain type declaration).
+   * unchanged (on a cycle, when it isn't a plain type declaration, or when
+   * the expansion carries an unresolvable computed property key - see
+   * `hasUnresolvableComputedKey`).
    */
   private resolveOrKeepImportText(
     targetFile: SourceFile,
@@ -1038,6 +1094,11 @@ export class ZodTypeExtractor {
     try {
       const expanded = this.resolveExternalTypeReference(targetFile, typeName, visiting, scope);
       if (expanded === undefined) return originalText;
+      if (
+        this.hasUnresolvableComputedKey(expanded, this.collectFileLocalTypeReferences(targetFile))
+      ) {
+        return originalText;
+      }
       return this.needsParensBeforeSuffix(expanded) ? `(${expanded})` : expanded;
     } finally {
       visiting.delete(key);
@@ -1114,7 +1175,7 @@ export class ZodTypeExtractor {
     text: string,
     targetFile: SourceFile,
     visiting: Set<string>,
-    scope: TypeReferenceScope,
+    scope: TypeReferenceScope | undefined,
   ): string {
     const references = this.collectFileLocalTypeReferences(targetFile);
     if (references.size === 0) return text;
@@ -1192,19 +1253,22 @@ export class ZodTypeExtractor {
   /**
    * Resolves one entry from `collectFileLocalTypeReferences`: expands it
    * (recursing, with the same cycle handling as `inlineExternalTypeReferences`),
-   * or - on a cycle - falls back to an `import(...)` reference if one is
-   * valid, else the original bare identifier.
+   * or - on a cycle, when no `scope` was requested (expansion across files
+   * is opt-in via `--inline-type-references`), or when the expansion carries
+   * an unresolvable computed property key (see `hasUnresolvableComputedKey`)
+   * - falls back to an `import(...)` reference if one is valid, else the
+   * original bare identifier.
    */
   private resolveReferenceOrFallback(
     reference: LocalTypeReference,
     word: string,
     visiting: Set<string>,
-    scope: TypeReferenceScope,
+    scope: TypeReferenceScope | undefined,
   ): string {
     const key = `${reference.modulePath}#${reference.exportedName}`;
     const fallback = this.referenceFallbackText(reference, word);
 
-    if (visiting.has(key)) return fallback;
+    if (!scope || visiting.has(key)) return fallback;
 
     visiting.add(key);
     try {
@@ -1215,10 +1279,86 @@ export class ZodTypeExtractor {
         scope,
       );
       if (expanded === undefined) return fallback;
+      if (
+        this.hasUnresolvableComputedKey(
+          expanded,
+          this.collectFileLocalTypeReferences(reference.file),
+        )
+      ) {
+        return fallback;
+      }
       return this.needsParensBeforeSuffix(expanded) ? `(${expanded})` : expanded;
     } finally {
       visiting.delete(key);
     }
+  }
+
+  /**
+   * True when `text` - the result of expanding an external declaration -
+   * still contains a bare identifier used as a computed property key (e.g.
+   * `{ [brand]: true; ... }`) that isn't tracked by
+   * `collectFileLocalTypeReferences`. A `unique symbol`-typed `const` used
+   * this way is the one shape a printed type can carry that can never be
+   * promoted to a resolvable form: unlike a type reference, the value
+   * binding it names has no expressible spelling from outside its declaring
+   * file at all (not even `import("...").brand` when it isn't exported - and
+   * importing a value just to key off it would be an odd thing for a
+   * generated declaration to depend on even when it is exported). This is
+   * exactly why the checker itself refuses to expand such a type inline when
+   * printing it from anywhere but its own declaring file, falling back to
+   * the bare name instead (see the `promoteBareTypeReferences` comment in
+   * `resolveType`) - `expandExternalDeclaration` has no such restraint,
+   * since it always prints a declaration's structure relative to its own
+   * file. The caller should discard an expansion this flags and keep the
+   * safe, self-contained reference to the type itself instead.
+   *
+   * Scans with quote awareness, the same as `promoteBareTypeReferences`, so
+   * a string literal that happens to contain bracketed text (e.g.
+   * `"[brand]"`) is left alone.
+   *
+   * Only a bracket immediately followed by `:`/`?:` is treated as a
+   * computed property key - the same distinguishing signal
+   * `promoteBareTypeReferences`'s own `isPropertyKey` check uses (the
+   * checker always prints a property key as `name:`/`name?:` with no space
+   * before the colon). A bracketed identifier with nothing after it, like
+   * `Foo[K]` (an indexed-access type) or `[string]` (a single-element
+   * tuple), is ordinary, fully-resolvable type syntax with no bearing on
+   * this check - flagging it would discard a perfectly safe expansion.
+   */
+  private hasUnresolvableComputedKey(
+    text: string,
+    references: Map<string, LocalTypeReference>,
+  ): boolean {
+    let quote: string | undefined;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+
+      if (quote) {
+        if (char === quote && !isEscaped(text, i)) quote = undefined;
+        continue;
+      }
+
+      if (char === '"' || char === "'" || char === "`") {
+        quote = char;
+        continue;
+      }
+
+      if (char !== "[" || !/[A-Za-z_$]/.test(text[i + 1] ?? "")) continue;
+
+      let end = i + 2;
+      while (end < text.length && /[A-Za-z0-9_$]/.test(text[end])) end++;
+      if (text[end] !== "]") continue;
+
+      const afterBracket = text[end + 1];
+      const isComputedKey = afterBracket === ":" || (afterBracket === "?" && text[end + 2] === ":");
+      if (!isComputedKey) continue;
+
+      const word = text.slice(i + 1, end);
+      if (!references.has(word)) return true;
+    }
+
+    return false;
   }
 
   /**

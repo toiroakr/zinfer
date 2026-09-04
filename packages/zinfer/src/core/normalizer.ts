@@ -20,10 +20,16 @@ export function createTempTypeAlias(schemaName: string, typeKind: "input" | "out
  * imported Zod - e.g. `z.core.$brand<"Tag">`, `z.BRAND<"Tag">`, or
  * `import("zod").BRAND<"Tag">` - rather than the bare `BRAND<"Tag">` that
  * matches the `import type { BRAND } from "zod"` this tool emits.
+ *
+ * The prefix may also start with `import(...)` and continue with further
+ * `.word` segments - e.g. `import("zod").z.core.$brand<"Tag">` - when a bare
+ * `z` reached through a *different* file's own `import { z } from "zod"` was
+ * promoted to a qualified reference (see `promoteBareTypeReferences` in
+ * extractor.ts) before this runs a second time on that file's expanded text.
  */
 export function normalizeBrandQualifiers(typeStr: string): string {
   return typeStr.replace(
-    /(?:[\w$]+(?:\.[\w$]+)*\.|import\([^)]*\)\.)?(?:\$brand|BRAND)</g,
+    /(?:(?:[\w$]+|import\([^)]*\))(?:\.[\w$]+)*\.)?(?:\$brand|BRAND)</g,
     "BRAND<",
   );
 }

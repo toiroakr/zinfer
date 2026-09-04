@@ -824,6 +824,130 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "should generate a type-checkable inline import for an explicit annotation naming a class imported from another file",
   );
 
+  describe("composite-explicit-type-cross-file/schema.ts", () => {
+    // Unlike degenerate-explicit-type-cross-file/schema.ts (where the whole
+    // annotation resolves to exactly one imported identifier),
+    // rewriteExplicitTypeSelfReference never engages for a *composite*
+    // annotation - a raw type expression like `{ id: string; value: Named }`
+    // isn't a single identifier, so it never matches the degenerate check.
+    // Bare-reference promotion must still run for this shape, so a nested
+    // reference like `Named` gets promoted to a resolvable `import("...")`
+    // qualifier instead of being left dangling.
+    it("should promote a nested cross-file reference inside a composite explicit annotation instead of leaving it undeclared", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "composite-explicit-type-cross-file/schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "FooSchema");
+
+      const expected =
+        /^\{\s*id: string;\s*value: import\(".*composite-explicit-type-cross-file\/types"\)\.Named;\s*\}$/;
+      expect(result?.output).toMatch(expected);
+    });
+  });
+
+  createSchemaTest(
+    extractor,
+    "composite-explicit-type-cross-file/schema",
+    "should generate a type-checkable inline import for a nested reference inside a composite explicit annotation",
+  );
+
+  describe("unique-symbol-cross-file-transform/schema.ts", () => {
+    // A type reached only through a `.transform()` return-type assertion -
+    // not a `z.ZodType<T>` annotation - nested inside a larger object type.
+    // TypeScript's printer can't expand `Named` inline (a `unique symbol`
+    // computed property key isn't expressible outside its declaring file)
+    // and falls back to printing the bare identifier `Named`, valid only
+    // because it's in scope via the source file's own `import type`. zinfer
+    // must promote that bare identifier to a self-contained reference
+    // instead of leaving an undeclared name in the output - regression test
+    // for https://github.com/toiroakr/zinfer/issues/528.
+    it("should qualify a bare identifier reached via a nested .transform() cast through an inline import instead of leaving it undeclared", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "unique-symbol-cross-file-transform/schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "FooSchema");
+
+      const expected =
+        /^\{\s*value: import\(".*unique-symbol-cross-file-transform\/types"\)\.Named;\s*\}$/;
+      expect(result?.output).toMatch(expected);
+    });
+  });
+
+  createSchemaTest(
+    extractor,
+    "unique-symbol-cross-file-transform/schema",
+    "should generate a type-checkable inline import for a bare identifier reached via a nested .transform() cast",
+  );
+
+  describe("unique-symbol-cross-file-transform/schema.ts (--inline-type-references)", () => {
+    // Under --inline-type-references, promoteBareTypeReferences hands the
+    // bare `Named` reference to resolveReferenceOrFallback, which attempts a
+    // full expansion before falling back to the qualified import. Expanding
+    // Named's own declaration (from within types.ts, where its `unique
+    // symbol` computed key IS in scope) prints `{ [brand]: true; value:
+    // string }` - `brand` has no expressible form outside types.ts at all,
+    // so embedding that expansion here would leave `brand` undeclared in
+    // the generated output. The qualified `import("...").Named` reference
+    // has to be kept instead, exactly as when the flag is off.
+    it.each(["project", "all"] as const)(
+      "should keep the qualified import instead of expanding a type whose structure depends on an unexported unique symbol (scope: %s)",
+      (scope) => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "unique-symbol-cross-file-transform/schema.ts"),
+          { inlineTypeReferences: scope },
+        );
+        const result = results.find((r) => r.schemaName === "FooSchema");
+
+        const expected =
+          /^\{\s*value: import\(".*unique-symbol-cross-file-transform\/types"\)\.Named;\s*\}$/;
+        expect(result?.output).toMatch(expected);
+        expect(result?.output).not.toContain("brand");
+      },
+    );
+  });
+
+  describe("bracket-syntax-cross-file-transform/schema.ts (--inline-type-references)", () => {
+    // hasUnresolvableComputedKey must not mistake a single-element tuple
+    // (`[string]`) or an indexed-access type (`Pair[0]`) for a `unique
+    // symbol` computed property key (`{ [brand]: ... }`) - unlike that
+    // shape, neither carries an unresolvable name, so `Named` should still
+    // be expanded inline instead of falling back to a qualified import.
+    it.each(["project", "all"] as const)(
+      "should still expand a type whose structure only contains a tuple/indexed-access bracket, not a computed key (scope: %s)",
+      (scope) => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "bracket-syntax-cross-file-transform/schema.ts"),
+          { inlineTypeReferences: scope },
+        );
+        const result = results.find((r) => r.schemaName === "FooSchema");
+
+        expect(result?.output).toBe("{ value: { tag: [string]; first: [string, number][0]; }; }");
+      },
+    );
+  });
+
+  describe("branded-cross-file-transform/schema.ts", () => {
+    // A `.brand()`ed type reached only through a `.transform()` return-type
+    // assertion, nested inside a larger object type, in a *different* file
+    // from the schema. Under --inline-type-references, expanding that
+    // file's own declaration promotes its bare `z` to `import("zod").z`
+    // before its brand marker is qualified with it, producing
+    // `import("zod").z.core.$brand<"Name">` - normalizeBrandQualifiers must
+    // still canonicalize that combined prefix to the bare `BRAND<"Name">`
+    // marker instead of leaking the resolved zod module path into the
+    // generated output.
+    it("should canonicalize a brand marker on a type inlined from another file via --inline-type-references", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "branded-cross-file-transform/schema.ts"),
+        { inlineTypeReferences: "project" },
+      );
+      const result = results.find((r) => r.schemaName === "FooSchema");
+
+      expect(result?.output).toContain('BRAND<"Name">');
+      expect(result?.output).not.toContain("import(");
+    });
+  });
+
   describe("rest-tuple-schema.ts", () => {
     it("should preserve the fixed leading elements of a variadic tuple instead of widening to an array", () => {
       const results = extractor.extractAll(resolve(fixturesDir, "rest-tuple-schema.ts"));
