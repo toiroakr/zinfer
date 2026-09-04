@@ -28,7 +28,7 @@ jobs:
       - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         name: Install pnpm and Node.js
         with:
-          runtime: node@24.19.0
+          runtime: node@24.20.0
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Select Changesets mode
@@ -86,7 +86,7 @@ jobs:
       - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         name: Install pnpm and Node.js
         with:
-          runtime: node@24.19.0
+          runtime: node@24.20.0
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build packages
@@ -112,7 +112,7 @@ jobs:
       - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
         name: Install pnpm and Node.js
         with:
-          runtime: node@24.19.0
+          runtime: node@24.20.0
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Publish packages
