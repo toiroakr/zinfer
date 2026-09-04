@@ -826,6 +826,33 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "should generate a type-checkable inline import for an explicit annotation naming a class imported from another file",
   );
 
+  describe("composite-explicit-type-cross-file/schema.ts", () => {
+    // Unlike degenerate-explicit-type-cross-file/schema.ts (where the whole
+    // annotation resolves to exactly one imported identifier),
+    // rewriteExplicitTypeSelfReference never engages for a *composite*
+    // annotation - a raw type expression like `{ id: string; value: Named }`
+    // isn't a single identifier, so it never matches the degenerate check.
+    // Bare-reference promotion must still run for this shape, so a nested
+    // reference like `Named` gets promoted to a resolvable `import("...")`
+    // qualifier instead of being left dangling.
+    it("should promote a nested cross-file reference inside a composite explicit annotation instead of leaving it undeclared", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "composite-explicit-type-cross-file/schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "FooSchema");
+
+      const expected =
+        /^\{\s*id: string;\s*value: import\(".*composite-explicit-type-cross-file\/types"\)\.Named;\s*\}$/;
+      expect(result?.output).toMatch(expected);
+    });
+  });
+
+  createSchemaTest(
+    extractor,
+    "composite-explicit-type-cross-file/schema",
+    "should generate a type-checkable inline import for a nested reference inside a composite explicit annotation",
+  );
+
   describe("unique-symbol-cross-file-transform/schema.ts", () => {
     // A type reached only through a `.transform()` return-type assertion -
     // not a `z.ZodType<T>` annotation - nested inside a larger object type.

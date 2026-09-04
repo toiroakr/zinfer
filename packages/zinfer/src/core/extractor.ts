@@ -317,15 +317,28 @@ export class ZodTypeExtractor {
       if (explicitType) {
         this.injectExplicitType(sourceFile, explicitType);
         try {
-          // promoteBareReferences: false - a bare reference to the
-          // annotation's own name here is the self-reference/recursion
-          // point rewriteExplicitTypeSelfReference (below) still needs to
-          // see untouched, to rewrite to this schema's own generated name.
+          // Only suppress promotion when the annotation is "degenerate" -
+          // explicitType resolves to exactly a single identifier that's
+          // either locally declared or reached through this file's own
+          // import (the same two conditions rewriteExplicitTypeSelfReference
+          // is gated on below). That shape is a self-reference/recursion
+          // point rewriteExplicitTypeSelfReference still needs to see as an
+          // untouched bare name, to rewrite it to this schema's own
+          // generated name. A composite annotation (e.g. `{ id: string;
+          // value: Named }`) never matches either check - a raw type
+          // expression isn't a valid identifier at all -
+          // rewriteExplicitTypeSelfReference never runs for it, so
+          // suppressing promotion for the whole thing would only leave its
+          // other, unrelated nested bare references (like `Named`) dangling
+          // for no benefit.
+          const isDegenerateSelfReference =
+            this.isLocallyDeclaredType(sourceFile, explicitType) ||
+            this.collectFileLocalTypeReferences(sourceFile).has(explicitType);
           const resolvedType = this.resolveType(
             sourceFile,
             "__TempExplicit",
             context.inlineTypeReferences,
-            false,
+            !isDegenerateSelfReference,
           );
           rawTypes.set(schemaName, {
             input: resolvedType,
