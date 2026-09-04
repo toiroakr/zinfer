@@ -826,6 +826,34 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "should generate a type-checkable inline import for an explicit annotation naming a class imported from another file",
   );
 
+  describe("unique-symbol-cross-file-transform/schema.ts", () => {
+    // A type reached only through a `.transform()` return-type assertion -
+    // not a `z.ZodType<T>` annotation - nested inside a larger object type.
+    // TypeScript's printer can't expand `Named` inline (a `unique symbol`
+    // computed property key isn't expressible outside its declaring file)
+    // and falls back to printing the bare identifier `Named`, valid only
+    // because it's in scope via the source file's own `import type`. zinfer
+    // must promote that bare identifier to a self-contained reference
+    // instead of leaving an undeclared name in the output - regression test
+    // for https://github.com/toiroakr/zinfer/issues/528.
+    it("should qualify a bare identifier reached via a nested .transform() cast through an inline import instead of leaving it undeclared", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "unique-symbol-cross-file-transform/schema.ts"),
+      );
+      const result = results.find((r) => r.schemaName === "FooSchema");
+
+      const expected =
+        /^\{\s*value: import\(".*unique-symbol-cross-file-transform\/types"\)\.Named;\s*\}$/;
+      expect(result?.output).toMatch(expected);
+    });
+  });
+
+  createSchemaTest(
+    extractor,
+    "unique-symbol-cross-file-transform/schema",
+    "should generate a type-checkable inline import for a bare identifier reached via a nested .transform() cast",
+  );
+
   describe("rest-tuple-schema.ts", () => {
     it("should preserve the fixed leading elements of a variadic tuple instead of widening to an array", () => {
       const results = extractor.extractAll(resolve(fixturesDir, "rest-tuple-schema.ts"));

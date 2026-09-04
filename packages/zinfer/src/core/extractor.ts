@@ -317,10 +317,15 @@ export class ZodTypeExtractor {
       if (explicitType) {
         this.injectExplicitType(sourceFile, explicitType);
         try {
+          // promoteBareReferences: false - a bare reference to the
+          // annotation's own name here is the self-reference/recursion
+          // point rewriteExplicitTypeSelfReference (below) still needs to
+          // see untouched, to rewrite to this schema's own generated name.
           const resolvedType = this.resolveType(
             sourceFile,
             "__TempExplicit",
             context.inlineTypeReferences,
+            false,
           );
           rawTypes.set(schemaName, {
             input: resolvedType,
@@ -841,6 +846,7 @@ export class ZodTypeExtractor {
     sourceFile: SourceFile,
     typeName: string,
     scope?: TypeReferenceScope,
+    promoteBareReferences: boolean = true,
   ): string {
     const typeAlias = sourceFile.getTypeAlias(typeName);
     if (!typeAlias) {
@@ -867,6 +873,33 @@ export class ZodTypeExtractor {
       }
     }
 
+    // Simplify Zod internal function types and canonicalize printed brand
+    // qualifiers (e.g. `z.core.$brand<"Tag">`) before the bare-reference
+    // promotion below runs - both match a literal `z.core....`/`$brand`/
+    // `BRAND` prefix textually, which promoting `z` (this file's own,
+    // non-type-only `import { z } from "zod"`) to `import("zod").z` first
+    // would leave unrecognizable to either.
+    rawType = normalizeBrandQualifiers(this.simplifyZodFunctionTypes(rawType));
+
+    // The checker can print a name that's only valid in `sourceFile`'s own
+    // scope - a bare identifier resolving through its `import type { ... }`
+    // - instead of expanding it inline, e.g. when the named type isn't
+    // expressible from outside its declaring file (a `unique symbol`
+    // computed property key). Promote any such bare reference to a
+    // resolvable form the same way `expandExternalDeclaration` already does
+    // for references found while expanding a *nested* external declaration,
+    // so the top-level result is never a dangling identifier - regardless
+    // of whether `--inline-type-references` is set.
+    //
+    // Skipped for an explicit `z.ZodType<T>` annotation's own type
+    // (`promoteBareReferences: false`, passed by its `__TempExplicit`
+    // caller): there, a bare reference to the annotation's own name is a
+    // recursion point `rewriteExplicitTypeSelfReference` still needs to see
+    // untouched, to rewrite to this schema's own generated name instead.
+    if (promoteBareReferences) {
+      rawType = this.promoteBareTypeReferences(rawType, sourceFile, new Set(), scope);
+    }
+
     if (scope) {
       rawType = this.inlineExternalTypeReferences(
         rawType,
@@ -876,9 +909,7 @@ export class ZodTypeExtractor {
       );
     }
 
-    // Post-process to simplify Zod internal function types and canonicalize
-    // printed brand qualifiers
-    return normalizeBrandQualifiers(this.simplifyZodFunctionTypes(rawType));
+    return rawType;
   }
 
   /**
@@ -1122,7 +1153,7 @@ export class ZodTypeExtractor {
     text: string,
     targetFile: SourceFile,
     visiting: Set<string>,
-    scope: TypeReferenceScope,
+    scope: TypeReferenceScope | undefined,
   ): string {
     const references = this.collectFileLocalTypeReferences(targetFile);
     if (references.size === 0) return text;
@@ -1200,19 +1231,21 @@ export class ZodTypeExtractor {
   /**
    * Resolves one entry from `collectFileLocalTypeReferences`: expands it
    * (recursing, with the same cycle handling as `inlineExternalTypeReferences`),
-   * or - on a cycle - falls back to an `import(...)` reference if one is
-   * valid, else the original bare identifier.
+   * or - on a cycle, or when no `scope` was requested (expansion across
+   * files is opt-in via `--inline-type-references`) - falls back to an
+   * `import(...)` reference if one is valid, else the original bare
+   * identifier.
    */
   private resolveReferenceOrFallback(
     reference: LocalTypeReference,
     word: string,
     visiting: Set<string>,
-    scope: TypeReferenceScope,
+    scope: TypeReferenceScope | undefined,
   ): string {
     const key = `${reference.modulePath}#${reference.exportedName}`;
     const fallback = this.referenceFallbackText(reference, word);
 
-    if (visiting.has(key)) return fallback;
+    if (!scope || visiting.has(key)) return fallback;
 
     visiting.add(key);
     try {
