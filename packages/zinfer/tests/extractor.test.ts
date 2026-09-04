@@ -854,6 +854,28 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     "should generate a type-checkable inline import for a bare identifier reached via a nested .transform() cast",
   );
 
+  describe("branded-cross-file-transform/schema.ts", () => {
+    // A `.brand()`ed type reached only through a `.transform()` return-type
+    // assertion, nested inside a larger object type, in a *different* file
+    // from the schema. Under --inline-type-references, expanding that
+    // file's own declaration promotes its bare `z` to `import("zod").z`
+    // before its brand marker is qualified with it, producing
+    // `import("zod").z.core.$brand<"Name">` - normalizeBrandQualifiers must
+    // still canonicalize that combined prefix to the bare `BRAND<"Name">`
+    // marker instead of leaking the resolved zod module path into the
+    // generated output.
+    it("should canonicalize a brand marker on a type inlined from another file via --inline-type-references", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "branded-cross-file-transform/schema.ts"),
+        { inlineTypeReferences: "project" },
+      );
+      const result = results.find((r) => r.schemaName === "FooSchema");
+
+      expect(result?.output).toContain('BRAND<"Name">');
+      expect(result?.output).not.toContain("import(");
+    });
+  });
+
   describe("rest-tuple-schema.ts", () => {
     it("should preserve the fixed leading elements of a variadic tuple instead of widening to an array", () => {
       const results = extractor.extractAll(resolve(fixturesDir, "rest-tuple-schema.ts"));

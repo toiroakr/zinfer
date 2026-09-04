@@ -907,6 +907,16 @@ export class ZodTypeExtractor {
         scope,
         sourceFile.getFilePath(),
       );
+
+      // Expanding an external declaration (expandExternalDeclaration) prints
+      // that declaration's own structure as-is, without normalizing it - so
+      // a brand qualifier or Zod internal function type declared in the
+      // *other* file (e.g. a cross-file `.brand()`ed type reached through
+      // --inline-type-references) can still be sitting in `rawType`
+      // unnormalized at this point, even though the pass above already
+      // normalized this file's own printed text. Run it again to canonicalize
+      // whatever nested expansion just inlined.
+      rawType = normalizeBrandQualifiers(this.simplifyZodFunctionTypes(rawType));
     }
 
     return rawType;
