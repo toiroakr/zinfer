@@ -1323,6 +1323,15 @@ export class ZodTypeExtractor {
    * Scans with quote awareness, the same as `promoteBareTypeReferences`, so
    * a string literal that happens to contain bracketed text (e.g.
    * `"[brand]"`) is left alone.
+   *
+   * Only a bracket immediately followed by `:`/`?:` is treated as a
+   * computed property key - the same distinguishing signal
+   * `promoteBareTypeReferences`'s own `isPropertyKey` check uses (the
+   * checker always prints a property key as `name:`/`name?:` with no space
+   * before the colon). A bracketed identifier with nothing after it, like
+   * `Foo[K]` (an indexed-access type) or `[string]` (a single-element
+   * tuple), is ordinary, fully-resolvable type syntax with no bearing on
+   * this check - flagging it would discard a perfectly safe expansion.
    */
   private hasUnresolvableComputedKey(
     text: string,
@@ -1348,6 +1357,10 @@ export class ZodTypeExtractor {
       let end = i + 2;
       while (end < text.length && /[A-Za-z0-9_$]/.test(text[end])) end++;
       if (text[end] !== "]") continue;
+
+      const afterBracket = text[end + 1];
+      const isComputedKey = afterBracket === ":" || (afterBracket === "?" && text[end + 2] === ":");
+      if (!isComputedKey) continue;
 
       const word = text.slice(i + 1, end);
       if (!references.has(word)) return true;

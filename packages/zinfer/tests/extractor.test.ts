@@ -908,6 +908,26 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     );
   });
 
+  describe("bracket-syntax-cross-file-transform/schema.ts (--inline-type-references)", () => {
+    // hasUnresolvableComputedKey must not mistake a single-element tuple
+    // (`[string]`) or an indexed-access type (`Pair[0]`) for a `unique
+    // symbol` computed property key (`{ [brand]: ... }`) - unlike that
+    // shape, neither carries an unresolvable name, so `Named` should still
+    // be expanded inline instead of falling back to a qualified import.
+    it.each(["project", "all"] as const)(
+      "should still expand a type whose structure only contains a tuple/indexed-access bracket, not a computed key (scope: %s)",
+      (scope) => {
+        const results = extractor.extractAll(
+          resolve(fixturesDir, "bracket-syntax-cross-file-transform/schema.ts"),
+          { inlineTypeReferences: scope },
+        );
+        const result = results.find((r) => r.schemaName === "FooSchema");
+
+        expect(result?.output).toBe("{ value: { tag: [string]; first: [string, number][0]; }; }");
+      },
+    );
+  });
+
   describe("branded-cross-file-transform/schema.ts", () => {
     // A `.brand()`ed type reached only through a `.transform()` return-type
     // assertion, nested inside a larger object type, in a *different* file
