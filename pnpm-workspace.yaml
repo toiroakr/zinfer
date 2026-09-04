@@ -13,4 +13,4 @@ overrides:
   # Force just their own nested `typescript` dependency to a classic 5.x
   # release; zinfer/vinfer/zinfer-mini/core's own typecheck/build keep using the
   # workspace's pinned typescript@7.x untouched.
-  dts-bundle-generator>typescript: ^5.7.3
+  dts-bundle-generator>typescript: ^7.0.0
