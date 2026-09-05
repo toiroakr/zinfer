@@ -60,3 +60,10 @@ export const NonOptionalSchema = z.nonoptional(z.optional(z.string()));
 export const NullishSchema = z.object({
   value: z.nullish(z.string()),
 });
+
+// Builders that were missing from ZOD_MINI_SCHEMA_BUILDERS, and so were
+// dropped from the output with no error when written as a bare call.
+export const InstanceofSchema = z.instanceof(Date);
+export const CreditCardSchema = z.creditCard();
+export const ExactPartialObjectSchema = z.exactPartial(BaseSchema);
+export const TransformOnlySchema = z.transform((value: string) => value.length);

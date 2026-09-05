@@ -284,6 +284,18 @@ export const ZOD_MINI_SCHEMA_BUILDERS: ReadonlySet<string> = new Set([
   "codec",
   "invertCodec",
   "stringbool",
+  // Custom and conversion
+  "instanceof",
+  "json",
+  "clone",
+  "input",
+  "output",
+  "getDiscriminatedOption",
+  "creditCard",
+  "exactPartial",
+  "transform",
+  "function",
+  "_function",
 ]);
 
 /**

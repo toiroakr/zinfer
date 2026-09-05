@@ -20,6 +20,34 @@ const SCHEMA_TYPE_ANNOTATION_PATTERN = new RegExp(
 );
 
 /**
+ * Decides whether a declaration holds a zod/mini schema by its resolved type
+ * rather than by the name it was built with.
+ *
+ * This is the backstop behind {@link ZOD_MINI_SCHEMA_BUILDERS}. A name list
+ * can only describe the zod that zinfer-mini was released against, and a
+ * builder it has never heard of used to be dropped *silently* - no type
+ * generated, no warning, the schema simply absent from the output.
+ * Consulting the type instead means a newer zod's builders keep working on
+ * an older zinfer-mini.
+ *
+ * `def` is what separates a schema from a check: zod/mini schemas expose one
+ * (alongside `parse`/`check`), while the standalone checks meant to be
+ * *handed to* a schema (`z.refine(...)`, `z.minLength(...)`,
+ * `z.property(...)`) carry only the `_zod` marker.
+ *
+ * Only ever reached for a call that already resolves to a zod/mini export,
+ * so an unrelated package's similarly shaped value is never pulled in.
+ */
+function isZodMiniSchemaType(declaration: VariableDeclaration): boolean {
+  const type = declaration.getType();
+  // An unresolvable declaration (zod not installed, a recursive getter TS
+  // gives up on) widens to any/unknown, where every property lookup would
+  // succeed and make this answer meaningless.
+  if (type.isAny() || type.isUnknown()) return false;
+  return type.getProperty("_zod") !== undefined && type.getProperty("def") !== undefined;
+}
+
+/**
  * Detects zod/mini schemas in TypeScript source files.
  */
 export class SchemaDetector {
@@ -131,8 +159,14 @@ export class SchemaDetector {
     // styles, no source-text matching needed.
     const unwrapped = unwrapExpression(initializer);
     const callName = bindings.getCallName(unwrapped);
-    if (callName !== undefined && ZOD_MINI_SCHEMA_BUILDERS.has(callName)) {
-      return true;
+    if (callName !== undefined) {
+      // A call that resolves to a zod/mini export, so this declaration is
+      // answerable on its own: a known builder name settles it without
+      // touching the type checker, and an unknown one falls through to the
+      // declaration's actual type rather than being dropped.
+      if (ZOD_MINI_SCHEMA_BUILDERS.has(callName) || isZodMiniSchemaType(declaration)) {
+        return true;
+      }
     }
 
     // zod/mini keeps a handful of real chain methods on schema instances

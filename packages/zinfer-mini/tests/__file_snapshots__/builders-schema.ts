@@ -181,3 +181,27 @@ export type NullishInput = {
 export type NullishOutput = {
   value?: string | null | undefined;
 };
+
+export type InstanceofInput = Date;
+
+export type InstanceofOutput = Date;
+
+export type CreditCardInput = string;
+
+export type CreditCardOutput = string;
+
+export type ExactPartialObjectInput = {
+  id?: string | undefined;
+  name?: string | undefined;
+  age?: number | undefined;
+};
+
+export type ExactPartialObjectOutput = {
+  id?: string | undefined;
+  name?: string | undefined;
+  age?: number | undefined;
+};
+
+export type TransformOnlyInput = string;
+
+export type TransformOnlyOutput = number;

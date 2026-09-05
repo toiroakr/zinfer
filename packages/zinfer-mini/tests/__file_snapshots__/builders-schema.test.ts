@@ -5,7 +5,7 @@ import { describe, it, expectTypeOf } from "vitest";
 import type { z } from "zod";
 
 // --- builders-schema ---
-import { BaseSchema as BuildersSchemaBaseSchema, PickedSchema as BuildersSchemaPickedSchema, OmittedSchema as BuildersSchemaOmittedSchema, PartialSchema as BuildersSchemaPartialSchema, RequiredSchema as BuildersSchemaRequiredSchema, ExtendedSchema as BuildersSchemaExtendedSchema, TupleSchema as BuildersSchemaTupleSchema, RecordSchema as BuildersSchemaRecordSchema, MapSchema as BuildersSchemaMapSchema, SetSchema as BuildersSchemaSetSchema, IntersectionSchema as BuildersSchemaIntersectionSchema, LiteralUnionSchema as BuildersSchemaLiteralUnionSchema, TemplateLiteralSchema as BuildersSchemaTemplateLiteralSchema, DefaultedSchema as BuildersSchemaDefaultedSchema, PrefaultedSchema as BuildersSchemaPrefaultedSchema, CaughtSchema as BuildersSchemaCaughtSchema, CustomSchema as BuildersSchemaCustomSchema, RefinedSchema as BuildersSchemaRefinedSchema, SuperRefinedSchema as BuildersSchemaSuperRefinedSchema, ReadonlySchema as BuildersSchemaReadonlySchema, PromiseSchema as BuildersSchemaPromiseSchema, ExactOptionalSchema as BuildersSchemaExactOptionalSchema, NonOptionalSchema as BuildersSchemaNonOptionalSchema, NullishSchema as BuildersSchemaNullishSchema } from "../fixtures/builders-schema";
+import { BaseSchema as BuildersSchemaBaseSchema, PickedSchema as BuildersSchemaPickedSchema, OmittedSchema as BuildersSchemaOmittedSchema, PartialSchema as BuildersSchemaPartialSchema, RequiredSchema as BuildersSchemaRequiredSchema, ExtendedSchema as BuildersSchemaExtendedSchema, TupleSchema as BuildersSchemaTupleSchema, RecordSchema as BuildersSchemaRecordSchema, MapSchema as BuildersSchemaMapSchema, SetSchema as BuildersSchemaSetSchema, IntersectionSchema as BuildersSchemaIntersectionSchema, LiteralUnionSchema as BuildersSchemaLiteralUnionSchema, TemplateLiteralSchema as BuildersSchemaTemplateLiteralSchema, DefaultedSchema as BuildersSchemaDefaultedSchema, PrefaultedSchema as BuildersSchemaPrefaultedSchema, CaughtSchema as BuildersSchemaCaughtSchema, CustomSchema as BuildersSchemaCustomSchema, RefinedSchema as BuildersSchemaRefinedSchema, SuperRefinedSchema as BuildersSchemaSuperRefinedSchema, ReadonlySchema as BuildersSchemaReadonlySchema, PromiseSchema as BuildersSchemaPromiseSchema, ExactOptionalSchema as BuildersSchemaExactOptionalSchema, NonOptionalSchema as BuildersSchemaNonOptionalSchema, NullishSchema as BuildersSchemaNullishSchema, InstanceofSchema as BuildersSchemaInstanceofSchema, CreditCardSchema as BuildersSchemaCreditCardSchema, ExactPartialObjectSchema as BuildersSchemaExactPartialObjectSchema, TransformOnlySchema as BuildersSchemaTransformOnlySchema } from "../fixtures/builders-schema";
 import type {
   BaseInput as BuildersSchemaBaseInput,
   BaseOutput as BuildersSchemaBaseOutput,
@@ -55,6 +55,14 @@ import type {
   NonOptionalOutput as BuildersSchemaNonOptionalOutput,
   NullishInput as BuildersSchemaNullishInput,
   NullishOutput as BuildersSchemaNullishOutput,
+  InstanceofInput as BuildersSchemaInstanceofInput,
+  InstanceofOutput as BuildersSchemaInstanceofOutput,
+  CreditCardInput as BuildersSchemaCreditCardInput,
+  CreditCardOutput as BuildersSchemaCreditCardOutput,
+  ExactPartialObjectInput as BuildersSchemaExactPartialObjectInput,
+  ExactPartialObjectOutput as BuildersSchemaExactPartialObjectOutput,
+  TransformOnlyInput as BuildersSchemaTransformOnlyInput,
+  TransformOnlyOutput as BuildersSchemaTransformOnlyOutput,
 } from "./builders-schema";
 
 describe("Type equality tests", () => {
@@ -249,6 +257,38 @@ describe("Type equality tests", () => {
 
     it("NullishSchema output matches z.output", () => {
       expectTypeOf<BuildersSchemaNullishOutput>().toEqualTypeOf<z.output<typeof BuildersSchemaNullishSchema>>();
+    });
+
+    it("InstanceofSchema input matches z.input", () => {
+      expectTypeOf<BuildersSchemaInstanceofInput>().toEqualTypeOf<z.input<typeof BuildersSchemaInstanceofSchema>>();
+    });
+
+    it("InstanceofSchema output matches z.output", () => {
+      expectTypeOf<BuildersSchemaInstanceofOutput>().toEqualTypeOf<z.output<typeof BuildersSchemaInstanceofSchema>>();
+    });
+
+    it("CreditCardSchema input matches z.input", () => {
+      expectTypeOf<BuildersSchemaCreditCardInput>().toEqualTypeOf<z.input<typeof BuildersSchemaCreditCardSchema>>();
+    });
+
+    it("CreditCardSchema output matches z.output", () => {
+      expectTypeOf<BuildersSchemaCreditCardOutput>().toEqualTypeOf<z.output<typeof BuildersSchemaCreditCardSchema>>();
+    });
+
+    it("ExactPartialObjectSchema input matches z.input", () => {
+      expectTypeOf<BuildersSchemaExactPartialObjectInput>().toEqualTypeOf<z.input<typeof BuildersSchemaExactPartialObjectSchema>>();
+    });
+
+    it("ExactPartialObjectSchema output matches z.output", () => {
+      expectTypeOf<BuildersSchemaExactPartialObjectOutput>().toEqualTypeOf<z.output<typeof BuildersSchemaExactPartialObjectSchema>>();
+    });
+
+    it("TransformOnlySchema input matches z.input", () => {
+      expectTypeOf<BuildersSchemaTransformOnlyInput>().toEqualTypeOf<z.input<typeof BuildersSchemaTransformOnlySchema>>();
+    });
+
+    it("TransformOnlySchema output matches z.output", () => {
+      expectTypeOf<BuildersSchemaTransformOnlyOutput>().toEqualTypeOf<z.output<typeof BuildersSchemaTransformOnlySchema>>();
     });
   });
 });
