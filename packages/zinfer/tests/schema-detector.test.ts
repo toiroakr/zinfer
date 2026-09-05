@@ -99,6 +99,81 @@ describe("SchemaDetector", () => {
     });
   });
 
+  // The builder-name list can only ever describe the zod that zinfer was
+  // written against. These cover the backstop that keeps a *newer* zod's
+  // builders from silently vanishing: when the name is unknown, the
+  // declaration's resolved type decides.
+  describe("unknown z.* builders", () => {
+    function detectFrom(lines: string[]) {
+      // A real Project (with zod's types resolvable) is required here -
+      // the fallback asks the type checker, not the source text.
+      const project = new Project({
+        tsConfigFilePath: resolve(import.meta.dirname, "../tsconfig.json"),
+      });
+      const sourceFile = project.createSourceFile("unknown-builder.ts", lines.join("\n"), {
+        overwrite: true,
+      });
+      return new SchemaDetector().detectExportedSchemas(sourceFile).map((s) => s.name);
+    }
+
+    it("detects a builder that is not in the known-name list", () => {
+      // Stands in for a builder added by a zod newer than this list: the
+      // shape is what zod schemas share (a `_def`), not a name zinfer knows.
+      expect(
+        detectFrom([
+          "declare const z: {",
+          "  futureBuilder(): { _def: { typeName: string }; parse(value: unknown): string };",
+          "};",
+          "export const FutureSchema = z.futureBuilder();",
+        ]),
+      ).toEqual(["FutureSchema"]);
+    });
+
+    it("detects builders whose printed type is too environment-dependent to snapshot", () => {
+      // z.file() expands to the structural File interface, whose members
+      // resolve differently depending on which lib provides Blob and
+      // ReadableStream, so it is kept out of v4-builders-schema.ts. Being
+      // *detected* is the part that regressed, and that is asserted here.
+      expect(
+        detectFrom(['import { z } from "zod";', "export const FileSchema = z.file();"]),
+      ).toEqual(["FileSchema"]);
+    });
+
+    it("does not mistake a zod check for a schema", () => {
+      // z.refine()/z.minLength() return a check, meant to be handed to a
+      // schema rather than used as one. They carry zod's `_zod` marker but
+      // no `_def`, which is exactly what the fallback keys on.
+      expect(
+        detectFrom([
+          'import { z } from "zod";',
+          "export const NotASchema = z.refine((value: string) => value.length > 0);",
+          "export const AlsoNotASchema = z.minLength(3);",
+        ]),
+      ).toEqual([]);
+    });
+
+    it("does not mistake a non-schema z.* helper for a schema", () => {
+      expect(
+        detectFrom([
+          'import { z } from "zod";',
+          "export const jsonSchema = z.toJSONSchema(z.string());",
+          'export const parsed = z.safeParse(z.string(), "x");',
+        ]),
+      ).toEqual([]);
+    });
+
+    it("leaves declarations that are not rooted at z alone", () => {
+      // The fallback is only reached for `z.<something>(...)`; an unrelated
+      // library's value must never be pulled in just because it has a _def.
+      expect(
+        detectFrom([
+          "declare const other: { build(): { _def: { typeName: string } } };",
+          "export const NotZod = other.build();",
+        ]),
+      ).toEqual([]);
+    });
+  });
+
   describe("getSchemaNames", () => {
     it("should return schema names from basic-schema.ts", () => {
       const sourceFile = getSourceFile("basic-schema.ts");

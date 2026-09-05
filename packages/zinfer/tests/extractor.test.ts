@@ -7,7 +7,15 @@ import { createNameMapper } from "../src/core/name-mapper.js";
 import { DescriptionExtractor } from "../src/core/description-extractor.js";
 import { execFileSync } from "child_process";
 import { execPath } from "process";
-import { readdirSync, mkdtempSync, symlinkSync, writeFileSync, rmSync, realpathSync } from "fs";
+import {
+  readdirSync,
+  readFileSync,
+  mkdtempSync,
+  symlinkSync,
+  writeFileSync,
+  rmSync,
+  realpathSync,
+} from "fs";
 import { tmpdir } from "os";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
@@ -21,7 +29,12 @@ const isZodV4 = typeof z.looseObject === "function";
 // Fixtures that use zod v4-only schema builders (no v3 equivalent at any
 // version) and therefore can never be imported under the peerDependencies
 // floor.
-const ZOD_V4_ONLY_FIXTURES = ["strict-object-schema.ts", "template-literal-schema.ts"];
+const ZOD_V4_ONLY_FIXTURES = [
+  "strict-object-schema.ts",
+  "template-literal-schema.ts",
+  "v4-builders-schema.ts",
+  "recursive-json-schema.ts",
+];
 // Fixtures whose explicit `z.ZodType<...>` annotations only type-check under
 // zod v4's generic signature. zod v3's ZodType takes a third type parameter
 // (Def, constrained to extend ZodTypeDef) that v4 dropped, so the same
@@ -113,6 +126,8 @@ const KNOWN_TYPE_DIFFERENCES: Record<string, string> = {
 // Divergences that only reproduce under zod v4. Merged into
 // KNOWN_TYPE_DIFFERENCES below only when running under v4.
 const ZOD_V4_ONLY_TYPE_DIFFERENCES: Record<string, string> = {
+  "recursive-json-schema.test.ts":
+    "z.json() infers a single recursive `JSONType`; zinfer's printer has no way to name a self-referential type here, so it unrolls the union to its expansion depth and bottoms out in `any`. Kept in a fixture of its own so this entry does not blanket the other v4 builders. Under zod v3 there is no z.json() at all, so the generated test passes vacuously and this divergence cannot reproduce.",
   "described-ref-schema.test.ts":
     "JsonValueSchema is annotated z.ZodType<JsonValue>, leaving Input unset (defaults to unknown) per Zod 4's ZodType<Output, Input = unknown>; zinfer generates (and references) the full recursive union instead. zod v3's ZodType defaults Input to Output, so there is nothing to diverge from there.",
 };
@@ -128,6 +143,8 @@ const ZOD_V3_ONLY_TYPE_DIFFERENCES: Record<string, string> = {
     "Getter-based recursion infers differently under zod v3 than v4; see lazy-schema.ts.",
   "recursive-reference-schema.test.ts":
     "Getter-based recursion infers differently under zod v3 than v4; see lazy-schema.ts.",
+  "v4-builders-schema.test.ts":
+    "Every builder in this fixture is zod v4-only (see ZOD_V4_ONLY_FIXTURES), so under v3 none of them resolve and z.input/z.output cannot match the committed v4 types.",
   "duplicate-field-name-schema.test.ts":
     "zod v3 prints a z.any() key as optional, so the committed types - generated under v4, where the key is required - do not match z.input/z.output there.",
   "template-literal-schema.test.ts":
@@ -329,6 +346,77 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
       expect(length?.input).toBe(`"ta" | "tb"`);
       expect(length?.output).toBe("number");
+    });
+  });
+  createSchemaTest(
+    extractor,
+    "v4-builders-schema",
+    "should generate TypeScript declarations for zod v4's builder surface",
+    // Every builder in this fixture is zod v4-only.
+    { requiresZodV4: true },
+  );
+
+  describe("v4-builders-schema.ts", () => {
+    it.skipIf(!isZodV4)("emits every builder in the fixture", () => {
+      // The point of the fixture: a bare `z.<builder>()` used to be dropped
+      // from the output with no error when the builder name was unknown, so
+      // assert on the *count* rather than trusting the snapshot alone - a
+      // silently missing schema is exactly the failure mode being guarded.
+      const results = extractor.extractAll(resolve(fixturesDir, "v4-builders-schema.ts"));
+      const emitted = new Set(results.map((r) => r.schemaName));
+      const declared = readFileSync(resolve(fixturesDir, "v4-builders-schema.ts"), "utf-8")
+        .split("\n")
+        .flatMap((line) => line.match(/^export const (\w+) =/)?.[1] ?? []);
+
+      expect(declared.length).toBeGreaterThan(30);
+      expect(declared.filter((name) => !emitted.has(name))).toEqual([]);
+    });
+
+    it.skipIf(!isZodV4)("keeps input and output separate where the builder splits them", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "v4-builders-schema.ts"));
+      const typesOf = (name: string) => {
+        const result = results.find((r) => r.schemaName === name);
+        return [result?.input, result?.output];
+      };
+
+      // z.stringbool() parses a string into a boolean.
+      expect(typesOf("StringBoolSchema")).toEqual(["string", "boolean"]);
+      // z.codec() decodes in one direction...
+      expect(typesOf("CodecSchema")).toEqual(["string", "number"]);
+      // ...and z.invertCodec() swaps the two ends round.
+      expect(typesOf("InvertCodecSchema")).toEqual(["number", "string"]);
+      // z.pipe() takes the input of the first and the output of the last.
+      expect(typesOf("PipeSchema")).toEqual(["string", "number"]);
+      // z.success() reports whether parsing succeeded.
+      expect(typesOf("SuccessSchema")).toEqual(["string", "boolean"]);
+      // z.transform() has no input constraint of its own.
+      expect(typesOf("TransformSchema")).toEqual(["string", "number"]);
+      // z.keyof() narrows to the object's keys.
+      expect(typesOf("KeyofSchema")).toEqual([`"id" | "count"`, `"id" | "count"`]);
+    });
+  });
+  createSchemaTest(
+    extractor,
+    "recursive-json-schema",
+    "should generate a declaration for z.json()",
+    { requiresZodV4: true },
+  );
+
+  describe("recursive-json-schema.ts", () => {
+    it.skipIf(!isZodV4)("unrolls z.json()'s recursion instead of naming it", () => {
+      // A known printer limitation, pinned here so it stays a documented
+      // shortcoming rather than a surprise: the recursive JSON type is
+      // expanded to the printer's depth limit and bottoms out in `any`,
+      // instead of being emitted as a named self-referential type (which is
+      // what z.output infers, and why this fixture has a
+      // KNOWN_TYPE_DIFFERENCES entry). Worth asserting because what it
+      // replaced was worse - the schema produced no output at all.
+      const results = extractor.extractAll(resolve(fixturesDir, "recursive-json-schema.ts"));
+      const json = results.find((r) => r.schemaName === "JsonSchema");
+
+      expect(json?.output).toContain("string | number | boolean");
+      expect(json?.output).toContain("any");
+      expect(json?.output.length).toBeGreaterThan(500);
     });
   });
   createSchemaTest(

@@ -3,6 +3,165 @@ import { isEscaped } from "./string-scan.js";
 import type { DetectedSchema } from "./types.js";
 
 /**
+ * Zod exports that produce a schema, as written after the `z.` prefix.
+ *
+ * This is only a *fast path*: hitting a name here settles the question
+ * without asking the type checker anything. A `z.<name>(...)` call that
+ * misses this set is not rejected - {@link isZodSchemaType} re-checks it
+ * against the declaration's actual type, so a builder zinfer has never
+ * heard of (a newer zod than the one it was written against) still
+ * resolves rather than silently disappearing from the output.
+ *
+ * `tests/schema-builders.test.ts` fails when zod gains a schema builder
+ * that is missing here, so the fast path stays complete as zod moves.
+ * Names zod no longer exports (v3's `pipeline`/`effect`/`transformer`) are
+ * kept on purpose: zinfer supports zod v3 through its peerDependencies
+ * floor, and the test only asserts this set is a *superset* of the
+ * installed zod's builders.
+ */
+export const ZOD_SCHEMA_BUILDERS: ReadonlySet<string> = new Set([
+  // Primitives and basics
+  "any",
+  "bigint",
+  "boolean",
+  "date",
+  "file",
+  "literal",
+  "nan",
+  "never",
+  "null",
+  "number",
+  "string",
+  "symbol",
+  "undefined",
+  "unknown",
+  "void",
+  // String formats (each returns a string schema of its own)
+  "base64",
+  "base64url",
+  "cidrv4",
+  "cidrv6",
+  "cuid",
+  "cuid2",
+  "e164",
+  "email",
+  "emoji",
+  "guid",
+  "hash",
+  "hex",
+  "hostname",
+  "httpUrl",
+  "ipv4",
+  "ipv6",
+  "jwt",
+  "ksuid",
+  "mac",
+  "nanoid",
+  "stringFormat",
+  "ulid",
+  "url",
+  "uuid",
+  "uuidv4",
+  "uuidv6",
+  "uuidv7",
+  "xid",
+  // Number formats
+  "float32",
+  "float64",
+  "int",
+  "int32",
+  "int64",
+  "uint32",
+  "uint64",
+  // Enums and template literals
+  "enum",
+  "nativeEnum",
+  "templateLiteral",
+  // Complex
+  "array",
+  "discriminatedUnion",
+  "intersection",
+  "json",
+  "looseObject",
+  "looseRecord",
+  "map",
+  "object",
+  "partialRecord",
+  "record",
+  "set",
+  "strictObject",
+  "tuple",
+  "union",
+  "xor",
+  // Object operations (the schema is an argument, not a method receiver)
+  "keyof",
+  // Wrappers
+  "exactOptional",
+  "nonoptional",
+  "nullable",
+  "nullish",
+  "optional",
+  "promise",
+  "readonly",
+  "success",
+  // Value-attaching
+  "_default",
+  "catch",
+  "prefault",
+  // Recursive
+  "lazy",
+  // Custom
+  "custom",
+  "instanceof",
+  // Composition and conversion
+  "_function",
+  "clone",
+  "codec",
+  "fromJSONSchema",
+  "function",
+  "invertCodec",
+  "pipe",
+  "preprocess",
+  "stringbool",
+  "transform",
+  // Namespaces grouping further builders (z.iso.date(), z.coerce.string())
+  "coerce",
+  "iso",
+  // zod v3 names with no v4 counterpart, kept for the peerDependencies floor
+  "brand",
+  "effect",
+  "pipeline",
+  "transformer",
+]);
+
+/**
+ * Decides whether a declaration holds a zod schema by its resolved type
+ * rather than by the name it was built with.
+ *
+ * This is the backstop behind {@link ZOD_SCHEMA_BUILDERS}. A name list can
+ * only describe the zod that zinfer was released against, and a builder it
+ * has never heard of used to be dropped *silently* - no type generated, no
+ * warning, the schema simply absent from the output. Consulting the type
+ * instead means a newer zod's builders keep working on an older zinfer.
+ *
+ * `_def` is what separates a schema from a check: every zod schema carries
+ * one (v3 and v4 alike), while v4's standalone checks (`z.refine(...)`,
+ * `z.minLength(...)`) carry only the `_zod` marker and are meant to be
+ * handed *to* a schema rather than used as one.
+ *
+ * Only ever reached for a `z.<name>(...)` initializer, so an unrelated
+ * package's value that happens to expose a `_def` is never pulled in.
+ */
+function isZodSchemaType(declaration: VariableDeclaration): boolean {
+  const type = declaration.getType();
+  // An unresolvable declaration (zod not installed, a recursive getter TS
+  // gives up on) widens to any/unknown, where every property lookup would
+  // succeed and make this answer meaningless.
+  if (type.isAny() || type.isUnknown()) return false;
+  return type.getProperty("_def") !== undefined;
+}
+
+/**
  * Detects Zod schemas in TypeScript source files.
  */
 export class SchemaDetector {
@@ -86,52 +245,6 @@ export class SchemaDetector {
   }
 
   /**
-   * Known Zod schema builder functions that follow the z. prefix.
-   */
-  private static readonly ZOD_SCHEMA_BUILDERS = new Set([
-    "object",
-    "string",
-    "number",
-    "boolean",
-    "array",
-    "tuple",
-    "record",
-    "map",
-    "set",
-    "union",
-    "intersection",
-    "literal",
-    "enum",
-    "nativeEnum",
-    "nullable",
-    "optional",
-    "any",
-    "unknown",
-    "never",
-    "void",
-    "null",
-    "undefined",
-    "bigint",
-    "date",
-    "symbol",
-    "function",
-    "lazy",
-    "promise",
-    "instanceof",
-    "discriminatedUnion",
-    "preprocess",
-    "pipeline",
-    "custom",
-    "coerce",
-    "transformer",
-    "effect",
-    "brand",
-    "strictObject",
-    "looseObject",
-    "templateLiteral",
-  ]);
-
-  /**
    * Checks if a variable declaration is a Zod schema.
    *
    * @param declaration - The variable declaration to check
@@ -162,8 +275,15 @@ export class SchemaDetector {
     // Whitespace is allowed around the dot: formatters break long chains
     // into multiple lines (e.g. `z\n  .union([...])\n  .describe(...)`).
     const builderMatch = initText.match(/^z\s*\.\s*([A-Za-z_$][A-Za-z0-9_$]*)/);
-    if (builderMatch && SchemaDetector.ZOD_SCHEMA_BUILDERS.has(builderMatch[1])) {
-      return true;
+    if (builderMatch) {
+      // Rooted at the zod namespace, so this declaration is answerable on
+      // its own: a known builder name settles it without touching the type
+      // checker, and an unknown one falls through to the declaration's
+      // actual type. Either way the method-name scan below - which exists
+      // for chains on *other* schema variables - must not see it, or a
+      // top-level `z.refine(...)` (a check, not a schema) would be counted
+      // as a schema just for containing ".refine(".
+      return ZOD_SCHEMA_BUILDERS.has(builderMatch[1]) || isZodSchemaType(declaration);
     }
 
     // Check if it's a method chain on another schema variable
