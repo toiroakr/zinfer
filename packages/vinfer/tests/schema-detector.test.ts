@@ -142,3 +142,78 @@ describe("SchemaDetector", () => {
     });
   });
 });
+
+// The builder-name list can only ever describe the valibot that vinfer was
+// written against. These cover the backstop that keeps a *newer* valibot's
+// builders from silently vanishing from the output: when the name is
+// unknown, the declaration's resolved type decides.
+describe("SchemaDetector - unknown valibot builders", () => {
+  function detectFrom(lines: string[]) {
+    // A real Project (with valibot's types resolvable) is required here -
+    // the fallback asks the type checker, not the source text.
+    const project = new Project({
+      tsConfigFilePath: resolve(import.meta.dirname, "../tsconfig.json"),
+    });
+    const sourceFile = project.createSourceFile("unknown-builder.ts", lines.join("\n"), {
+      overwrite: true,
+    });
+    return new SchemaDetector().detectExportedSchemas(sourceFile).map((s) => s.name);
+  }
+
+  it("detects a builder that is not in the known-name list", () => {
+    // Module augmentation stands in for a builder added by a valibot newer
+    // than VALIBOT_SCHEMA_PRODUCERS: the name resolves through the same
+    // "valibot" binding a real one would, but the list has never heard of
+    // it. What marks it as a schema is valibot's own `kind: "schema"`.
+    expect(
+      detectFrom([
+        `import * as v from "valibot";`,
+        `declare module "valibot" {`,
+        `  export function futureSchema(): {`,
+        `    readonly kind: "schema";`,
+        `    readonly type: "future";`,
+        `    readonly "~standard": v.StandardProps<string, string>;`,
+        `    readonly "~run": (dataset: unknown, config: unknown) => never;`,
+        `  };`,
+        `}`,
+        "export const FutureSchema = v.futureSchema();",
+      ]),
+    ).toEqual(["FutureSchema"]);
+  });
+
+  it("does not mistake a valibot action for a schema", () => {
+    // valibot separates schemas from actions: v.email()/v.minLength() are
+    // validations and v.description() is metadata, all meant to be passed
+    // into v.pipe() rather than used as a schema on their own.
+    expect(
+      detectFrom([
+        `import * as v from "valibot";`,
+        "export const NotASchema = v.email();",
+        "export const AlsoNotASchema = v.minLength(3);",
+        'export const NorThis = v.description("x");',
+      ]),
+    ).toEqual([]);
+  });
+
+  it("does not mistake a non-schema valibot helper for a schema", () => {
+    expect(
+      detectFrom([
+        `import * as v from "valibot";`,
+        "export const parse = v.parser(v.string());",
+        'export const flat = v.flatten({ kind: "schema" } as never);',
+      ]),
+    ).toEqual([]);
+  });
+
+  it("leaves declarations that are not rooted at valibot alone", () => {
+    // The fallback only runs for calls that resolve to a valibot export, so
+    // an unrelated library's value is never pulled in just for carrying a
+    // similarly shaped `kind`.
+    expect(
+      detectFrom([
+        `declare const other: { build(): { kind: "schema"; type: string } };`,
+        "export const NotValibot = other.build();",
+      ]),
+    ).toEqual([]);
+  });
+});

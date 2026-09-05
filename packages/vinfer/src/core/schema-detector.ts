@@ -24,6 +24,34 @@ const SCHEMA_TYPE_ANNOTATION_PATTERN = new RegExp(
 );
 
 /**
+ * Decides whether a declaration holds a Valibot schema by its resolved type
+ * rather than by the name it was built with.
+ *
+ * This is the backstop behind {@link VALIBOT_SCHEMA_PRODUCERS}. A name list
+ * can only describe the valibot that vinfer was released against, and a
+ * builder it has never heard of would otherwise be dropped *silently* - no
+ * type generated, no warning, the schema simply absent from the output.
+ * Consulting the type instead means a newer valibot's builders keep working
+ * on an older vinfer.
+ *
+ * Valibot tags its own values, so the check is exact rather than heuristic:
+ * schemas are `kind: "schema"`, while the actions meant to be passed into
+ * `v.pipe()` are `"validation"`, `"transformation"` or `"metadata"`.
+ *
+ * Only ever reached for a call that already resolves to a valibot export,
+ * so an unrelated package's similarly tagged value is never pulled in.
+ */
+function isValibotSchemaType(declaration: VariableDeclaration): boolean {
+  const type = declaration.getType();
+  // An unresolvable declaration (valibot not installed, a recursive getter
+  // TS gives up on) widens to any/unknown, where every property lookup
+  // would succeed and make this answer meaningless.
+  if (type.isAny() || type.isUnknown()) return false;
+  const kind = type.getProperty("kind")?.getTypeAtLocation(declaration);
+  return kind?.getText() === '"schema"';
+}
+
+/**
  * Detects Valibot schemas in TypeScript source files.
  */
 export class SchemaDetector {
@@ -130,7 +158,12 @@ export class SchemaDetector {
     // lookup covers both the `v.object({...})` and `object({...})` styles -
     // no source-text matching needed.
     const callName = bindings.getCallName(unwrapExpression(initializer));
-    return callName !== undefined && VALIBOT_SCHEMA_PRODUCERS.has(callName);
+    if (callName === undefined) return false;
+    // A call that resolves to a valibot export, so this declaration is
+    // answerable on its own: a known builder name settles it without
+    // touching the type checker, and an unknown one falls through to the
+    // declaration's actual type rather than being dropped.
+    return VALIBOT_SCHEMA_PRODUCERS.has(callName) || isValibotSchemaType(declaration);
   }
 
   /**

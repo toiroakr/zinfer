@@ -32,7 +32,17 @@ function schemaProducingExports(namespacePath: string, names: string[]): Set<str
       // $ZodType is the base every zod v4 schema extends. Checks
       // (z.refine, z.minLength, ...) deliberately do not - they are meant
       // to be handed to a schema, not used as one.
-      `type IsSchema<T> = [T] extends [z.core.$ZodType] ? true : false;`,
+      // `0 extends 1 & T` is the standard IsAny probe. An export whose
+      // return type cannot be resolved at its constraint comes back as
+      // `any`, and `any` satisfies *every* extends check - without this
+      // guard it would be misreported as a schema builder.
+      `type IsSchema<T> = 0 extends 1 & T`,
+      `  ? false`,
+      `  : [T] extends [never]`,
+      `    ? false`,
+      `    : [T] extends [z.core.$ZodType]`,
+      `      ? true`,
+      `      : false;`,
       ...names.flatMap((name, index) => [
         `type Fn${index} = typeof ${namespacePath}.${name};`,
         `type Is${index} = IsSchema<ReturnType<typeof ${namespacePath}.${name}>>;`,
