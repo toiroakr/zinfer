@@ -71,6 +71,32 @@ describe("SchemaDetector", () => {
         "MultilineLazySchema",
       ]);
     });
+
+    it("should detect a bare z.templateLiteral() declaration", () => {
+      // A z.templateLiteral() call with nothing chained onto it has no
+      // ".describe("/".optional("/... to fall back on, so it is only ever
+      // found by the builder-name check - and being skipped there means the
+      // schema is silently dropped from the output entirely.
+      const project = new Project();
+      const sourceFile = project.createSourceFile(
+        "template-literal-inline.ts",
+        [
+          'import { z } from "zod";',
+          'export const EnumPartSchema = z.templateLiteral(["v", z.enum(["1", "2"])]);',
+          'export const StringPartSchema = z.templateLiteral(["hello, ", z.string()]);',
+          "export const MultilineSchema = z",
+          '  .templateLiteral(["n", z.number()]);',
+        ].join("\n"),
+      );
+      const names = detector.detectExportedSchemas(sourceFile).map((s) => s.name);
+      expect(names).toEqual(["EnumPartSchema", "StringPartSchema", "MultilineSchema"]);
+    });
+
+    it("should detect schemas from template-literal-schema.ts", () => {
+      const sourceFile = getSourceFile("template-literal-schema.ts");
+      const schemas = detector.detectExportedSchemas(sourceFile);
+      expect(schemas).toMatchSnapshot();
+    });
   });
 
   describe("getSchemaNames", () => {

@@ -128,6 +128,7 @@ export class SchemaDetector {
     "brand",
     "strictObject",
     "looseObject",
+    "templateLiteral",
   ]);
 
   /**

@@ -21,7 +21,7 @@ const isZodV4 = typeof z.looseObject === "function";
 // Fixtures that use zod v4-only schema builders (no v3 equivalent at any
 // version) and therefore can never be imported under the peerDependencies
 // floor.
-const ZOD_V4_ONLY_FIXTURES = ["strict-object-schema.ts"];
+const ZOD_V4_ONLY_FIXTURES = ["strict-object-schema.ts", "template-literal-schema.ts"];
 // Fixtures whose explicit `z.ZodType<...>` annotations only type-check under
 // zod v4's generic signature. zod v3's ZodType takes a third type parameter
 // (Def, constrained to extend ZodTypeDef) that v4 dropped, so the same
@@ -130,6 +130,8 @@ const ZOD_V3_ONLY_TYPE_DIFFERENCES: Record<string, string> = {
     "Getter-based recursion infers differently under zod v3 than v4; see lazy-schema.ts.",
   "duplicate-field-name-schema.test.ts":
     "zod v3 prints a z.any() key as optional, so the committed types - generated under v4, where the key is required - do not match z.input/z.output there.",
+  "template-literal-schema.test.ts":
+    "z.templateLiteral() is zod v4-only (see ZOD_V4_ONLY_FIXTURES), so under v3 the fixture's template literal parts don't type-check. The schemas that *embed* one in another builder (RouteSchema's z.object(), CountsSchema's z.record()) still resolve to a surrounding type there, and z.input/z.output of that broken shape can't match the committed v4 types.",
 };
 
 // After all tests, type-check every generated snapshot and companion
@@ -280,6 +282,53 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
       expect(status?.input).toBe("Status");
       expect(status?.output).toBe("Status");
+    });
+  });
+  createSchemaTest(
+    extractor,
+    "template-literal-schema",
+    "should generate TypeScript declarations with template literals",
+    // z.templateLiteral() only exists on zod v4; there is no v3 equivalent at any version.
+    { requiresZodV4: true },
+  );
+
+  describe("template-literal-schema.ts", () => {
+    // The snapshot above covers the whole file at once; these pin down the
+    // individual part kinds a template literal can interpolate, so a
+    // regression names the part that broke instead of just reporting a
+    // wholesale snapshot diff.
+    it.skipIf(!isZodV4)("expands every kind of interpolated part", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "template-literal-schema.ts"));
+      const outputOf = (name: string) => results.find((r) => r.schemaName === name)?.output;
+
+      // A z.string() part stays a real template literal type - there is
+      // nothing finite to expand it into.
+      expect(outputOf("GreetingSchema")).toBe("`hello, ${string}!`");
+      // Enum parts (inline, referenced, and native) are finite, so each
+      // member becomes its own literal.
+      expect(outputOf("VersionSchema")).toBe(`"v1" | "v2"`);
+      expect(outputOf("LogLineSchema")).toBe(`"log:debug" | "log:info"`);
+      expect(outputOf("LocalePathSchema")).toBe(`"/en" | "/ja"`);
+      // Two finite parts multiply out rather than being left as a template.
+      expect(outputOf("SlugSchema")).toBe(`"a-x" | "a-y" | "b-x" | "b-y"`);
+      // Non-string primitives stringify into the template.
+      expect(outputOf("PortSchema")).toBe("`port:${number}`");
+      expect(outputOf("FlagSchema")).toBe(`"flag=false" | "flag=true"`);
+      expect(outputOf("BigIntSchema")).toBe("`big:${bigint}`");
+      // A single-value part collapses to one concrete string.
+      expect(outputOf("FixedSchema")).toBe(`"id_x"`);
+      // A template literal is itself a valid part of another one.
+      expect(outputOf("NestedSchema")).toBe(`"outer-log:debug" | "outer-log:info"`);
+      // A quote inside a literal part must survive printing.
+      expect(outputOf("QuotedSchema")).toBe(`"say \\"hi\\""`);
+    });
+
+    it.skipIf(!isZodV4)("keeps input and output separate across a transform", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "template-literal-schema.ts"));
+      const length = results.find((r) => r.schemaName === "LengthSchema");
+
+      expect(length?.input).toBe(`"ta" | "tb"`);
+      expect(length?.output).toBe("number");
     });
   });
   createSchemaTest(

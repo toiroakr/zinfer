@@ -69,6 +69,119 @@ exports[`SchemaDetector > detectExportedSchemas > should detect schemas from mul
 ]
 `;
 
+exports[`SchemaDetector > detectExportedSchemas > should detect schemas from template-literal-schema.ts 1`] = `
+[
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 6,
+    "name": "LevelSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 16,
+    "name": "GreetingSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 21,
+    "name": "VersionSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 26,
+    "name": "LogLineSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 31,
+    "name": "LocalePathSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 36,
+    "name": "SlugSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 41,
+    "name": "PortSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 43,
+    "name": "FlagSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 45,
+    "name": "BigIntSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 50,
+    "name": "FixedSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 55,
+    "name": "NestedSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 60,
+    "name": "OptionalSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 62,
+    "name": "BrandedSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 67,
+    "name": "LengthSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 72,
+    "name": "RouteSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 77,
+    "name": "CountsSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 79,
+    "name": "MixedSchema",
+  },
+  {
+    "explicitType": undefined,
+    "isExported": true,
+    "line": 84,
+    "name": "QuotedSchema",
+  },
+]
+`;
+
 exports[`SchemaDetector > detectExportedSchemas > should detect schemas from union-schema.ts 1`] = `
 [
   {
