@@ -43,6 +43,7 @@ export const ZOD_SCHEMA_BUILDERS: ReadonlySet<string> = new Set([
   "cidrv6",
   "cuid",
   "cuid2",
+  "creditCard",
   "e164",
   "email",
   "emoji",
@@ -115,6 +116,8 @@ export const ZOD_SCHEMA_BUILDERS: ReadonlySet<string> = new Set([
   "instanceof",
   // Composition and conversion
   "_function",
+  "input",
+  "output",
   "clone",
   "codec",
   "fromJSONSchema",

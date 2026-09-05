@@ -33,6 +33,7 @@
     "build": "tsup && dts-bundle-generator --config dts-bundle-generator.config.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:schema-builders": "vitest run tests/schema-builders.test.ts",
     "typecheck": "tsgo --noEmit",
     "typecheck:tsc": "tsc --noEmit",
     "lint": "oxlint",

@@ -1,0 +1,70 @@
+name: Upstream Drift
+
+# Early warning for the one failure mode a schema extractor cannot detect on
+# its own: the schema library grows a new builder, and every schema written
+# with it silently produces no output.
+#
+# Each package's `test:schema-builders` contract test asks the type checker
+# which of the library's exports return a schema, and fails naming any the
+# package's fast-path list does not cover. That test already runs on every PR
+# against the *pinned* version, which is what catches a Renovate bump before
+# it automerges. This workflow runs it against `@latest` instead, so a
+# release is noticed during Renovate's 7-day minimumReleaseAge rather than
+# after it - and so a library that stops publishing new versions to npm on
+# the schedule Renovate polls still gets checked.
+#
+# A failure here is not a broken build: the released code is fine, and the
+# type-based fallback in each detector means an unlisted builder still
+# resolves. It means the fast path needs the new names added.
+
+on:
+  schedule:
+    # Mondays at 04:00 UTC, before the working week.
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  upstream-drift:
+    name: Upstream drift (${{ matrix.package }} / ${{ matrix.library }}@latest)
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: zinfer
+            library: zod
+          - package: zinfer-mini
+            library: zod
+          - package: vinfer
+            library: valibot
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        name: Install pnpm and Node.js
+        with:
+          runtime: node@24.20.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build core
+        # ${{ matrix.package }} resolves @zinfer-monorepo/core through
+        # node_modules, which only works once core's own dist/ exists.
+        run: pnpm --filter @zinfer-monorepo/core build
+      - name: Install ${{ matrix.library }}@latest
+        run: pnpm --filter ${{ matrix.package }} add -D ${{ matrix.library }}@latest
+      - name: Report the version under test
+        # `pnpm list` rather than reading the library's package.json: valibot's
+        # "exports" map does not expose ./package.json, so require()ing it
+        # throws ERR_PACKAGE_PATH_NOT_EXPORTED and fails the job before the
+        # contract test ever runs.
+        run: pnpm --filter ${{ matrix.package }} list ${{ matrix.library }} --depth 0
+      - name: Schema builder contract
+        run: pnpm --filter ${{ matrix.package }} run test:schema-builders
