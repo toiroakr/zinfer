@@ -86,7 +86,7 @@ importers:
         specifier: workspace:*
         version: link:../core
       dts-bundle-generator:
-        specifier: ^9.5.1
+        specifier: 9.5.1
         version: 9.5.1
       knip:
         specifier: 6.33.0
@@ -98,7 +98,7 @@ importers:
         specifier: 1.80.0
         version: 1.80.0
       tsup:
-        specifier: ^8.0.0
+        specifier: 8.5.1
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.14)(typescript@7.0.2)(yaml@2.9.0)
       typescript:
         specifier: 7.0.2
@@ -138,7 +138,7 @@ importers:
         specifier: workspace:*
         version: link:../core
       dts-bundle-generator:
-        specifier: ^9.5.1
+        specifier: 9.5.1
         version: 9.5.1
       knip:
         specifier: 6.33.0
@@ -150,7 +150,7 @@ importers:
         specifier: 1.80.0
         version: 1.80.0
       tsup:
-        specifier: ^8.0.0
+        specifier: 8.5.1
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.14)(typescript@7.0.2)(yaml@2.9.0)
       typescript:
         specifier: 7.0.2
@@ -193,7 +193,7 @@ importers:
         specifier: 4.5.4
         version: 4.5.4(zod@4.5.4)
       dts-bundle-generator:
-        specifier: ^9.5.1
+        specifier: 9.5.1
         version: 9.5.1
       knip:
         specifier: 6.33.0
@@ -205,7 +205,7 @@ importers:
         specifier: 1.80.0
         version: 1.80.0
       tsup:
-        specifier: ^8.0.0
+        specifier: 8.5.1
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.14)(typescript@7.0.2)(yaml@2.9.0)
       typescript:
         specifier: 7.0.2
