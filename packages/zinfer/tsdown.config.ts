@@ -14,8 +14,9 @@ export default defineConfig({
   // "@zinfer-monorepo/core" is a private, unpublished workspace package: its
   // source must be inlined into this package's dist so a published zinfer
   // never has a runtime dependency on a package that doesn't exist on npm.
+  // (regular dependencies need no neverBundle entry: rolldown treats them as
+  // external by default.)
   deps: {
     alwaysBundle: ["@zinfer-monorepo/core"],
-    neverBundle: ["commander", "glob", "jiti", "pathe", "ts-morph", "typescript", "zod"],
   },
 });

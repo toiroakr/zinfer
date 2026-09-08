@@ -17,7 +17,7 @@ export type {
 /**
  * Options for type declaration formatting.
  *
- * A type alias (not `interface X extends Y`) on purpose: dts-bundle-generator
+ * A type alias (not `interface X extends Y`) on purpose: tsdown's dts bundler (rolldown-plugin-dts)
  * flattens the published .d.ts into one file, and an `extends` of a
  * same-named core interface makes it try to export both under the identical
  * name "DeclarationOptions", colliding and silently renaming one of them.
