@@ -19,7 +19,6 @@
     "rootDir": "src",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "isolatedDeclarations": true,
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*"],
