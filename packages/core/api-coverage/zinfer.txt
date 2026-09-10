@@ -1,0 +1,338 @@
+# Exports
+$brand: value
+$input: value
+$output: value
+NEVER: value
+TimePrecision: value
+ZodAny: constructor
+ZodArray: constructor
+ZodBase64: constructor
+ZodBase64URL: constructor
+ZodBigInt: constructor
+ZodBigIntFormat: constructor
+ZodBoolean: constructor
+ZodCIDRv4: constructor
+ZodCIDRv6: constructor
+ZodCUID2: constructor
+ZodCUID: constructor
+ZodCatch: constructor
+ZodCodec: constructor
+ZodCompileAsyncError: constructor
+ZodCompileUnsupportedError: constructor
+ZodCreditCard: constructor
+ZodCustom: constructor
+ZodCustomStringFormat: constructor
+ZodDate: constructor
+ZodDefault: constructor
+ZodDiscriminatedUnion: constructor
+ZodE164: constructor
+ZodEmail: constructor
+ZodEmoji: constructor
+ZodEnum: constructor
+ZodError: constructor
+ZodExactOptional: constructor
+ZodFile: constructor
+ZodFirstPartyTypeKind: value
+ZodFunction: constructor
+ZodGUID: constructor
+ZodIPv4: constructor
+ZodIPv6: constructor
+ZodISODate: constructor
+ZodISODateTime: constructor
+ZodISODuration: constructor
+ZodISOTime: constructor
+ZodIntersection: constructor
+ZodIssueCode: value
+ZodJWT: constructor
+ZodKSUID: constructor
+ZodLazy: constructor
+ZodLiteral: constructor
+ZodMAC: constructor
+ZodMap: constructor
+ZodNaN: constructor
+ZodNanoID: constructor
+ZodNever: constructor
+ZodNonOptional: constructor
+ZodNull: constructor
+ZodNullable: constructor
+ZodNumber: constructor
+ZodNumberFormat: constructor
+ZodObject: constructor
+ZodOptional: constructor
+ZodPipe: constructor
+ZodPrefault: constructor
+ZodPreprocess: constructor
+ZodPromise: constructor
+ZodReadonly: constructor
+ZodRealError: constructor
+ZodRecord: constructor
+ZodSet: constructor
+ZodString: constructor
+ZodStringFormat: constructor
+ZodSuccess: constructor
+ZodSymbol: constructor
+ZodTemplateLiteral: constructor
+ZodTransform: constructor
+ZodTuple: constructor
+ZodType: constructor
+ZodULID: constructor
+ZodURL: constructor
+ZodUUID: constructor
+ZodUndefined: constructor
+ZodUnion: constructor
+ZodUnknown: constructor
+ZodVoid: constructor
+ZodXID: constructor
+ZodXor: constructor
+_ZodString: constructor
+_default: callable
+_function: callable
+any: callable
+array: callable
+base64: callable
+base64url: callable
+bigint: callable
+boolean: callable
+catch: callable
+check: callable
+cidrv4: callable
+cidrv6: callable
+clone: callable
+codec: callable
+coerce.bigint: callable
+coerce.boolean: callable
+coerce.date: callable
+coerce.number: callable
+coerce.string: callable
+coerce: namespace
+compile: callable
+config: callable
+core: namespace (excluded)
+creditCard: callable
+cuid2: callable
+cuid: callable
+custom: callable
+date: callable
+decode: callable
+decodeAsync: callable
+deepPartial: callable
+default: namespace (excluded)
+describe: callable
+discriminatedUnion: callable
+e164: callable
+email: callable
+emoji: callable
+encode: callable
+encodeAsync: callable
+endsWith: callable
+enum: callable
+exactOptional: callable
+file: callable
+flattenError: callable
+float32: callable
+float64: callable
+formatError: callable
+fromJSONSchema: callable
+function: callable
+getDiscriminatedOption: callable
+getErrorMap: callable
+globalRegistry: value
+gt: callable
+gte: callable
+guid: callable
+hash: callable
+hex: callable
+hostname: callable
+httpUrl: callable
+includes: callable
+input: callable
+instanceof: callable
+int32: callable
+int64: callable
+int: callable
+intersection: callable
+invertCodec: callable
+ipv4: callable
+ipv6: callable
+iso.ZodISODate: constructor
+iso.ZodISODateTime: constructor
+iso.ZodISODuration: constructor
+iso.ZodISOTime: constructor
+iso.date: callable
+iso.datetime: callable
+iso.duration: callable
+iso.time: callable
+iso: namespace
+json: callable
+jwt: callable
+keyof: callable
+ksuid: callable
+lazy: callable
+length: callable
+literal: callable
+locales: namespace (excluded)
+looseObject: callable
+looseRecord: callable
+lowercase: callable
+lt: callable
+lte: callable
+mac: callable
+map: callable
+maxLength: callable
+maxSize: callable
+memoizer: callable
+meta: callable
+mime: callable
+minLength: callable
+minSize: callable
+multipleOf: callable
+nan: callable
+nanoid: callable
+nativeEnum: callable
+negative: callable
+never: callable
+nonnegative: callable
+nonoptional: callable
+nonpositive: callable
+normalize: callable
+null: callable
+nullable: callable
+nullish: callable
+number: callable
+object: callable
+optional: callable
+output: callable
+overwrite: callable
+parse: callable
+parseAsync: callable
+partialRecord: callable
+pipe: callable
+positive: callable
+prefault: callable
+preprocess: callable
+prettifyError: callable
+promise: callable
+properties: callable
+property: callable
+readonly: callable
+record: callable
+refine: callable
+regex: callable
+regexes: namespace (excluded)
+registry: callable
+safeDecode: callable
+safeDecodeAsync: callable
+safeEncode: callable
+safeEncodeAsync: callable
+safeParse: callable
+safeParseAsync: callable
+set: callable
+setErrorMap: callable
+size: callable
+slugify: callable
+startsWith: callable
+strictObject: callable
+string: callable
+stringFormat: callable
+stringbool: callable
+success: callable
+superRefine: callable
+symbol: callable
+templateLiteral: callable
+toJSONSchema: callable
+toLowerCase: callable
+toUpperCase: callable
+toZod: callable
+transform: callable
+treeifyError: callable
+trim: callable
+tuple: callable
+uint32: callable
+uint64: callable
+ulid: callable
+undefined: callable
+union: callable
+unknown: callable
+uppercase: callable
+url: callable
+util: namespace (excluded)
+uuid: callable
+uuidv4: callable
+uuidv6: callable
+uuidv7: callable
+validate: callable
+validateAsync: callable
+void: callable
+xid: callable
+xor: callable
+z: namespace (excluded)
+
+# Schema and action members
+Schema, ZodAny, ZodBoolean, ZodCoercedBoolean, ZodCustom, ZodIntersection, ZodNaN, ZodNever, ZodNull, ZodSchema, ZodSymbol, ZodTemplateLiteral, ZodTransform, ZodType, ZodTypeAny, ZodUndefined, ZodUnknown, ZodVoid, _ZodBoolean, _ZodType
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+
+ZodArray
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, element, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), length(), max(), meta(), min(), nonempty(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, unwrap(), with()
+
+ZodBase64, ZodBase64URL, ZodCIDRv4, ZodCIDRv6, ZodCUID, ZodCUID2, ZodCoercedString, ZodCreditCard, ZodCustomStringFormat, ZodE164, ZodEmail, ZodEmoji, ZodGUID, ZodIPv4, ZodIPv6, ZodISODate, ZodISODateTime, ZodISODuration, ZodISOTime, ZodJWT, ZodKSUID, ZodMAC, ZodNanoID, ZodStringFormat, ZodULID, ZodURL, ZodUUID, ZodXID, _ZodString
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), endsWith(), exactOptional(), format, includes(), isNullable(), isOptional(), length(), lowercase(), max(), maxLength, meta(), min(), minLength, nonempty(), nonoptional(), normalize(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), regex(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), slugify(), spa(), startsWith(), superRefine(), toJSONSchema(), toLowerCase(), toUpperCase(), transform(), trim(), type, uppercase(), with()
+
+ZodBigInt, ZodBigIntFormat, ZodCoercedBigInt, ZodInt64, ZodUInt64, _ZodBigInt
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), format, gt(), gte(), isNullable(), isOptional(), lt(), lte(), max(), maxValue, meta(), min(), minValue, multipleOf(), negative(), nonnegative(), nonoptional(), nonpositive(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), positive(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+
+ZodCatch
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), removeCatch(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, unwrap(), with()
+
+ZodCodec, ZodPipe, ZodPreprocess
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), in, isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), out, overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+
+ZodCoercedDate, ZodDate, _ZodDate
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), max(), maxDate, meta(), min(), minDate, nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+
+ZodCoercedNumber, ZodFloat32, ZodFloat64, ZodInt, ZodInt32, ZodNumber, ZodNumberFormat, ZodUInt32, _ZodNumber
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), finite(), format, gt(), gte(), int(), isFinite, isInt, isNullable(), isOptional(), lt(), lte(), max(), maxValue, meta(), min(), minValue, multipleOf(), negative(), nonnegative(), nonoptional(), nonpositive(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), positive(), prefault(), readonly(), refine(), register(), safe(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), step(), superRefine(), toJSONSchema(), transform(), type, with()
+
+ZodDefault
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), removeDefault(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, unwrap(), with()
+
+ZodDiscriminatedUnion, ZodJSONSchema, ZodUnion, ZodXor
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), options, or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+
+ZodEnum
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), enum, exactOptional(), exclude(), extract(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), options, or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+
+ZodError
+  addIssue(), addIssues(), cause, flatten(), format(), isEmpty, issues, message, name, stack, type
+
+ZodExactOptional, ZodLazy, ZodNonOptional, ZodNullable, ZodOptional, ZodPrefault, ZodPromise, ZodReadonly, ZodSuccess
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, unwrap(), with()
+
+ZodFile
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), max(), meta(), mime(), min(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+
+ZodFirstPartySchemaTypes
+  
+
+ZodFunction
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), implement(), implementAsync(), input(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), output(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+
+ZodLiteral
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, value, values, with()
+
+ZodMap
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), keyType, max(), meta(), min(), nonempty(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), size(), spa(), superRefine(), toJSONSchema(), transform(), type, valueType, with()
+
+ZodObject
+  and(), apply(), array(), brand(), catch(), catchall(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), exactPartial(), extend(), isNullable(), isOptional(), keyof(), loose(), merge(), meta(), nonoptional(), nullable(), nullish(), omit(), optional(), or(), overwrite(), parse(), parseAsync(), partial(), passthrough(), pick(), pipe(), prefault(), readonly(), refine(), register(), required(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeExtend(), safeParse(), safeParseAsync(), shape, spa(), strict(), strip(), superRefine(), toJSONSchema(), transform(), type, with()
+
+ZodRecord
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), keyType, meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, valueType, with()
+
+ZodSet
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), max(), meta(), min(), nonempty(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), size(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+
+ZodString
+  and(), apply(), array(), base64(), base64url(), brand(), catch(), check(), cidrv4(), cidrv6(), clone(), cuid(), cuid2(), date(), datetime(), decode(), decodeAsync(), def, default(), describe(), description, duration(), e164(), email(), emoji(), encode(), encodeAsync(), endsWith(), exactOptional(), format, guid(), includes(), ipv4(), ipv6(), isNullable(), isOptional(), jwt(), ksuid(), length(), lowercase(), max(), maxLength, meta(), min(), minLength, nanoid(), nonempty(), nonoptional(), normalize(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), regex(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), slugify(), spa(), startsWith(), superRefine(), time(), toJSONSchema(), toLowerCase(), toUpperCase(), transform(), trim(), type, ulid(), uppercase(), url(), uuid(), uuidv4(), uuidv6(), uuidv7(), with(), xid()
+
+ZodTuple
+  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), partial(), pipe(), prefault(), readonly(), refine(), register(), rest(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()

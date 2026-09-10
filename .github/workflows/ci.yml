@@ -42,6 +42,8 @@ jobs:
         run: pnpm -r lint
       - name: Format
         run: pnpm -r format:check
+      - name: Review upstream API surface
+        run: pnpm test:api
       - name: Test
         run: pnpm -r test
 

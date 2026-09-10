@@ -1,0 +1,468 @@
+# Exports
+BASE64_REGEX: value
+BIC_REGEX: value
+BrandSymbol: value
+CUID2_REGEX: value
+DECIMAL_REGEX: value
+DIGITS_REGEX: value
+DOMAIN_REGEX: value
+EMAIL_REGEX: value
+EMOJI_REGEX: value
+FlavorSymbol: value
+HEXADECIMAL_REGEX: value
+HEX_COLOR_REGEX: value
+IMEI_REGEX: value
+IPV4_REGEX: value
+IPV6_REGEX: value
+IP_REGEX: value
+ISO_DATE_REGEX: value
+ISO_DATE_TIME_REGEX: value
+ISO_DATE_TIME_SECOND_REGEX: value
+ISO_TIMESTAMP_REGEX: value
+ISO_TIME_REGEX: value
+ISO_TIME_SECOND_REGEX: value
+ISO_WEEK_REGEX: value
+ISRC_REGEX: value
+JWS_COMPACT_REGEX: value
+MAC48_REGEX: value
+MAC64_REGEX: value
+MAC_REGEX: value
+NANO_ID_REGEX: value
+OCTAL_REGEX: value
+RFC_EMAIL_REGEX: value
+SLUG_REGEX: value
+ULID_REGEX: value
+UUID_REGEX: value
+ValiError: constructor
+_addIssue: callable
+_cloneDataset: callable
+_formatCase: callable
+_getByteCount: callable
+_getGraphemeCount: callable
+_getLastMetadata: callable
+_getStandardProps: callable
+_getWordCount: callable
+_isLuhnAlgo: callable
+_isValidObjectKey: callable
+_joinExpects: callable
+_stringify: callable
+any: callable
+args: callable
+argsAsync: callable
+array: callable
+arrayAsync: callable
+assert: callable
+awaitAsync: callable
+base64: callable
+bic: callable
+bigint: callable
+blob: callable
+boolean: callable
+brand: callable
+bytes: callable
+cache: callable
+cacheAsync: callable
+check: callable
+checkAsync: callable
+checkItems: callable
+checkItemsAsync: callable
+config: callable
+creditCard: callable
+cuid2: callable
+custom: callable
+customAsync: callable
+date: callable
+decimal: callable
+deleteGlobalConfig: callable
+deleteGlobalMessage: callable
+deleteSchemaMessage: callable
+deleteSpecificMessage: callable
+description: callable
+digits: callable
+domain: callable
+email: callable
+emoji: callable
+empty: callable
+endsWith: callable
+entries: callable
+entriesFromList: callable
+entriesFromObjects: callable
+enum: callable
+enum_: callable
+everyItem: callable
+exactOptional: callable
+exactOptionalAsync: callable
+examples: callable
+excludes: callable
+fallback: callable
+fallbackAsync: callable
+file: callable
+filterItems: callable
+findItem: callable
+finite: callable
+flatten: callable
+flavor: callable
+forward: callable
+forwardAsync: callable
+function: callable
+function_: callable
+getDefault: callable
+getDefaults: callable
+getDefaultsAsync: callable
+getDescription: callable
+getDotPath: callable
+getExamples: callable
+getFallback: callable
+getFallbacks: callable
+getFallbacksAsync: callable
+getGlobalConfig: callable
+getGlobalMessage: callable
+getMetadata: callable
+getSchemaMessage: callable
+getSpecificMessage: callable
+getTitle: callable
+graphemes: callable
+gtValue: callable
+guard: callable
+hash: callable
+hexColor: callable
+hexadecimal: callable
+imei: callable
+includes: callable
+instance: callable
+integer: callable
+intersect: callable
+intersectAsync: callable
+ip: callable
+ipv4: callable
+ipv6: callable
+is: callable
+isOfKind: callable
+isOfType: callable
+isValiError: callable
+isbn: callable
+isoDate: callable
+isoDateTime: callable
+isoDateTimeSecond: callable
+isoTime: callable
+isoTimeSecond: callable
+isoTimestamp: callable
+isoWeek: callable
+isrc: callable
+jwsCompact: callable
+keyof: callable
+lazy: callable
+lazyAsync: callable
+length: callable
+literal: callable
+looseObject: callable
+looseObjectAsync: callable
+looseTuple: callable
+looseTupleAsync: callable
+ltValue: callable
+mac48: callable
+mac64: callable
+mac: callable
+map: callable
+mapAsync: callable
+mapItems: callable
+maxBytes: callable
+maxEntries: callable
+maxGraphemes: callable
+maxLength: callable
+maxSize: callable
+maxValue: callable
+maxWords: callable
+message: callable
+metadata: callable
+mimeType: callable
+minBytes: callable
+minEntries: callable
+minGraphemes: callable
+minLength: callable
+minSize: callable
+minValue: callable
+minWords: callable
+multipleOf: callable
+nan: callable
+nanoid: callable
+never: callable
+nonEmpty: callable
+nonNullable: callable
+nonNullableAsync: callable
+nonNullish: callable
+nonNullishAsync: callable
+nonOptional: callable
+nonOptionalAsync: callable
+normalize: callable
+notBytes: callable
+notEntries: callable
+notGraphemes: callable
+notLength: callable
+notSize: callable
+notValue: callable
+notValues: callable
+notWords: callable
+null: callable
+null_: callable
+nullable: callable
+nullableAsync: callable
+nullish: callable
+nullishAsync: callable
+number: callable
+object: callable
+objectAsync: callable
+objectWithRest: callable
+objectWithRestAsync: callable
+octal: callable
+omit: callable
+optional: callable
+optionalAsync: callable
+parse: callable
+parseAsync: callable
+parseBoolean: callable
+parseJson: callable
+parser: callable
+parserAsync: callable
+partial: callable
+partialAsync: callable
+partialCheck: callable
+partialCheckAsync: callable
+pick: callable
+picklist: callable
+pipe: callable
+pipeAsync: callable
+promise: callable
+rawCheck: callable
+rawCheckAsync: callable
+rawTransform: callable
+rawTransformAsync: callable
+readonly: callable
+record: callable
+recordAsync: callable
+reduceItems: callable
+regex: callable
+required: callable
+requiredAsync: callable
+returns: callable
+returnsAsync: callable
+rfcEmail: callable
+safeInteger: callable
+safeParse: callable
+safeParseAsync: callable
+safeParser: callable
+safeParserAsync: callable
+set: callable
+setAsync: callable
+setGlobalConfig: callable
+setGlobalMessage: callable
+setSchemaMessage: callable
+setSpecificMessage: callable
+size: callable
+slug: callable
+someItem: callable
+sortItems: callable
+startsWith: callable
+strictObject: callable
+strictObjectAsync: callable
+strictTuple: callable
+strictTupleAsync: callable
+string: callable
+stringifyJson: callable
+summarize: callable
+symbol: callable
+title: callable
+toBigint: callable
+toBoolean: callable
+toCamelCase: callable
+toDate: callable
+toKebabCase: callable
+toLowerCase: callable
+toMaxValue: callable
+toMinValue: callable
+toNumber: callable
+toPascalCase: callable
+toSnakeCase: callable
+toString: callable
+toUpperCase: callable
+transform: callable
+transformAsync: callable
+trim: callable
+trimEnd: callable
+trimStart: callable
+tuple: callable
+tupleAsync: callable
+tupleWithRest: callable
+tupleWithRestAsync: callable
+ulid: callable
+undefined: callable
+undefined_: callable
+undefinedable: callable
+undefinedableAsync: callable
+union: callable
+unionAsync: callable
+unknown: callable
+unwrap: callable
+url: callable
+uuid: callable
+value: callable
+values: callable
+variant: callable
+variantAsync: callable
+void: callable
+void_: callable
+words: callable
+
+# Schema and action members
+AnySchema, BaseSchema, BaseSchemaAsync, BaseValidation, BaseValidationAsync, GenericSchema, GenericSchemaAsync, GenericValidation, GenericValidationAsync, RawCheckAction, RawCheckActionAsync, UnknownSchema
+  async, expects, kind, reference(), type
+
+ArgsAction, ArgsActionAsync, ReturnsAction, ReturnsActionAsync
+  async, kind, reference(), schema, type
+
+ArraySchema
+  async, expects, item, kind, message, reference(), type
+
+ArraySchemaAsync
+  async, expects, item, kind, message, reference, type
+
+AwaitActionAsync, BaseTransformation, BaseTransformationAsync, GenericPipeActionAsync, GenericPipeItemAsync, GenericTransformation, GenericTransformationAsync, PipeActionAsync, PipeItemAsync, RawTransformAction, RawTransformActionAsync, ReadonlyAction, ToBooleanAction, ToCamelCaseAction, ToKebabCaseAction, ToLowerCaseAction, ToPascalCaseAction, ToSnakeCaseAction, ToUpperCaseAction, TrimAction, TrimEndAction, TrimStartAction
+  async, kind, reference(), type
+
+Base64Action, BicAction, BytesAction, Cuid2Action, DecimalAction, DigitsAction, DomainAction, EmailAction, EmojiAction, EndsWithAction, EntriesAction, ExcludesAction, GraphemesAction, GtValueAction, HashAction, HexColorAction, HexadecimalAction, IncludesAction, IpAction, Ipv4Action, Ipv6Action, IsoDateAction, IsoDateTimeAction, IsoDateTimeSecondAction, IsoTimeAction, IsoTimeSecondAction, IsoTimestampAction, IsoWeekAction, IsrcAction, JwsCompactAction, LengthAction, LtValueAction, Mac48Action, Mac64Action, MacAction, MaxBytesAction, MaxEntriesAction, MaxGraphemesAction, MaxLengthAction, MaxSizeAction, MaxValueAction, MimeTypeAction, MinBytesAction, MinEntriesAction, MinGraphemesAction, MinLengthAction, MinSizeAction, MinValueAction, MultipleOfAction, NanoIDAction, NanoIdAction, NotBytesAction, NotEntriesAction, NotGraphemesAction, NotLengthAction, NotSizeAction, NotValueAction, NotValuesAction, OctalAction, RegexAction, RfcEmailAction, SizeAction, SlugAction, StartsWithAction, UlidAction, UuidAction, ValueAction, ValuesAction
+  async, expects, kind, message, reference(), requirement, type
+
+BigintSchema, BlobSchema, BooleanSchema, DateSchema, EmptyAction, FileSchema, FunctionSchema, NanSchema, NeverSchema, NonEmptyAction, NullSchema, NumberSchema, PromiseSchema, StringSchema, SymbolSchema, UndefinedSchema, VoidSchema
+  async, expects, kind, message, reference(), type
+
+BrandAction, FlavorAction
+  async, kind, name, reference(), type
+
+CheckAction, CheckActionAsync, CheckItemsAction, CheckItemsActionAsync, CreditCardAction, EveryItemAction, FiniteAction, ImeiAction, IntegerAction, IsbnAction, SafeIntegerAction, SomeItemAction, UrlAction
+  async, expects, kind, message, reference(), requirement(), type
+
+CustomSchema
+  async, check(), expects, kind, message, reference(), type
+
+CustomSchemaAsync
+  async, check(), expects, kind, message, reference, type
+
+EnumSchema
+  async, enum, expects, kind, message, options, reference(), type
+
+ExactOptionalSchema, NullableSchema, NullishSchema, OptionalSchema, UndefinedableSchema
+  async, default, expects, kind, reference(), type, wrapped
+
+ExactOptionalSchemaAsync, NullableSchemaAsync, NullishSchemaAsync, OptionalSchemaAsync, UndefinedableSchemaAsync
+  async, default, expects, kind, reference, type, wrapped
+
+FilterItemsAction, FindItemAction, MapItemsAction, TransformAction, TransformActionAsync
+  async, kind, operation(), reference(), type
+
+GuardAction
+  async, kind, message, reference(), requirement(), type
+
+InstanceSchema
+  async, class, expects, kind, message, reference(), type
+
+IntersectSchema, PicklistSchema, UnionSchema
+  async, expects, kind, message, options, reference(), type
+
+IntersectSchemaAsync, UnionSchemaAsync
+  async, expects, kind, message, options, reference, type
+
+LazySchema
+  async, expects, getter(), kind, reference(), type
+
+LazySchemaAsync
+  async, expects, getter(), kind, reference, type
+
+LiteralSchema
+  async, expects, kind, literal, message, reference(), type
+
+LooseObjectSchema, ObjectSchema, StrictObjectSchema
+  async, entries, expects, kind, message, reference(), type
+
+LooseObjectSchemaAsync, ObjectSchemaAsync, StrictObjectSchemaAsync
+  async, entries, expects, kind, message, reference, type
+
+LooseTupleSchema, StrictTupleSchema, TupleSchema
+  async, expects, items, kind, message, reference(), type
+
+LooseTupleSchemaAsync, StrictTupleSchemaAsync, TupleSchemaAsync
+  async, expects, items, kind, message, reference, type
+
+MapSchema, RecordSchema
+  async, expects, key, kind, message, reference(), type, value
+
+MapSchemaAsync, RecordSchemaAsync
+  async, expects, key, kind, message, reference, type, value
+
+MaxWordsAction, MinWordsAction, NotWordsAction, WordsAction
+  async, expects, kind, locales, message, reference(), requirement, type
+
+NonNullableSchema, NonNullishSchema, NonOptionalSchema
+  async, expects, kind, message, reference(), type, wrapped
+
+NonNullableSchemaAsync, NonNullishSchemaAsync, NonOptionalSchemaAsync
+  async, expects, kind, message, reference, type, wrapped
+
+NormalizeAction
+  async, form, kind, reference(), type
+
+ObjectWithRestSchema
+  async, entries, expects, kind, message, reference(), rest, type
+
+ObjectWithRestSchemaAsync
+  async, entries, expects, kind, message, reference, rest, type
+
+ParseBooleanAction
+  async, config, expects, kind, message, reference(), type
+
+ParseJsonAction, StringifyJsonAction
+  async, config, kind, message, reference(), type
+
+PartialCheckAction, PartialCheckActionAsync
+  async, expects, kind, message, paths, reference(), requirement(), type
+
+ReduceItemsAction
+  async, initial, kind, operation(), reference(), type
+
+SchemaWithCache, SchemaWithCacheAsync
+  async, cache, cacheConfig, expects, kind, reference(), type
+
+SchemaWithFallback, SchemaWithFallbackAsync
+  async, expects, fallback, kind, reference(), type
+
+SchemaWithOmit, SchemaWithPartial, SchemaWithPartialAsync, SchemaWithPick, SchemaWithRequired, SchemaWithRequiredAsync
+  async, entries, expects, kind, message, pipe, reference, type
+
+SchemaWithPipe, SchemaWithPipeAsync, SchemaWithoutPipe
+  async, expects, kind, pipe, reference(), type
+
+SetSchema
+  async, expects, kind, message, reference(), type, value
+
+SetSchemaAsync
+  async, expects, kind, message, reference, type, value
+
+SortItemsAction
+  async, kind, operation, reference(), type
+
+ToBigintAction, ToDateAction, ToNumberAction, ToStringAction
+  async, kind, message, reference(), type
+
+ToMaxValueAction, ToMinValueAction
+  async, kind, reference(), requirement, type
+
+TupleWithRestSchema
+  async, expects, items, kind, message, reference(), rest, type
+
+TupleWithRestSchemaAsync
+  async, expects, items, kind, message, reference, rest, type
+
+VariantSchema
+  async, expects, key, kind, message, options, reference(), type
+
+VariantSchemaAsync
+  async, expects, key, kind, message, options, reference, type

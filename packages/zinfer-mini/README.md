@@ -173,3 +173,9 @@ export const CategorySchema: z.ZodMiniType<Category> = z.object({
 ## License
 
 MIT
+
+## Upstream API compatibility checks
+
+Contributors can run `pnpm test:api` from the monorepo root to detect upstream API
+additions and removals during dependency updates. See the [API review gate](../core/api-coverage/README.md)
+for the review, fixture, and baseline-update procedure.
