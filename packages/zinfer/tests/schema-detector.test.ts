@@ -70,6 +70,30 @@ describe("SchemaDetector", () => {
     expect(detector.getSchemaNames(source)).toEqual(["Base", "Length", "Optional"]);
   });
 
+  it("excludes parsed values while preserving schema-returning method chains", () => {
+    const project = new Project();
+    const source = project.createSourceFile(
+      resolve(fixturesDir, "parsed-values.ts"),
+      `
+      import { z } from "zod";
+      export const String = z.string().optional();
+      export const Object = z.object({ name: z.string() }).partial();
+      export const Recursive = z.lazy(() => z.string()).optional();
+      export const Parsed = z.string().parse("x");
+      export const Safe = z.string().safeParse("x");
+      export const Async = z.string().parseAsync("x");
+      export const SafeAsync = z.string().safeParseAsync("x");
+      export const Alias = z.string().spa("x");
+      export const Any = z.any().parse("x");
+      export const Unknown = z.unknown().parse("x");
+      export const Optional = z.string().isOptional();
+      export const Nullable = z.string().isNullable();
+      export const Bracket = z.string()["parse"]("x");
+      `,
+    );
+    expect(detector.getSchemaNames(source)).toEqual(["String", "Object", "Recursive"]);
+  });
+
   describe("detectExportedSchemas", () => {
     it("should detect schemas from basic-schema.ts", () => {
       const sourceFile = getSourceFile("basic-schema.ts");

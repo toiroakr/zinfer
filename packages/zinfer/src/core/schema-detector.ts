@@ -232,13 +232,17 @@ export class SchemaDetector {
       ) {
         return true;
       }
-      // These methods can return ordinary values, so inspect the result before matching builders.
+      // A builder prefix does not imply that the final method returns a schema.
+      // Inspect chained results before the syntax fallback, including any/unknown parse results.
       if (
-        Node.isPropertyAccessExpression(callee) &&
-        ["apply", "validate", "validateAsync"].includes(callee.getName())
+        (Node.isPropertyAccessExpression(callee) || Node.isElementAccessExpression(callee)) &&
+        Node.isCallExpression(callee.getExpression())
       ) {
         const type = initializer.getType();
-        return type.getProperty("_zod") !== undefined && type.getProperty("_input") !== undefined;
+        return (
+          type.getProperty("_input") !== undefined &&
+          (type.getProperty("_zod") !== undefined || type.getProperty("_def") !== undefined)
+        );
       }
     }
 
