@@ -253,46 +253,19 @@ export class SchemaDetector {
       return true;
     }
 
-    // Check if it's a method chain on another schema variable
-    // e.g., SomeSchema.pick({...}), SomeSchema.merge(...)
-    const zodMethods = [
-      ".pick(",
-      ".omit(",
-      ".partial(",
-      ".required(",
-      ".extend(",
-      ".merge(",
-      ".and(",
-      ".or(",
-      ".transform(",
-      ".refine(",
-      ".superRefine(",
-      ".default(",
-      ".optional(",
-      ".nullable(",
-      ".array(",
-      ".brand(",
-      ".deepPartial(",
-      ".describe(",
-      ".meta(",
-    ];
-
-    for (const method of zodMethods) {
-      if (initText.includes(method)) {
-        return true;
-      }
-    }
-
     // Check for z.lazy() pattern (recursive schemas), tolerating
     // formatter-inserted whitespace around the dot
     if (/\bz\s*\.\s*lazy\s*\(/.test(initText)) {
       return true;
     }
 
-    // New schema methods such as exactPartial() are detected by their result,
-    // so unrelated clone()/pipe()/catch() calls cannot become schemas.
+    // Detect method chains by their result type, including Zod 3 schemas.
+    // Unrelated APIs with the same method names must not become schemas.
     const type = initializer.getType();
-    return type.getProperty("_zod") !== undefined && type.getProperty("_input") !== undefined;
+    return (
+      type.getProperty("_input") !== undefined &&
+      (type.getProperty("_zod") !== undefined || type.getProperty("_def") !== undefined)
+    );
   }
 
   /**

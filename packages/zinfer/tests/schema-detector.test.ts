@@ -53,6 +53,23 @@ describe("SchemaDetector", () => {
     expect(detector.getSchemaNames(source)).toEqual([]);
   });
 
+  it("distinguishes Zod method chains from ordinary APIs with the same method names", () => {
+    const project = new Project();
+    const source = project.createSourceFile(
+      resolve(fixturesDir, "method-results.ts"),
+      `
+      import { z } from "zod";
+      const Base = z.string();
+      export const Length = Base.transform((value) => value.length);
+      export const Optional = Base.optional();
+      const ordinary = { transform: () => 1, optional: () => "text" };
+      export const Count = ordinary.transform();
+      export const Text = ordinary.optional();
+    `,
+    );
+    expect(detector.getSchemaNames(source)).toEqual(["Base", "Length", "Optional"]);
+  });
+
   describe("detectExportedSchemas", () => {
     it("should detect schemas from basic-schema.ts", () => {
       const sourceFile = getSourceFile("basic-schema.ts");

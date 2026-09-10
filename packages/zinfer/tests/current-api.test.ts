@@ -1,6 +1,6 @@
 import * as schemaLibrary from "zod";
 import { expect, it } from "vitest";
-import { resolve } from "pathe";
+import { dirname, resolve } from "pathe";
 import { Project, ts } from "ts-morph";
 import { ZodTypeExtractor } from "../src/core/extractor.js";
 import { createNameMapper } from "../src/core/name-mapper.js";
@@ -30,7 +30,7 @@ it.skipIf(!("iban" in schemaLibrary))(
       results.filter((result) => result.isExported).map((result) => result.schemaName),
     ).toEqual(expected);
     project.createSourceFile(
-      resolve(fixture, "../generated.ts"),
+      resolve(dirname(fixture), "generated.ts"),
       [
         generateDeclarationFile(results, createNameMapper()),
         'import type { z } from "zod";',
