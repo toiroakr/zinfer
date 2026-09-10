@@ -1,5 +1,12 @@
 # zinfer-mini
 
+## 0.1.4
+
+### Patch Changes
+
+- 2dabc2d: Switch the build tool from tsup + dts-bundle-generator to tsdown. No public API change; published file names and extensions (`dist/index.js`, `dist/index.d.ts`, `dist/cli.js`) are unchanged, though internal chunk hashes and one internally re-exported type name differ slightly due to the different bundler.
+- fcb754d: Support current Zod Mini schema APIs (including function schemas returned by apply) and nested iso/coerce namespaces, preserve recursive JSON types, and retain symbol-key identity.
+
 ## 0.1.3
 
 ### Patch Changes
