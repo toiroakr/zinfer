@@ -12,5 +12,6 @@
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["./**/*.ts", "../fixtures/**/*.ts"]
+  "include": ["./**/*.ts", "../fixtures/**/*.ts"],
+  "exclude": ["../fixtures/current-api"]
 }

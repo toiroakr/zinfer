@@ -8,3 +8,4 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@zod/mini@4.6.1'
   - zod@4.6.1
+  - valibot@1.5.0
