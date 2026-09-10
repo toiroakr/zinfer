@@ -16,6 +16,13 @@ vinfer is the Valibot counterpart of [zinfer](https://github.com/toiroakr/zinfer
 - Supports both CLI and library API
 - Configuration file support (`vinfer.config.ts`, `package.json`)
 
+## Schema API compatibility
+
+Verified against Valibot 1.5.0, including code-point validations, KSUID,
+`values`/`notValues`, schema caching, and synchronous/asynchronous pipes.
+Input and output types follow Valibot's inference; `awaitAsync()` unwraps
+promise output types instead of preserving a reference to the promise schema.
+
 ## Installation
 
 ```bash

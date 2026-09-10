@@ -23,6 +23,10 @@ function analyze(expression: string, knownSchemas: string[] = ["AddressSchema"])
 }
 
 describe("analyzeSchemaExpression", () => {
+  it("does not preserve a promise reference after awaitAsync", () => {
+    expect(analyze("v.pipeAsync(AddressSchema, v.awaitAsync())")).toBeNull();
+  });
+
   it("resolves a bare reference", () => {
     expect(analyze("AddressSchema")).toEqual({
       refSchema: "AddressSchema",

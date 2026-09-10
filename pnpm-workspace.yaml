@@ -4,3 +4,8 @@ packages:
 allowBuilds:
   esbuild: true
   lefthook: true
+
+minimumReleaseAgeExclude:
+  - valibot
+  - zod
+  - "@zod/mini"

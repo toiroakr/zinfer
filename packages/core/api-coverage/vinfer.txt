@@ -24,6 +24,7 @@ ISO_TIME_SECOND_REGEX: value
 ISO_WEEK_REGEX: value
 ISRC_REGEX: value
 JWS_COMPACT_REGEX: value
+KSUID_REGEX: value
 MAC48_REGEX: value
 MAC64_REGEX: value
 MAC_REGEX: value
@@ -43,20 +44,26 @@ _formatCase: callable
   (input: string, separator: string, capFirst: boolean, capRest: boolean): string
 _getByteCount: callable
   (input: string): number
+_getCodePointCount: callable
+  (input: string): number
 _getGraphemeCount: callable
   (input: string): number
 _getLastMetadata: callable
   (schema: Schema$1, type: "title" | "description"): string | undefined
-_getStandardProps: callable
-  <TSchema extends BaseSchema<unknown, unknown, BaseIssue<unknown>> | BaseSchemaAsync<unknown, unknown, BaseIssue<unknown>>>(context: TSchema): StandardProps<InferInput<TSchema>, InferOutput<TSchema>>
 _getWordCount: callable
   (locales: LocalesArgument, input: string): number
 _isLuhnAlgo: callable
   (input: string): boolean
+_isSameValueZero: callable
+  (value1: unknown, value2: unknown): boolean
 _isValidObjectKey: callable
   (object: object, key: string): boolean
+_isValueMatch: callable
+  (requirement: ValueInput, value: ValueInput): boolean
 _joinExpects: callable
   (values: string[], separator: "&" | "|"): string
+_standardSchema: callable
+  <TSchema extends BaseSchema<unknown, unknown, BaseIssue<unknown>> | BaseSchemaAsync<unknown, unknown, BaseIssue<unknown>>>(schema: Omit<TSchema, "~standard"> & ThisType<TSchema>): TSchema
 _stringify: callable
   (input: unknown): string
 any: callable
@@ -113,6 +120,9 @@ checkItems: callable
 checkItemsAsync: callable
   <TInput$1 extends ArrayInput>(requirement: ArrayRequirementAsync<TInput$1>): CheckItemsActionAsync<TInput$1, undefined>
   <TInput$1 extends ArrayInput, const TMessage extends ErrorMessage<CheckItemsIssue<TInput$1>> | undefined>(requirement: ArrayRequirementAsync<TInput$1>, message: TMessage): CheckItemsActionAsync<TInput$1, TMessage>
+codePoints: callable
+  <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): CodePointsAction<TInput$1, TRequirement, undefined>
+  <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<CodePointsIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): CodePointsAction<TInput$1, TRequirement, TMessage>
 config: callable
   <const TSchema extends BaseSchema<unknown, unknown, BaseIssue<unknown>> | BaseSchemaAsync<unknown, unknown, BaseIssue<unknown>>>(schema: TSchema, config: Config<InferIssue<TSchema>>): TSchema
 creditCard: callable
@@ -336,6 +346,9 @@ jwsCompact: callable
 keyof: callable
   <const TSchema extends Schema$10>(schema: TSchema): PicklistSchema<ForceTuple<UnionToTupleHelper<keyof TSchema["entries"], []>>, undefined>
   <const TSchema extends Schema$10, const TMessage extends ErrorMessage<PicklistIssue> | undefined>(schema: TSchema, message: TMessage): PicklistSchema<ForceTuple<UnionToTupleHelper<keyof TSchema["entries"], []>>, TMessage>
+ksuid: callable
+  <TInput$1 extends string>(): KsuidAction<TInput$1, undefined>
+  <TInput$1 extends string, const TMessage extends ErrorMessage<KsuidIssue<TInput$1>> | undefined>(message: TMessage): KsuidAction<TInput$1, TMessage>
 lazy: callable
   <const TWrapped$1 extends BaseSchema<unknown, unknown, BaseIssue<unknown>>>(getter: (input: unknown) => TWrapped$1): LazySchema<TWrapped$1>
 lazyAsync: callable
@@ -381,6 +394,9 @@ mapItems: callable
 maxBytes: callable
   <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): MaxBytesAction<TInput$1, TRequirement, undefined>
   <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<MaxBytesIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): MaxBytesAction<TInput$1, TRequirement, TMessage>
+maxCodePoints: callable
+  <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): MaxCodePointsAction<TInput$1, TRequirement, undefined>
+  <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<MaxCodePointsIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): MaxCodePointsAction<TInput$1, TRequirement, TMessage>
 maxEntries: callable
   <TInput$1 extends EntriesInput, const TRequirement extends number>(requirement: TRequirement): MaxEntriesAction<TInput$1, TRequirement, undefined>
   <TInput$1 extends EntriesInput, const TRequirement extends number, const TMessage extends ErrorMessage<MaxEntriesIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): MaxEntriesAction<TInput$1, TRequirement, TMessage>
@@ -409,6 +425,9 @@ mimeType: callable
 minBytes: callable
   <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): MinBytesAction<TInput$1, TRequirement, undefined>
   <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<MinBytesIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): MinBytesAction<TInput$1, TRequirement, TMessage>
+minCodePoints: callable
+  <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): MinCodePointsAction<TInput$1, TRequirement, undefined>
+  <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<MinCodePointsIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): MinCodePointsAction<TInput$1, TRequirement, TMessage>
 minEntries: callable
   <TInput$1 extends EntriesInput, const TRequirement extends number>(requirement: TRequirement): MinEntriesAction<TInput$1, TRequirement, undefined>
   <TInput$1 extends EntriesInput, const TRequirement extends number, const TMessage extends ErrorMessage<MinEntriesIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): MinEntriesAction<TInput$1, TRequirement, TMessage>
@@ -468,6 +487,9 @@ normalize: callable
 notBytes: callable
   <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): NotBytesAction<TInput$1, TRequirement, undefined>
   <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<NotBytesIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): NotBytesAction<TInput$1, TRequirement, TMessage>
+notCodePoints: callable
+  <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): NotCodePointsAction<TInput$1, TRequirement, undefined>
+  <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<NotCodePointsIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): NotCodePointsAction<TInput$1, TRequirement, TMessage>
 notEntries: callable
   <TInput$1 extends EntriesInput, const TRequirement extends number>(requirement: TRequirement): NotEntriesAction<TInput$1, TRequirement, undefined>
   <TInput$1 extends EntriesInput, const TRequirement extends number, const TMessage extends ErrorMessage<NotEntriesIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): NotEntriesAction<TInput$1, TRequirement, TMessage>
@@ -1004,6 +1026,15 @@ CheckItemsActionAsync
   requirement: (item: TInput$1[number], index: number, array: TInput$1): MaybePromise<boolean>
   type
 
+CodePointsAction
+  async
+  expects
+  kind
+  message
+  reference: <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): CodePointsAction<TInput$1, TRequirement, undefined> | : <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<CodePointsIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): CodePointsAction<TInput$1, TRequirement, TMessage>
+  requirement
+  type
+
 CreditCardAction
   async
   expects
@@ -1447,6 +1478,15 @@ JwsCompactAction
   requirement
   type
 
+KsuidAction
+  async
+  expects
+  kind
+  message
+  reference: <TInput$1 extends string>(): KsuidAction<TInput$1, undefined> | : <TInput$1 extends string, const TMessage extends ErrorMessage<KsuidIssue<TInput$1>> | undefined>(message: TMessage): KsuidAction<TInput$1, TMessage>
+  requirement
+  type
+
 LazySchema
   async
   expects
@@ -1589,6 +1629,15 @@ MaxBytesAction
   requirement
   type
 
+MaxCodePointsAction
+  async
+  expects
+  kind
+  message
+  reference: <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): MaxCodePointsAction<TInput$1, TRequirement, undefined> | : <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<MaxCodePointsIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): MaxCodePointsAction<TInput$1, TRequirement, TMessage>
+  requirement
+  type
+
 MaxEntriesAction
   async
   expects
@@ -1659,6 +1708,15 @@ MinBytesAction
   kind
   message
   reference: <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): MinBytesAction<TInput$1, TRequirement, undefined> | : <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<MinBytesIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): MinBytesAction<TInput$1, TRequirement, TMessage>
+  requirement
+  type
+
+MinCodePointsAction
+  async
+  expects
+  kind
+  message
+  reference: <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): MinCodePointsAction<TInput$1, TRequirement, undefined> | : <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<MinCodePointsIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): MinCodePointsAction<TInput$1, TRequirement, TMessage>
   requirement
   type
 
@@ -1808,6 +1866,15 @@ NotBytesAction
   kind
   message
   reference: <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): NotBytesAction<TInput$1, TRequirement, undefined> | : <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<NotBytesIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): NotBytesAction<TInput$1, TRequirement, TMessage>
+  requirement
+  type
+
+NotCodePointsAction
+  async
+  expects
+  kind
+  message
+  reference: <TInput$1 extends string, const TRequirement extends number>(requirement: TRequirement): NotCodePointsAction<TInput$1, TRequirement, undefined> | : <TInput$1 extends string, const TRequirement extends number, const TMessage extends ErrorMessage<NotCodePointsIssue<TInput$1, TRequirement>> | undefined>(requirement: TRequirement, message: TMessage): NotCodePointsAction<TInput$1, TRequirement, TMessage>
   requirement
   type
 
