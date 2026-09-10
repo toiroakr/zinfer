@@ -22,6 +22,8 @@ Recursive `json()` types remain recursive, including inside other schemas.
 For exported schemas with symbol keys, generated types reference the source
 schema's inferred input/output type to preserve the original symbol identity;
 keep that source module available to TypeScript.
+This also applies to explicit type annotations: input and output are resolved
+independently, including Zod 4's default `unknown` input for `z.ZodType<T>`.
 
 ## Installation
 

@@ -58,6 +58,19 @@ export const Check = z.check<string>(() => {});
 export const NestedJSON = z.object({ payload: z.json() });
 export const TAG = Symbol("tag");
 export const SymbolKey = z.object({ [TAG]: z.number(), name: z.string() });
+export const ExplicitSymbolKey: z.ZodType<{ [TAG]: number; name: string }> = SymbolKey;
+export const ExplicitTransformedSymbolKey: z.ZodType<
+  { [TAG]: number; name: string },
+  { [TAG]: string; name: string }
+> = z.object({ [TAG]: z.string().transform(Number), name: z.string() });
+export const ExplicitSymbolFromString: z.ZodType<{ [TAG]: number; name: string }, string> = z
+  .string()
+  .transform((name) => ({ [TAG]: name.length, name }));
+type SymbolRecord = { [TAG]: number; name: string };
+export const NamedExplicitSymbolKey: z.ZodType<SymbolRecord, SymbolRecord> = SymbolKey;
+export const ExplicitSymbolToString: z.ZodType<string, SymbolRecord> = SymbolKey.transform(
+  (value) => value.name,
+);
 
 type __NormalizeJSON = "user-json";
 type __NormalizeValue = { user: string };
