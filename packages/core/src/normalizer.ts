@@ -23,8 +23,12 @@
  * object literal, and an array lost its brand to the `(infer U)[]` branch.
  */
 export const NORMALIZE_TYPE_DEFINITION = `
+// A recursive JSON union is closed under arrays and records of itself.
+// Preserve it before distribution can expand it to TypeScript's depth limit.
 type __Normalize<T> =
-  T extends Date | RegExp | Error | Map<any, any> | Set<any> | WeakMap<any, any> | WeakSet<any> | Promise<any> | Function
+  [string | number | boolean | null | T[] | { [key: string]: T }] extends [T]
+    ? T
+    : T extends Date | RegExp | Error | Map<any, any> | Set<any> | WeakMap<any, any> | WeakSet<any> | Promise<any> | Function
     ? T
     : T extends (...args: infer A) => infer R
       ? (...args: __Normalize<A>) => __Normalize<R>

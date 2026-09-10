@@ -53,14 +53,14 @@
     "@types/node": "25.9.5",
     "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "@zinfer-monorepo/core": "workspace:*",
-    "@zod/mini": "4.5.4",
+    "@zod/mini": "4.6.1",
     "knip": "6.34.0",
     "oxfmt": "0.66.0",
     "oxlint": "1.81.0",
     "tsdown": "0.23.0",
     "typescript": "7.0.2",
     "vitest": "4.1.11",
-    "zod": "4.5.4"
+    "zod": "4.6.1"
   },
   "peerDependencies": {
     "typescript": ">=5.0.0",

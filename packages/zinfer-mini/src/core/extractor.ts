@@ -898,6 +898,23 @@ export class ZodMiniTypeExtractor {
     let rawType = type.getText(typeAlias, this.typeTextFormatFlags());
     rawType = this.trimPrintedType(rawType);
 
+    // A computed symbol key needs its original identity. Refer to an exported
+    // schema's inferred type instead of emitting a dangling local value name.
+    if (
+      (typeName === "__TempInput" || typeName === "__TempOutput") &&
+      this.hasLocalComputedKey(rawType)
+    ) {
+      const query = typeAlias.getFirstDescendantByKind(ts.SyntaxKind.TypeQuery);
+      const declaration = query && sourceFile.getVariableDeclaration(query.getExprName().getText());
+      if (declaration) {
+        for (const [exportName, declarations] of sourceFile.getExportedDeclarations()) {
+          if (!declarations.includes(declaration)) continue;
+          const kind = typeName === "__TempInput" ? "input" : "output";
+          return `import("zod/mini").${kind}<typeof import("${this.modulePathFor(sourceFile)}").${exportName}>`;
+        }
+      }
+    }
+
     // The printer synthesizes `import("...")` references for named types
     // declared in another file that isn't otherwise visible at this print
     // location. It prints these already relative - but relative to this
@@ -926,6 +943,15 @@ export class ZodMiniTypeExtractor {
     // Post-process to simplify Zod internal function types and canonicalize
     // printed brand qualifiers
     return normalizeBrandQualifiers(this.simplifyZodFunctionTypes(rawType));
+  }
+
+  private hasLocalComputedKey(text: string): boolean {
+    const source = ts.createSourceFile("type.ts", `type T = ${text};`, ts.ScriptTarget.Latest);
+    const visit = (node: ts.Node): boolean => {
+      if (ts.isComputedPropertyName(node) && ts.isIdentifier(node.expression)) return true;
+      return ts.forEachChild(node, visit) ?? false;
+    };
+    return visit(source);
   }
 
   /**

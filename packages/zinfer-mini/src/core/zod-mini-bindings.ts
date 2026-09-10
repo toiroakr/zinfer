@@ -153,7 +153,24 @@ export class ZodMiniBindings {
       if (Node.isIdentifier(target) && this.isNamespace(target.getText())) {
         return callee.getName();
       }
+      if (Node.isPropertyAccessExpression(target)) {
+        const namespace = target.getExpression();
+        if (Node.isIdentifier(namespace) && this.isNamespace(namespace.getText())) {
+          return `${target.getName()}.${callee.getName()}`;
+        }
+      }
+      if (Node.isIdentifier(target)) {
+        const namespace = this.namedImports.get(target.getText());
+        if (namespace === "iso" || namespace === "coerce") {
+          return `${namespace}.${callee.getName()}`;
+        }
+      }
       return undefined;
+    }
+
+    // toZod<T>() itself is a factory, not a schema.
+    if (Node.isCallExpression(callee) && this.getCallName(callee) === "toZod") {
+      return "toZod";
     }
 
     if (Node.isIdentifier(callee)) {
@@ -182,6 +199,8 @@ export class ZodMiniBindings {
  */
 export const ZOD_MINI_SCHEMA_BUILDERS: ReadonlySet<string> = new Set([
   // Primitives and string formats
+  "creditCard",
+  "iban",
   "string",
   "email",
   "guid",
@@ -257,6 +276,7 @@ export const ZOD_MINI_SCHEMA_BUILDERS: ReadonlySet<string> = new Set([
   "pick",
   "omit",
   "partial",
+  "exactPartial",
   "required",
   "catchall",
   "keyof",
@@ -284,6 +304,28 @@ export const ZOD_MINI_SCHEMA_BUILDERS: ReadonlySet<string> = new Set([
   "codec",
   "invertCodec",
   "stringbool",
+  "json",
+  "function",
+  "transform",
+  "instanceof",
+  "properties",
+  "deepPartial",
+  "input",
+  "output",
+  "clone",
+  "compile",
+  "withParser",
+  "getDiscriminatedOption",
+  "toZod",
+  "iso.datetime",
+  "iso.date",
+  "iso.time",
+  "iso.duration",
+  "coerce.string",
+  "coerce.number",
+  "coerce.boolean",
+  "coerce.bigint",
+  "coerce.date",
 ]);
 
 /**

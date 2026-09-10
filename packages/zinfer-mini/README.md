@@ -19,6 +19,20 @@ than zinfer's method-chain style (`z.object({...}).optional()`), so it needs its
 - Supports both CLI and library API
 - Configuration file support (`zinfer-mini.config.ts`, `package.json`)
 
+## Schema API compatibility
+
+Verified against Zod 4.6.1, including string formats, codecs,
+`compile`/`withParser`, `input`/`output`, `deepPartial`, `exactPartial`, `toZod`,
+`getDiscriminatedOption`, `iban`, and `properties`.
+Recursive `json()` types remain recursive, including inside other schemas.
+For exported schemas with symbol keys, generated types reference the source
+schema's inferred input/output type to preserve the original symbol identity;
+keep that source module available to TypeScript.
+
+The `iso` and `coerce` namespaces work with namespace imports and named
+imports (including aliases). Schema-returning `.apply()` calls are detected;
+callbacks returning plain values are excluded.
+
 ## Installation
 
 ```bash

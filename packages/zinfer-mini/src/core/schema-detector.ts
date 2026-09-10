@@ -132,7 +132,19 @@ export class SchemaDetector {
     const unwrapped = unwrapExpression(initializer);
     const callName = bindings.getCallName(unwrapped);
     if (callName !== undefined && ZOD_MINI_SCHEMA_BUILDERS.has(callName)) {
+      if (callName === "toZod") {
+        return Node.isCallExpression(unwrapped) && Node.isCallExpression(unwrapped.getExpression());
+      }
       return true;
+    }
+
+    if (Node.isCallExpression(unwrapped)) {
+      const callee = unwrapped.getExpression();
+      if (Node.isPropertyAccessExpression(callee) && callee.getName() === "apply") {
+        const type = unwrapped.getType();
+        // Mini functions also expose _input; optional() belongs only to classic schemas.
+        return type.getProperty("_zod") !== undefined && type.getProperty("optional") === undefined;
+      }
     }
 
     // zod/mini keeps a handful of real chain methods on schema instances
@@ -181,6 +193,8 @@ export class SchemaDetector {
     "clone",
     "register",
     "brand",
+    "input",
+    "output",
   ]);
 
   /**
