@@ -1,5 +1,19 @@
 # zinfer
 
+## 0.4.6
+
+### Patch Changes
+
+- 2f48eb1: Add an upstream API inventory review gate for Zod, Zod Mini, and Valibot dependency updates.
+
+  Allow immediate dependency update PRs for all versions of Zod, Zod Mini, and Valibot, with manual merging instead of Renovate automerge.
+
+  Exclude Zod validation results from generated schema declarations.
+
+- 2dabc2d: Switch the build tool from tsup + dts-bundle-generator to tsdown. No public API change; published file names and extensions (`dist/index.js`, `dist/index.d.ts`, `dist/cli.js`) are unchanged, though internal chunk hashes and one internally re-exported type name differ slightly due to the different bundler.
+- 8af51bc: Support current Zod schema APIs, preserve recursive JSON types, and retain symbol-key identity in generated declarations, including explicitly annotated schemas with distinct input and output types. Exclude ordinary method calls from schema detection.
+- 95cae2b: Exclude parsed values, validation results, and metadata from schema detection in method chains while preserving Zod 3 and Zod 4 schema-returning calls.
+
 ## 0.4.5
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # vinfer
 
+## 0.3.5
+
+### Patch Changes
+
+- 2dabc2d: Switch the build tool from tsup + dts-bundle-generator to tsdown. No public API change; published file names and extensions (`dist/index.js`, `dist/index.d.ts`, `dist/cli.js`) are unchanged, though internal chunk hashes and one internally re-exported type name differ slightly due to the different bundler.
+- e6002b5: Correct schema references after awaitAsync and verify Valibot 1.5 APIs and transformation input/output types.
+
 ## 0.3.4
 
 ### Patch Changes
