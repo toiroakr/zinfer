@@ -12,7 +12,8 @@
     "format:check": "pnpm -r format:check",
     "knip": "pnpm -r knip",
     "changeset": "changeset",
-    "release": "pnpm -r build && changeset publish"
+    "release": "pnpm -r build && changeset publish",
+    "test:api": "pnpm --filter @zinfer-monorepo/core test:api"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.1",

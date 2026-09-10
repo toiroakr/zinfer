@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "rootDir": ".", "noEmit": true },
+  "include": ["api-coverage/**/*.ts", "api-coverage.config.ts", "tests/api-surface.test.ts"]
+}

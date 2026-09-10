@@ -41,6 +41,11 @@
       "matchDepTypes": ["peerDependencies"],
       "rangeStrategy": "widen",
       "automerge": false
+    },
+    {
+      "matchPackageNames": ["valibot", "zod", "@zod/mini"],
+      "minimumReleaseAge": "0 days",
+      "automerge": false
     }
   ]
 }

@@ -1,0 +1,605 @@
+# Exports
+$brand: value
+$input: value
+$output: value
+NEVER: value
+TimePrecision: value
+ZodCompileAsyncError: constructor
+  (message?: string | undefined): ZodCompileAsyncError
+ZodCompileUnsupportedError: constructor
+  (feature: string, islandable?: boolean | undefined): ZodCompileUnsupportedError
+ZodMiniAny: constructor
+  (def: D): T
+ZodMiniArray: constructor
+  (def: D): T
+ZodMiniBase64: constructor
+  (def: D): T
+ZodMiniBase64URL: constructor
+  (def: D): T
+ZodMiniBigInt: constructor
+  (def: D): T
+ZodMiniBigIntFormat: constructor
+  (def: D): T
+ZodMiniBoolean: constructor
+  (def: D): T
+ZodMiniCIDRv4: constructor
+  (def: D): T
+ZodMiniCIDRv6: constructor
+  (def: D): T
+ZodMiniCUID2: constructor
+  (def: D): T
+ZodMiniCUID: constructor
+  (def: D): T
+ZodMiniCatch: constructor
+  (def: D): T
+ZodMiniCodec: constructor
+  (def: D): T
+ZodMiniCreditCard: constructor
+  (def: D): T
+ZodMiniCustom: constructor
+  (def: D): T
+ZodMiniCustomStringFormat: constructor
+  (def: D): T
+ZodMiniDate: constructor
+  (def: D): T
+ZodMiniDefault: constructor
+  (def: D): T
+ZodMiniDiscriminatedUnion: constructor
+  (def: D): T
+ZodMiniE164: constructor
+  (def: D): T
+ZodMiniEmail: constructor
+  (def: D): T
+ZodMiniEmoji: constructor
+  (def: D): T
+ZodMiniEnum: constructor
+  (def: D): T
+ZodMiniExactOptional: constructor
+  (def: D): T
+ZodMiniFile: constructor
+  (def: D): T
+ZodMiniFunction: constructor
+  (def: D): T
+ZodMiniGUID: constructor
+  (def: D): T
+ZodMiniIPv4: constructor
+  (def: D): T
+ZodMiniIPv6: constructor
+  (def: D): T
+ZodMiniISODate: constructor
+  (def: D): T
+ZodMiniISODateTime: constructor
+  (def: D): T
+ZodMiniISODuration: constructor
+  (def: D): T
+ZodMiniISOTime: constructor
+  (def: D): T
+ZodMiniIntersection: constructor
+  (def: D): T
+ZodMiniJWT: constructor
+  (def: D): T
+ZodMiniKSUID: constructor
+  (def: D): T
+ZodMiniLazy: constructor
+  (def: D): T
+ZodMiniLiteral: constructor
+  (def: D): T
+ZodMiniMAC: constructor
+  (def: D): T
+ZodMiniMap: constructor
+  (def: D): T
+ZodMiniNaN: constructor
+  (def: D): T
+ZodMiniNanoID: constructor
+  (def: D): T
+ZodMiniNever: constructor
+  (def: D): T
+ZodMiniNonOptional: constructor
+  (def: D): T
+ZodMiniNull: constructor
+  (def: D): T
+ZodMiniNullable: constructor
+  (def: D): T
+ZodMiniNumber: constructor
+  (def: D): T
+ZodMiniNumberFormat: constructor
+  (def: D): T
+ZodMiniObject: constructor
+  (def: D): T
+ZodMiniOptional: constructor
+  (def: D): T
+ZodMiniPipe: constructor
+  (def: D): T
+ZodMiniPrefault: constructor
+  (def: D): T
+ZodMiniPromise: constructor
+  (def: D): T
+ZodMiniReadonly: constructor
+  (def: D): T
+ZodMiniRecord: constructor
+  (def: D): T
+ZodMiniSet: constructor
+  (def: D): T
+ZodMiniString: constructor
+  (def: D): T
+ZodMiniStringFormat: constructor
+  (def: D): T
+ZodMiniSuccess: constructor
+  (def: D): T
+ZodMiniSymbol: constructor
+  (def: D): T
+ZodMiniTemplateLiteral: constructor
+  (def: D): T
+ZodMiniTransform: constructor
+  (def: D): T
+ZodMiniTuple: constructor
+  (def: D): T
+ZodMiniType: constructor
+  (def: D): T
+ZodMiniULID: constructor
+  (def: D): T
+ZodMiniURL: constructor
+  (def: D): T
+ZodMiniUUID: constructor
+  (def: D): T
+ZodMiniUndefined: constructor
+  (def: D): T
+ZodMiniUnion: constructor
+  (def: D): T
+ZodMiniUnknown: constructor
+  (def: D): T
+ZodMiniVoid: constructor
+  (def: D): T
+ZodMiniXID: constructor
+  (def: D): T
+ZodMiniXor: constructor
+  (def: D): T
+_default: callable
+  <T extends SomeType>(innerType: T, defaultValue: NoUndefined<output<T>> | (() => NoUndefined<output<T>>)): ZodMiniDefault<T>
+_function: callable
+  (): ZodMiniFunction<$ZodFunctionArgs, $ZodFunctionOut>
+  <const In extends Array<SomeType> = SomeType[]>(params: { input: In; }): ZodMiniFunction<ZodMiniTuple<In, null>, $ZodFunctionOut>
+  <const In extends Array<SomeType> = SomeType[], const Out extends core.$ZodFunctionOut = $ZodFunctionOut>(params: { input: In; output: Out; }): ZodMiniFunction<ZodMiniTuple<In, null>, Out>
+  <const In extends core.$ZodFunctionIn = $ZodFunctionArgs>(params: { input: In; }): ZodMiniFunction<In, $ZodFunctionOut>
+  <const Out extends core.$ZodFunctionOut = $ZodFunctionOut>(params: { output: Out; }): ZodMiniFunction<$ZodFunctionArgs, Out>
+  <In extends core.$ZodFunctionIn = $ZodFunctionArgs, Out extends core.$ZodFunctionOut = $ZodFunctionOut>(params?: { input: In; output: Out; } | undefined): ZodMiniFunction<In, Out>
+any: callable
+  (): ZodMiniAny
+array: callable
+  <T extends SomeType>(element: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniArray<T>
+base64: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniBase64
+base64url: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniBase64URL
+bigint: callable
+  (params?: string | { coerce?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniBigInt<bigint>
+boolean: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniBoolean<boolean>
+catch: callable
+  <T extends SomeType>(innerType: T, catchValue: output<T> | ((ctx: $ZodCatchCtx) => output<T>)): ZodMiniCatch<T>
+catchall: callable
+  <T extends ZodMiniObject, U extends SomeType>(inst: T, catchall: U): ZodMiniObject<T["shape"], $catchall<U>>
+check: callable
+  <O = unknown>(fn: CheckFn<O>, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): $ZodCheck<O>
+cidrv4: callable
+  (params?: string | { abort?: boolean | undefined; version?: "v4" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniCIDRv4
+cidrv6: callable
+  (params?: string | { abort?: boolean | undefined; version?: "v6" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniCIDRv6
+clone: callable
+  <T extends schemas.$ZodType>(inst: T, def?: T["_zod"]["def"] | undefined, params?: { parent: boolean; } | undefined): T
+codec: callable
+  <const A extends SomeType, B extends core.SomeType = $ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>>(in_: A, out: B, params: { decode: (value: output<A>, payload: ParsePayload<output<A>>) => MaybeAsync<input<B>>; encode: (value: input<B>, payload: ParsePayload<input<B>>) => MaybeAsync<output<A>>; }): ZodMiniCodec<A, B>
+coerce.bigint: callable
+  <T = unknown>(params?: string | { coerce?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniBigInt<T>
+coerce.boolean: callable
+  <T = unknown>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniBoolean<T>
+coerce.date: callable
+  <T = unknown>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniDate<T>
+coerce.number: callable
+  <T = unknown>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniNumber<T>
+coerce.string: callable
+  <T = unknown>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniString<T>
+coerce: namespace
+compile: callable
+  <T extends SomeType>(schema: T, options?: CompileOptions | undefined): T
+config: callable
+  (newConfig?: Partial<$ZodConfig> | undefined): $ZodConfig
+core: namespace (excluded)
+creditCard: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniCreditCard
+cuid2: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniCUID2
+cuid: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniCUID
+custom: callable
+  <O = unknown, I = O>(fn?: ((data: O) => unknown) | undefined, _params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): ZodMiniCustom<O, I>
+date: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniDate<Date>
+decode: callable
+  <T extends schemas.$ZodType>(schema: T, value: input<T>, _ctx?: ParseContext<$ZodIssue> | undefined, _params?: $ParseParams | undefined): output<T>
+decodeAsync: callable
+  <T extends schemas.$ZodType>(schema: T, value: input<T>, _ctx?: ParseContext<$ZodIssue> | undefined, _params?: $ParseParams | undefined): Promise<output<T>>
+deepPartial: callable
+  <T extends core.SomeType>(schema: T): DeepPartial<T>
+describe: callable
+  <T>(description: string): $ZodCheck<T>
+discriminatedUnion: callable
+  <Types extends readonly [core.$ZodTypeDiscriminable, ...core.$ZodTypeDiscriminable[]], Disc extends string>(discriminator: Disc, options: Types, params?: string | { inclusive?: boolean | undefined; unionFallback?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidUnion>> | undefined; message?: string | undefined; } | undefined): ZodMiniDiscriminatedUnion<Types, Disc>
+e164: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniE164
+email: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniEmail
+emoji: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniEmoji
+encode: callable
+  <T extends schemas.$ZodType>(schema: T, value: output<T>, _ctx?: ParseContext<$ZodIssue> | undefined, _params?: $ParseParams | undefined): input<T>
+encodeAsync: callable
+  <T extends schemas.$ZodType>(schema: T, value: output<T>, _ctx?: ParseContext<$ZodIssue> | undefined, _params?: $ParseParams | undefined): Promise<input<T>>
+endsWith: callable
+  (suffix: string, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): $ZodCheckEndsWith
+enum: callable
+  <const T extends readonly string[]>(values: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniEnum<{ [k in keyof { [k in T[number]]: k; }]: { [k in T[number]]: k; }[k]; }>
+  <T extends util.EnumLike>(entries: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniEnum<T>
+exactOptional: callable
+  <T extends SomeType>(innerType: T): ZodMiniExactOptional<T>
+exactPartial: callable
+  <T extends ZodMiniObject>(schema: T): ZodMiniObject<{ -readonly [k in keyof T["shape"]]: ZodMiniExactOptional<T["shape"][k]>; }, T["_zod"]["config"]>
+  <T extends ZodMiniObject, M extends util.Mask<keyof T["shape"]>>(schema: T, mask: M & Record<Exclude<keyof M, keyof T["shape"]>, never>): ZodMiniObject<{ -readonly [k in keyof T["shape"]]: k extends keyof M ? ZodMiniExactOptional<T["shape"][k]> : T["shape"][k]; }, T["_zod"]["config"]>
+extend: callable
+  <T extends ZodMiniObject, U extends core.$ZodLooseShape>(schema: T, shape: U): ZodMiniObject<{ [k in keyof (keyof T["shape"] & keyof U extends never ? T["shape"] & { -readonly [P in keyof U]: U[P]; } : { [K in keyof T["shape"] as K extends keyof U ? never : K]: T["shape"][K]; } & { [K in keyof { -readonly [P in keyof U]: U[P]; }]: { -readonly [P in keyof U]: U[P]; }[K]; })]: (keyof T["shape"] & keyof U extends never ? T["shape"] & { -readonly [P in keyof U]: U[P]; } : { [K in keyof T["shape"] as K extends keyof U ? never : K]: T["shape"][K]; } & { [K in keyof { -readonly [P in keyof U]: U[P]; }]: { -readonly [P in keyof U]: U[P]; }[K]; })[k]; }, T["_zod"]["config"]>
+file: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniFile
+flattenError: callable
+  <T>(error: $ZodError<T>): _FlattenedError<T, string>
+  <T, U>(error: $ZodError<T>, mapper?: ((issue: $ZodIssue) => U) | undefined): _FlattenedError<T, U>
+float32: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"number"> | $ZodIssueTooSmall<"number">>> | undefined; message?: string | undefined; } | undefined): ZodMiniFloat32
+float64: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"number"> | $ZodIssueTooSmall<"number">>> | undefined; message?: string | undefined; } | undefined): ZodMiniFloat64
+formatError: callable
+  <T>(error: $ZodError<T>): $ZodFormattedError<T, string>
+  <T, U>(error: $ZodError<T>, mapper?: ((issue: $ZodIssue) => U) | undefined): $ZodFormattedError<T, U>
+function: callable
+  (): ZodMiniFunction<$ZodFunctionArgs, $ZodFunctionOut>
+  <const In extends Array<SomeType> = SomeType[]>(params: { input: In; }): ZodMiniFunction<ZodMiniTuple<In, null>, $ZodFunctionOut>
+  <const In extends Array<SomeType> = SomeType[], const Out extends core.$ZodFunctionOut = $ZodFunctionOut>(params: { input: In; output: Out; }): ZodMiniFunction<ZodMiniTuple<In, null>, Out>
+  <const In extends core.$ZodFunctionIn = $ZodFunctionArgs>(params: { input: In; }): ZodMiniFunction<In, $ZodFunctionOut>
+  <const Out extends core.$ZodFunctionOut = $ZodFunctionOut>(params: { output: Out; }): ZodMiniFunction<$ZodFunctionArgs, Out>
+  <In extends core.$ZodFunctionIn = $ZodFunctionArgs, Out extends core.$ZodFunctionOut = $ZodFunctionOut>(params?: { input: In; output: Out; } | undefined): ZodMiniFunction<In, Out>
+getDiscriminatedOption: callable
+  <Options extends readonly SomeType[], Disc extends string, const V extends $DiscriminatorValue<Options, Disc>>(union: $ZodDiscriminatedUnion<Options, Disc>, value: V): $DiscriminatedOption<Options, Disc, V>
+globalRegistry: value
+gt: callable
+  (value: Numeric, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckGreaterThan<Numeric>
+gte: callable
+  (value: Numeric, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckGreaterThan<Numeric>
+guid: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniGUID
+hash: callable
+  <Alg extends util.HashAlgorithm, Enc extends util.HashEncoding = "hex">(alg: Alg, params?: ({ enc?: Enc | undefined; } & { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; }) | undefined): ZodMiniCustomStringFormat<`${Alg}_${Enc}`>
+hex: callable
+  (_params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniCustomStringFormat<"hex">
+hostname: callable
+  (_params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniCustomStringFormat<"hostname">
+httpUrl: callable
+  (params?: string | Omit<{ abort?: boolean | undefined; pattern?: RegExp | undefined; hostname?: RegExp | undefined; protocol?: RegExp | undefined; normalize?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; }, "hostname" | "protocol"> | undefined): ZodMiniURL
+includes: callable
+  (includes: string, params?: string | { abort?: boolean | undefined; position?: number | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): $ZodCheckIncludes
+input: callable
+  <T extends core.$ZodType>(schema: T): ZodMiniType<input<T>, input<T>, $ZodTypeInternals<input<T>, input<T>>>
+instanceof: callable
+  <T extends typeof Class>(cls: T, params?: { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): ZodMiniCustom<InstanceType<T>, InstanceType<T>>
+int32: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"number"> | $ZodIssueTooSmall<"number">>> | undefined; message?: string | undefined; } | undefined): ZodMiniInt32
+int64: callable
+  (params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"bigint"> | $ZodIssueTooSmall<"bigint">>> | undefined; message?: string | undefined; } | undefined): ZodMiniInt64
+int: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"number"> | $ZodIssueTooSmall<"number">>> | undefined; message?: string | undefined; } | undefined): ZodMiniInt
+intersection: callable
+  <T extends SomeType, U extends SomeType>(left: T, right: U): ZodMiniIntersection<T, U>
+invertCodec: callable
+  <A extends SomeType, B extends SomeType>(codec: ZodMiniCodec<A, B>): ZodMiniCodec<B, A>
+ipv4: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniIPv4
+ipv6: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniIPv6
+iso.ZodMiniISODate: constructor
+  (def: D): T
+iso.ZodMiniISODateTime: constructor
+  (def: D): T
+iso.ZodMiniISODuration: constructor
+  (def: D): T
+iso.ZodMiniISOTime: constructor
+  (def: D): T
+iso.date: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniISODate
+iso.datetime: callable
+  (params?: string | { abort?: boolean | undefined; precision?: number | null | undefined; offset?: boolean | undefined; local?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniISODateTime
+iso.duration: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniISODuration
+iso.time: callable
+  (params?: string | { abort?: boolean | undefined; precision?: number | null | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniISOTime
+iso: namespace
+json: callable
+  (): ZodMiniJSONSchema
+jwt: callable
+  (params?: string | { abort?: boolean | undefined; alg?: JWTAlgorithm | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniJWT
+keyof: callable
+  <T extends ZodMiniObject>(schema: T): ZodMiniEnum<{ [k in keyof { [k in Exclude<keyof T["shape"], symbol>]: k; }]: { [k in Exclude<keyof T["shape"], symbol>]: k; }[k]; }>
+ksuid: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniKSUID
+lazy: callable
+  <T extends SomeType>(getter: () => T): ZodMiniLazy<T>
+length: callable
+  (length: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueTooBig<HasLength> | $ZodIssueTooSmall<HasLength>>> | undefined; message?: string | undefined; } | undefined): $ZodCheckLengthEquals<HasLength>
+literal: callable
+  <const T extends ReadonlyArray<util.Literal>>(value: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniLiteral<T[number]>
+  <const T extends util.Literal>(value: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniLiteral<T>
+locales: namespace (excluded)
+looseObject: callable
+  <T extends core.$ZodLooseShape>(shape: T, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueUnrecognizedKeys | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniObject<{ -readonly [P in keyof T]: T[P]; }, $loose>
+looseRecord: callable
+  <Key extends core.$ZodRecordKey, Value extends SomeType>(keyType: Key, valueType: Value, params?: string | { mode?: "strict" | "loose" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueInvalidKey<Record<PropertyKey, unknown>>>> | undefined; message?: string | undefined; } | undefined): ZodMiniRecord<Key, Value>
+lowercase: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): $ZodCheckLowerCase
+lt: callable
+  (value: Numeric, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckLessThan<Numeric>
+lte: callable
+  (value: Numeric, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckLessThan<Numeric>
+mac: callable
+  (params?: string | { abort?: boolean | undefined; delimiter?: string | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniMAC
+map: callable
+  <Key extends SomeType, Value extends SomeType>(keyType: Key, valueType: Value, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueInvalidKey<unknown> | $ZodIssueInvalidElement<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniMap<Key, Value>
+maxLength: callable
+  (maximum: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<HasLength>> | undefined; message?: string | undefined; } | undefined): $ZodCheckMaxLength<HasLength>
+maxSize: callable
+  (maximum: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<HasSize>> | undefined; message?: string | undefined; } | undefined): $ZodCheckMaxSize<HasSize>
+maximum: callable
+  (value: Numeric, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckLessThan<Numeric>
+memoizer: callable
+  (): $ZodMemoizer
+merge: callable
+  <T extends ZodMiniObject, U extends ZodMiniObject>(a: T, b: U): ZodMiniObject<{ [k in keyof (keyof T["shape"] & keyof U["shape"] extends never ? T["shape"] & U["shape"] : { [K in keyof T["shape"] as K extends keyof U["shape"] ? never : K]: T["shape"][K]; } & { [K in keyof U["shape"]]: U["shape"][K]; })]: (keyof T["shape"] & keyof U["shape"] extends never ? T["shape"] & U["shape"] : { [K in keyof T["shape"] as K extends keyof U["shape"] ? never : K]: T["shape"][K]; } & { [K in keyof U["shape"]]: U["shape"][K]; })[k]; }, U["_zod"]["config"]>
+meta: callable
+  <T>(metadata: GlobalMeta): $ZodCheck<T>
+mime: callable
+  (types: MimeTypes[], params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): $ZodCheckMimeType<File>
+minLength: callable
+  (minimum: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasLength>> | undefined; message?: string | undefined; } | undefined): $ZodCheckMinLength<HasLength>
+minSize: callable
+  (minimum: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasSize>> | undefined; message?: string | undefined; } | undefined): $ZodCheckMinSize<HasSize>
+minimum: callable
+  (value: Numeric, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckGreaterThan<Numeric>
+multipleOf: callable
+  (value: number | bigint, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueNotMultipleOf<number | bigint>> | undefined; message?: string | undefined; } | undefined): $ZodCheckMultipleOf<number | bigint>
+nan: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniNaN
+nanoid: callable
+  (params?: string | { length?: number | undefined; abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniNanoID
+nativeEnum: callable
+  <T extends util.EnumLike>(entries: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniEnum<T>
+negative: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckLessThan<Numeric>
+never: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniNever
+nonnegative: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckGreaterThan<Numeric>
+nonoptional: callable
+  <T extends SomeType>(innerType: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniNonOptional<T>
+nonpositive: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckLessThan<Numeric>
+normalize: callable
+  (form?: (string & {}) | "NFC" | "NFD" | "NFKC" | "NFKD" | undefined): $ZodCheckOverwrite<string>
+null: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniNull
+nullable: callable
+  <T extends SomeType>(innerType: T): ZodMiniNullable<T>
+nullish: callable
+  <T extends SomeType>(innerType: T): ZodMiniOptional<ZodMiniNullable<T>>
+number: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniNumber<number>
+object: callable
+  <T extends core.$ZodLooseShape = Record<never, SomeType>>(shape?: T | undefined, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueUnrecognizedKeys | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniObject<{ -readonly [P in keyof T]: T[P]; }, $strip>
+omit: callable
+  <T extends ZodMiniObject, M extends util.Mask<keyof T["shape"]>>(schema: T, mask: M & Record<Exclude<keyof M, keyof T["shape"]>, never>): ZodMiniObject<{ [k in keyof Omit<T["shape"], keyof M>]: Omit<T["shape"], keyof M>[k]; }, T["_zod"]["config"]>
+optional: callable
+  <T extends SomeType>(innerType: T): ZodMiniOptional<T>
+output: callable
+  <T extends core.$ZodType>(schema: T): ZodMiniType<output<T>, output<T>, $ZodTypeInternals<output<T>, output<T>>>
+overwrite: callable
+  <T>(tx: (input: T) => T): $ZodCheckOverwrite<T>
+parse: callable
+  <T extends schemas.$ZodType>(schema: T, value: unknown, _ctx?: ParseContext<$ZodIssue> | undefined, _params?: $ParseParams | undefined): output<T>
+parseAsync: callable
+  <T extends schemas.$ZodType>(schema: T, value: unknown, _ctx?: ParseContext<$ZodIssue> | undefined, _params?: $ParseParams | undefined): Promise<output<T>>
+partial: callable
+  <T extends ZodMiniObject>(schema: T): ZodMiniObject<{ -readonly [k in keyof T["shape"]]: ZodMiniOptional<T["shape"][k]>; }, T["_zod"]["config"]>
+  <T extends ZodMiniObject, M extends util.Mask<keyof T["shape"]>>(schema: T, mask: M & Record<Exclude<keyof M, keyof T["shape"]>, never>): ZodMiniObject<{ -readonly [k in keyof T["shape"]]: k extends keyof M ? ZodMiniOptional<T["shape"][k]> : T["shape"][k]; }, T["_zod"]["config"]>
+  <T extends util.TupleItems, Rest extends SomeType | null>(schema: ZodMiniTuple<T, Rest>): ZodMiniTuple<{ -readonly [k in keyof T]: ZodMiniOptional<T[k]>; }, Rest>
+partialRecord: callable
+  <Key extends core.$ZodRecordKey, Value extends SomeType>(keyType: Key, valueType: Value, params?: string | { mode?: "strict" | "loose" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueInvalidKey<Record<PropertyKey, unknown>>>> | undefined; message?: string | undefined; } | undefined): ZodMiniRecord<Key & $partial, Value>
+pick: callable
+  <T extends ZodMiniObject, M extends util.Mask<keyof T["shape"]>>(schema: T, mask: M & Record<Exclude<keyof M, keyof T["shape"]>, never>): ZodMiniObject<{ [k in keyof Pick<T["shape"], keyof T["shape"] & keyof M>]: Pick<T["shape"], keyof T["shape"] & keyof M>[k]; }, T["_zod"]["config"]>
+pipe: callable
+  <const A extends SomeType, B extends core.$ZodType<unknown, core.output<A>> = $ZodType<unknown, output<A>, $ZodTypeInternals<unknown, output<A>>>>(in_: A, out: B | $ZodType<unknown, output<A>, $ZodTypeInternals<unknown, output<A>>>): ZodMiniPipe<A, B>
+positive: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckGreaterThan<Numeric>
+prefault: callable
+  <T extends SomeType>(innerType: T, defaultValue: NoUndefined<input<T>> | (() => NoUndefined<input<T>>)): ZodMiniPrefault<T>
+prettifyError: callable
+  (error: FailureResult): string
+promise: callable
+  <T extends SomeType>(innerType: T): ZodMiniPromise<T>
+properties: callable
+  <Shape extends schemas.$ZodShape>(shape: Shape): $ZodCheckProperty<{ -readonly [k in keyof Shape]: output<Shape[k]>; }>[]
+property: callable
+  <K extends string, T extends schemas.$ZodType>(property: K, schema: T, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): $ZodCheckProperty<{ [k in K]: output<T>; }>
+readonly: callable
+  <T extends SomeType>(innerType: T): ZodMiniReadonly<T>
+record: callable
+  <Key extends core.$ZodRecordKey, Value extends SomeType>(keyType: Key, valueType: Value, params?: string | { mode?: "strict" | "loose" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueInvalidKey<Record<PropertyKey, unknown>>>> | undefined; message?: string | undefined; } | undefined): ZodMiniRecord<Key, Value>
+refine: callable
+  <T>(fn: (arg: NoInfer<T>) => unknown, _params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): $ZodCheck<T>
+regex: callable
+  (pattern: RegExp, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): $ZodCheckRegex
+regexes: namespace (excluded)
+registry: callable
+  <T extends MetadataType = MetadataType, S extends $ZodType = $ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>>(): $ZodRegistry<T, S>
+required: callable
+  <T extends ZodMiniObject>(schema: T): ZodMiniObject<{ -readonly [k in keyof T["shape"]]: ZodMiniNonOptional<T["shape"][k]>; }, T["_zod"]["config"]>
+  <T extends ZodMiniObject, M extends util.Mask<keyof T["shape"]>>(schema: T, mask: M & Record<Exclude<keyof M, keyof T["shape"]>, never>): ZodMiniObject<{ [k in keyof (keyof T["shape"] & keyof M extends never ? T["shape"] & { [k in keyof M & keyof T["shape"]]: ZodMiniNonOptional<T["shape"][k]>; } : { [K in keyof T["shape"] as K extends keyof M & keyof T["shape"] ? never : K]: T["shape"][K]; } & { [K in keyof { [k in keyof M & keyof T["shape"]]: ZodMiniNonOptional<T["shape"][k]>; }]: { [k in keyof M & keyof T["shape"]]: ZodMiniNonOptional<T["shape"][k]>; }[K]; })]: (keyof T["shape"] & keyof M extends never ? T["shape"] & { [k in keyof M & keyof T["shape"]]: ZodMiniNonOptional<T["shape"][k]>; } : { [K in keyof T["shape"] as K extends keyof M & keyof T["shape"] ? never : K]: T["shape"][K]; } & { [K in keyof { [k in keyof M & keyof T["shape"]]: ZodMiniNonOptional<T["shape"][k]>; }]: { [k in keyof M & keyof T["shape"]]: ZodMiniNonOptional<T["shape"][k]>; }[K]; })[k]; }, T["_zod"]["config"]>
+safeDecode: callable
+  <T extends schemas.$ZodType>(schema: T, value: input<T>, _ctx?: ParseContext<$ZodIssue> | undefined): SafeParseResult<output<T>>
+safeDecodeAsync: callable
+  <T extends schemas.$ZodType>(schema: T, value: input<T>, _ctx?: ParseContext<$ZodIssue> | undefined): Promise<SafeParseResult<output<T>>>
+safeEncode: callable
+  <T extends schemas.$ZodType>(schema: T, value: output<T>, _ctx?: ParseContext<$ZodIssue> | undefined): SafeParseResult<input<T>>
+safeEncodeAsync: callable
+  <T extends schemas.$ZodType>(schema: T, value: output<T>, _ctx?: ParseContext<$ZodIssue> | undefined): Promise<SafeParseResult<input<T>>>
+safeExtend: callable
+  <T extends ZodMiniObject, U extends core.$ZodLooseShape>(schema: T, shape: SafeExtendShape<T["shape"], U>): ZodMiniObject<{ [k in keyof (keyof T["shape"] & keyof U extends never ? T["shape"] & { -readonly [P in keyof U]: U[P]; } : { [K in keyof T["shape"] as K extends keyof U ? never : K]: T["shape"][K]; } & { [K in keyof { -readonly [P in keyof U]: U[P]; }]: { -readonly [P in keyof U]: U[P]; }[K]; })]: (keyof T["shape"] & keyof U extends never ? T["shape"] & { -readonly [P in keyof U]: U[P]; } : { [K in keyof T["shape"] as K extends keyof U ? never : K]: T["shape"][K]; } & { [K in keyof { -readonly [P in keyof U]: U[P]; }]: { -readonly [P in keyof U]: U[P]; }[K]; })[k]; }, T["_zod"]["config"]>
+safeParse: callable
+  <T extends schemas.$ZodType>(schema: T, value: unknown, _ctx?: ParseContext<$ZodIssue> | undefined): SafeParseResult<output<T>>
+safeParseAsync: callable
+  <T extends schemas.$ZodType>(schema: T, value: unknown, _ctx?: ParseContext<$ZodIssue> | undefined): Promise<SafeParseResult<output<T>>>
+set: callable
+  <Value extends SomeType>(valueType: Value, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniSet<Value>
+size: callable
+  (size: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueTooBig<HasSize> | $ZodIssueTooSmall<HasSize>>> | undefined; message?: string | undefined; } | undefined): $ZodCheckSizeEquals<HasSize>
+startsWith: callable
+  (prefix: string, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): $ZodCheckStartsWith
+strictObject: callable
+  <T extends core.$ZodLooseShape>(shape: T, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueUnrecognizedKeys | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniObject<{ -readonly [P in keyof T]: T[P]; }, $strict>
+string: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniString<string>
+stringFormat: callable
+  <Format extends string>(format: Format, fnOrRegex: RegExp | ((arg: string) => unknown), _params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniCustomStringFormat<Format>
+stringbool: callable
+  (_params?: string | $ZodStringBoolParams | undefined): ZodMiniCodec<ZodMiniString<unknown>, ZodMiniBoolean<unknown>>
+success: callable
+  <T extends SomeType>(innerType: T): ZodMiniSuccess<T>
+superRefine: callable
+  <T>(fn: (arg: T, payload: $RefinementCtx<T>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): $ZodCheck<T>
+symbol: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniSymbol
+templateLiteral: callable
+  <const Parts extends core.$ZodTemplateLiteralPart[]>(parts: Parts, params?: string | { format?: string | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniTemplateLiteral<$PartsToTemplateLiteral<Parts>>
+toJSONSchema: callable
+  <T extends schemas.$ZodType>(schema: T, params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<T>
+  (registry: $ZodRegistry<{ id?: string | undefined; }, $ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>>, params?: RegistryToJSONSchemaParams | undefined): { schemas: Record<string, ZodStandardJSONSchemaPayload<$ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>>>; }
+toLowerCase: callable
+  (): $ZodCheckOverwrite<string>
+toUpperCase: callable
+  (): $ZodCheckOverwrite<string>
+toZod: callable
+  <T>(): <S extends schemas.$ZodType>(schema: AssertEqual<S["_zod"]["output"], T> extends true ? S : ToZodTarget<S, T>) => S
+transform: callable
+  <I = unknown, O = I>(fn: (input: I, ctx: ParsePayload<unknown>) => O): ZodMiniTransform<Awaited<O>, I>
+treeifyError: callable
+  <T>(error: $ZodError<T>): $ZodErrorTree<T, string>
+  <T, U>(error: $ZodError<T>, mapper?: ((issue: $ZodIssue) => U) | undefined): $ZodErrorTree<T, U>
+trim: callable
+  (): $ZodCheckOverwrite<string>
+tuple: callable
+  <const T extends readonly [SomeType, ...SomeType[]]>(items: T, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<unknown[]> | $ZodIssueTooSmall<unknown[]>>> | undefined; message?: string | undefined; } | undefined): ZodMiniTuple<T, null>
+  <const T extends readonly [SomeType, ...SomeType[]], Rest extends SomeType>(items: T, rest: Rest, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<unknown[]> | $ZodIssueTooSmall<unknown[]>>> | undefined; message?: string | undefined; } | undefined): ZodMiniTuple<T, Rest>
+  (items: [], params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<unknown[]> | $ZodIssueTooSmall<unknown[]>>> | undefined; message?: string | undefined; } | undefined): ZodMiniTuple<[], null>
+uint32: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"number"> | $ZodIssueTooSmall<"number">>> | undefined; message?: string | undefined; } | undefined): ZodMiniUInt32
+uint64: callable
+  (params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"bigint"> | $ZodIssueTooSmall<"bigint">>> | undefined; message?: string | undefined; } | undefined): ZodMiniUInt64
+ulid: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniULID
+undefined: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniUndefined
+union: callable
+  <const T extends readonly SomeType[]>(options: T, params?: string | { inclusive?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidUnion>> | undefined; message?: string | undefined; } | undefined): ZodMiniUnion<T>
+unknown: callable
+  (): ZodMiniUnknown
+uppercase: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): $ZodCheckUpperCase
+url: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; hostname?: RegExp | undefined; protocol?: RegExp | undefined; normalize?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniURL
+util: namespace (excluded)
+uuid: callable
+  (params?: string | { abort?: boolean | undefined; version?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniUUID
+uuidv4: callable
+  (params?: string | { abort?: boolean | undefined; version?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniUUID
+uuidv6: callable
+  (params?: string | { abort?: boolean | undefined; version?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniUUID
+uuidv7: callable
+  (params?: string | { abort?: boolean | undefined; version?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniUUID
+validate: callable
+  <T extends schemas.$ZodType>(schema: T, value: unknown, _ctx?: ParseContext<$ZodIssue> | undefined): value is input<T>
+validateAsync: callable
+  <T extends schemas.$ZodType>(schema: T, value: unknown, _ctx?: ParseContext<$ZodIssue> | undefined): Promise<boolean>
+void: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodMiniVoid
+xid: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMiniXID
+xor: callable
+  <const T extends readonly SomeType[]>(options: T, params?: string | { inclusive?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidUnion>> | undefined; message?: string | undefined; } | undefined): ZodMiniXor<T>
+z: namespace (excluded)
+
+# Schema and action members
+ZodMiniAny, ZodMiniArray, ZodMiniBase64, ZodMiniBase64URL, ZodMiniBigInt, ZodMiniBigIntFormat, ZodMiniBoolean, ZodMiniCIDRv4, ZodMiniCIDRv6, ZodMiniCUID, ZodMiniCUID2, ZodMiniCatch, ZodMiniCodec, ZodMiniCreditCard, ZodMiniCustom, ZodMiniCustomStringFormat, ZodMiniDate, ZodMiniDefault, ZodMiniDiscriminatedUnion, ZodMiniE164, ZodMiniEmail, ZodMiniEmoji, ZodMiniExactOptional, ZodMiniFile, ZodMiniFloat32, ZodMiniFloat64, ZodMiniGUID, ZodMiniIPv4, ZodMiniIPv6, ZodMiniISODate, ZodMiniISODateTime, ZodMiniISODuration, ZodMiniISOTime, ZodMiniInt, ZodMiniInt32, ZodMiniInt64, ZodMiniIntersection, ZodMiniJSONSchema, ZodMiniJWT, ZodMiniKSUID, ZodMiniLazy, ZodMiniLiteral, ZodMiniMAC, ZodMiniMap, ZodMiniNaN, ZodMiniNanoID, ZodMiniNever, ZodMiniNonOptional, ZodMiniNull, ZodMiniNullable, ZodMiniNumber, ZodMiniNumberFormat, ZodMiniOptional, ZodMiniPipe, ZodMiniPrefault, ZodMiniPromise, ZodMiniReadonly, ZodMiniRecord, ZodMiniSet, ZodMiniString, ZodMiniStringFormat, ZodMiniSuccess, ZodMiniSymbol, ZodMiniTemplateLiteral, ZodMiniTransform, ZodMiniTuple, ZodMiniType, ZodMiniUInt32, ZodMiniUInt64, ZodMiniULID, ZodMiniURL, ZodMiniUUID, ZodMiniUndefined, ZodMiniUnion, ZodMiniUnknown, ZodMiniVoid, ZodMiniXID, ZodMiniXor, _ZodMiniJSONSchema, _ZodMiniString
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  def
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): SafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<SafeParseResult<output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+
+ZodMiniEnum
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  def
+  options
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): SafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<SafeParseResult<output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+
+ZodMiniFunction
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  def
+  implement: <F extends $InferInnerFunctionType<Args, Returns>>(func: F): (...args: Parameters<this["_output"]>) => ReturnType<F> extends ReturnType<this["_output"]> ? ReturnType<F> : ReturnType<this["_output"]>
+  implementAsync: <F extends $InferInnerFunctionTypeAsync<Args, Returns>>(func: F): F extends $InferOuterFunctionTypeAsync<Args, Returns> ? F : $InferOuterFunctionTypeAsync<Args, Returns>
+  input: <const Items extends util.TupleItems, const Rest extends core.$ZodFunctionOut = $ZodFunctionOut>(args: Items, rest?: Rest | undefined): ZodMiniFunction<ZodMiniTuple<Items, Rest>, Returns> | : <NewArgs extends core.$ZodFunctionIn>(args: NewArgs): ZodMiniFunction<NewArgs, Returns> | : (...args: any[]): ZodMiniFunction<any, Returns>
+  output: <NewReturns extends core.$ZodFunctionOut>(output: NewReturns): ZodMiniFunction<Args, NewReturns>
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): SafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<SafeParseResult<output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+
+ZodMiniObject
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  def
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): SafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<SafeParseResult<output<this>>>
+  shape
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
