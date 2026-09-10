@@ -89,6 +89,10 @@ describe("SchemaDetector", () => {
       export const Optional = z.string().isOptional();
       export const Nullable = z.string().isNullable();
       export const Bracket = z.string()["parse"]("x");
+      export const ParsedDef = z.object({ _input: z.string(), _def: z.string() })
+        .parse({ _input: "x", _def: "y" });
+      export const ParsedZod = z.object({ _input: z.string(), _zod: z.string() })
+        .parse({ _input: "x", _zod: "y" });
       `,
     );
     expect(detector.getSchemaNames(source)).toEqual(["String", "Object", "Recursive"]);

@@ -238,11 +238,7 @@ export class SchemaDetector {
         (Node.isPropertyAccessExpression(callee) || Node.isElementAccessExpression(callee)) &&
         Node.isCallExpression(callee.getExpression())
       ) {
-        const type = initializer.getType();
-        return (
-          type.getProperty("_input") !== undefined &&
-          (type.getProperty("_zod") !== undefined || type.getProperty("_def") !== undefined)
-        );
+        return this.hasSchemaType(initializer);
       }
     }
 
@@ -268,10 +264,17 @@ export class SchemaDetector {
 
     // Detect method chains by their result type, including Zod 3 schemas.
     // Unrelated APIs with the same method names must not become schemas.
-    const type = initializer.getType();
+    return this.hasSchemaType(initializer);
+  }
+
+  private hasSchemaType(expression: Node): boolean {
+    const type = expression.getType();
+    // Data can have fields named like Zod internals; a schema also exposes a parser.
+    const parse = type.getProperty("parse")?.getTypeAtLocation(expression);
     return (
       type.getProperty("_input") !== undefined &&
-      (type.getProperty("_zod") !== undefined || type.getProperty("_def") !== undefined)
+      (type.getProperty("_zod") !== undefined || type.getProperty("_def") !== undefined) &&
+      (parse?.getCallSignatures().length ?? 0) > 0
     );
   }
 
