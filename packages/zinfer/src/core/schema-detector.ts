@@ -198,6 +198,24 @@ export class SchemaDetector {
     "properties",
   ]);
 
+  private static readonly ZOD_VALUE_METHODS = new Set([
+    "parse",
+    "parseAsync",
+    "safeParse",
+    "safeParseAsync",
+    "spa",
+    "decode",
+    "decodeAsync",
+    "safeDecode",
+    "safeDecodeAsync",
+    "encode",
+    "encodeAsync",
+    "safeEncode",
+    "safeEncodeAsync",
+    "validate",
+    "validateAsync",
+  ]);
+
   /**
    * Checks if a variable declaration is a Zod schema.
    *
@@ -232,13 +250,23 @@ export class SchemaDetector {
       ) {
         return true;
       }
-      // These methods can return ordinary values, so inspect the result before matching builders.
-      if (
-        Node.isPropertyAccessExpression(callee) &&
-        ["apply", "validate", "validateAsync"].includes(callee.getName())
-      ) {
-        const type = initializer.getType();
-        return type.getProperty("_zod") !== undefined && type.getProperty("_input") !== undefined;
+      if (Node.isPropertyAccessExpression(callee) || Node.isElementAccessExpression(callee)) {
+        const member = Node.isPropertyAccessExpression(callee)
+          ? callee.getNameNode()
+          : callee.getArgumentExpression();
+        const method = Node.isStringLiteral(member) ? member.getLiteralValue() : member?.getText();
+        // Parsed data can itself have every field of a schema, so check the operation first.
+        if (
+          method &&
+          SchemaDetector.ZOD_VALUE_METHODS.has(method) &&
+          this.hasSchemaType(callee.getExpression())
+        ) {
+          return false;
+        }
+        // A builder prefix does not imply that the final method returns a schema.
+        if (Node.isCallExpression(callee.getExpression())) {
+          return this.hasSchemaType(initializer);
+        }
       }
     }
 
@@ -264,7 +292,11 @@ export class SchemaDetector {
 
     // Detect method chains by their result type, including Zod 3 schemas.
     // Unrelated APIs with the same method names must not become schemas.
-    const type = initializer.getType();
+    return this.hasSchemaType(initializer);
+  }
+
+  private hasSchemaType(expression: Node): boolean {
+    const type = expression.getType();
     return (
       type.getProperty("_input") !== undefined &&
       (type.getProperty("_zod") !== undefined || type.getProperty("_def") !== undefined)

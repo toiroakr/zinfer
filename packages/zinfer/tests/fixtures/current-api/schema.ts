@@ -84,3 +84,15 @@ export const PropertyCheck = z
   .check(z.property("name", z.string().transform(Number)));
 export const Validated = z.string().validate("x");
 export const ValidatedAsync = z.string().validateAsync("x");
+
+export const Decoded = z.string().decode("x");
+export const Encoded = z.string().encode("x");
+export const SafeDecoded = z.string().safeDecode("x");
+export const SafeEncoded = z.string().safeEncode("x");
+export const DecodedAsync = z.string().decodeAsync("x");
+export const EncodedAsync = z.string().encodeAsync("x");
+export const SafeDecodedAsync = z.string().safeDecodeAsync("x");
+export const SafeEncodedAsync = z.string().safeEncodeAsync("x");
+export const Metadata = z.string().meta();
+export const WithMetadata = z.string().meta({ title: "Name" });
+export const JSONSchema = z.string().toJSONSchema();
