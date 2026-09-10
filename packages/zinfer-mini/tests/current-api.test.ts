@@ -29,6 +29,8 @@ it.skipIf(!("iban" in schemaLibrary))(
             "Factory",
             "AppliedValue",
             "Validation",
+            "Validated",
+            "ValidatedAsync",
             "Check",
             "TAG",
             "ClassicApplied",

@@ -232,8 +232,11 @@ export class SchemaDetector {
       ) {
         return true;
       }
-      // apply() can return arbitrary values, so inspect its result type.
-      if (Node.isPropertyAccessExpression(callee) && callee.getName() === "apply") {
+      // These methods can return ordinary values, so inspect the result before matching builders.
+      if (
+        Node.isPropertyAccessExpression(callee) &&
+        ["apply", "validate", "validateAsync"].includes(callee.getName())
+      ) {
         const type = initializer.getType();
         return type.getProperty("_zod") !== undefined && type.getProperty("_input") !== undefined;
       }

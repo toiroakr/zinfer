@@ -23,7 +23,18 @@ it.skipIf(!("iban" in schemaLibrary))(
     const expected = source
       .getVariableDeclarations()
       .map((declaration) => declaration.getName())
-      .filter((name) => !["Factory", "AppliedValue", "Validation", "Check", "TAG"].includes(name));
+      .filter(
+        (name) =>
+          ![
+            "Factory",
+            "AppliedValue",
+            "Validation",
+            "Validated",
+            "ValidatedAsync",
+            "Check",
+            "TAG",
+          ].includes(name),
+      );
     expect(project.formatDiagnosticsWithColorAndContext(project.getPreEmitDiagnostics())).toBe("");
     const results = new ZodTypeExtractor().extractAll(fixture);
     expect(

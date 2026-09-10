@@ -77,3 +77,10 @@ type __NormalizeValue = { user: string };
 export const UserJSONName = z.custom<__NormalizeJSON>();
 export const UserValueName = z.custom<__NormalizeValue>();
 export const ExactPartial = Compiled.exactPartial();
+
+export const InstanceProperties = z.instanceof(Date).properties({ tag: z.string() });
+export const PropertyCheck = z
+  .object({ name: z.string() })
+  .check(z.property("name", z.string().transform(Number)));
+export const Validated = z.string().validate("x");
+export const ValidatedAsync = z.string().validateAsync("x");

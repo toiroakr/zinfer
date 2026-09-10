@@ -84,3 +84,12 @@ export const ClassicAppliedFn = Fn.apply(() =>
   classic.function({ input: [classic.string()], output: classic.number() }),
 );
 export const AppliedFnValue = Fn.apply((fn) => fn.implement((value) => value.length));
+
+export const InstanceProperties = z
+  .instanceof(Date)
+  .check(...z.properties({ getTime: z.function({ input: [], output: z.number() }) }));
+export const PropertyCheck = z
+  .object({ name: z.string() })
+  .check(z.property("name", z.pipe(z.string(), z.transform(Number))));
+export const Validated = z.validate(z.string(), "x");
+export const ValidatedAsync = z.validateAsync(z.string(), "x");
