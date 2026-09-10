@@ -4,3 +4,6 @@ packages:
 allowBuilds:
   esbuild: true
   lefthook: true
+
+minimumReleaseAgeExclude:
+  - zod@4.6.1

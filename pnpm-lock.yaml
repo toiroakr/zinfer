@@ -251,8 +251,8 @@ importers:
         specifier: 4.1.11
         version: 4.1.11(@types/node@25.9.5)(vite@7.3.1(@types/node@25.9.5)(jiti@2.7.0)(yaml@2.9.0))
       zod:
-        specifier: 4.5.4
-        version: 4.5.4
+        specifier: 4.6.1
+        version: 4.6.1
 
   packages/zinfer-mini:
     dependencies:
@@ -2174,6 +2174,9 @@ packages:
   zod@4.5.4:
     resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
 
+  zod@4.6.1:
+    resolution: {integrity: sha512-341aRWQsve0rvronKNTqZpjmzdbUDlFuzHaI/XLg/Ej82qffDJRRfBTCuv7+9q/rMjB6LSLyEBnW4InJeMtt/Q==}
+
 snapshots:
 
   '@changesets/apply-release-plan@8.0.0':
@@ -3584,3 +3587,5 @@ snapshots:
       '@yuku-parser/binding-win32-x64': 0.9.4
 
   zod@4.5.4: {}
+
+  zod@4.6.1: {}

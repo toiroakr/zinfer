@@ -862,6 +862,23 @@ export class ZodTypeExtractor {
     let rawType = type.getText(typeAlias, this.typeTextFormatFlags());
     rawType = this.trimPrintedType(rawType);
 
+    // A computed symbol key needs its original identity. Refer to an exported
+    // schema's inferred type instead of emitting a dangling local value name.
+    if (
+      (typeName === "__TempInput" || typeName === "__TempOutput") &&
+      this.hasUnresolvableComputedKey(rawType, new Map())
+    ) {
+      const query = typeAlias.getFirstDescendantByKind(ts.SyntaxKind.TypeQuery);
+      const declaration = query && sourceFile.getVariableDeclaration(query.getExprName().getText());
+      if (declaration) {
+        for (const [exportName, declarations] of sourceFile.getExportedDeclarations()) {
+          if (!declarations.includes(declaration)) continue;
+          const kind = typeName === "__TempInput" ? "input" : "output";
+          return `import("zod").${kind}<typeof import("${this.modulePathFor(sourceFile)}").${exportName}>`;
+        }
+      }
+    }
+
     // The printer synthesizes `import("...")` references for named types
     // declared in another file that isn't otherwise visible at this print
     // location. It prints these already relative - but relative to this

@@ -14,5 +14,5 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["**/*.ts", "../fixtures/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "../fixtures/current-api"]
 }
