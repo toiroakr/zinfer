@@ -1,4 +1,4 @@
-import { SourceFile, VariableDeclaration } from "ts-morph";
+import { Node, SourceFile, VariableDeclaration } from "ts-morph";
 import { isEscaped } from "./string-scan.js";
 import type { DetectedSchema } from "./types.js";
 
@@ -128,6 +128,74 @@ export class SchemaDetector {
     "brand",
     "strictObject",
     "looseObject",
+    // Zod 4 schema constructors and schema-returning utilities.
+    "email",
+    "guid",
+    "uuid",
+    "uuidv4",
+    "uuidv6",
+    "uuidv7",
+    "url",
+    "httpUrl",
+    "emoji",
+    "nanoid",
+    "cuid",
+    "cuid2",
+    "ulid",
+    "xid",
+    "ksuid",
+    "ipv4",
+    "ipv6",
+    "cidrv4",
+    "cidrv6",
+    "mac",
+    "base64",
+    "base64url",
+    "e164",
+    "creditCard",
+    "iban",
+    "jwt",
+    "stringFormat",
+    "hostname",
+    "hex",
+    "hash",
+    "int",
+    "float32",
+    "float64",
+    "int32",
+    "uint32",
+    "int64",
+    "uint64",
+    "nan",
+    "file",
+    "templateLiteral",
+    "partialRecord",
+    "looseRecord",
+    "xor",
+    "keyof",
+    "exactOptional",
+    "nullish",
+    "nonoptional",
+    "success",
+    "readonly",
+    "_default",
+    "prefault",
+    "catch",
+    "transform",
+    "pipe",
+    "codec",
+    "invertCodec",
+    "stringbool",
+    "json",
+    "deepPartial",
+    "input",
+    "output",
+    "clone",
+    "compile",
+    "withParser",
+    "getDiscriminatedOption",
+    "fromJSONSchema",
+    "properties",
   ]);
 
   /**
@@ -155,6 +223,22 @@ export class SchemaDetector {
       return false;
     }
 
+    if (Node.isCallExpression(initializer)) {
+      const callee = initializer.getExpression();
+      // toZod<T>() is a factory; only its second call returns a schema.
+      if (
+        Node.isCallExpression(callee) &&
+        /^z\s*\.\s*toZod$/.test(callee.getExpression().getText())
+      ) {
+        return true;
+      }
+      // apply() can return arbitrary values, so inspect its result type.
+      if (Node.isPropertyAccessExpression(callee) && callee.getName() === "apply") {
+        const type = initializer.getType();
+        return type.getProperty("_zod") !== undefined && type.getProperty("_input") !== undefined;
+      }
+    }
+
     const initText = initializer.getText();
 
     // Check if it starts with z. followed by a known Zod schema builder.
@@ -165,34 +249,8 @@ export class SchemaDetector {
       return true;
     }
 
-    // Check if it's a method chain on another schema variable
-    // e.g., SomeSchema.pick({...}), SomeSchema.merge(...)
-    const zodMethods = [
-      ".pick(",
-      ".omit(",
-      ".partial(",
-      ".required(",
-      ".extend(",
-      ".merge(",
-      ".and(",
-      ".or(",
-      ".transform(",
-      ".refine(",
-      ".superRefine(",
-      ".default(",
-      ".optional(",
-      ".nullable(",
-      ".array(",
-      ".brand(",
-      ".deepPartial(",
-      ".describe(",
-      ".meta(",
-    ];
-
-    for (const method of zodMethods) {
-      if (initText.includes(method)) {
-        return true;
-      }
+    if (/^z\s*\.\s*iso\s*\.\s*(datetime|date|time|duration)\s*\(/.test(initText)) {
+      return true;
     }
 
     // Check for z.lazy() pattern (recursive schemas), tolerating
@@ -201,7 +259,13 @@ export class SchemaDetector {
       return true;
     }
 
-    return false;
+    // Detect method chains by their result type, including Zod 3 schemas.
+    // Unrelated APIs with the same method names must not become schemas.
+    const type = initializer.getType();
+    return (
+      type.getProperty("_input") !== undefined &&
+      (type.getProperty("_zod") !== undefined || type.getProperty("_def") !== undefined)
+    );
   }
 
   /**

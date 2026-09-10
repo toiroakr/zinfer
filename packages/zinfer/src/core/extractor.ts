@@ -316,6 +316,7 @@ export class ZodTypeExtractor {
 
       if (explicitType) {
         this.injectExplicitType(sourceFile, explicitType);
+        if (isExported) this.injectTemporaryTypes(sourceFile, declaredName);
         try {
           // Only suppress promotion when the annotation is "degenerate" -
           // explicitType resolves to exactly a single identifier that's
@@ -340,6 +341,26 @@ export class ZodTypeExtractor {
             context.inlineTypeReferences,
             !isDegenerateSelfReference,
           );
+          const inputAlias = isExported ? sourceFile.getTypeAlias("__TempInput") : undefined;
+          const hasSymbolInput =
+            inputAlias &&
+            this.hasUnresolvableComputedKey(
+              inputAlias.getType().getText(inputAlias, this.typeTextFormatFlags()),
+              new Map(),
+            );
+          if (
+            isExported &&
+            (hasSymbolInput || this.hasUnresolvableComputedKey(resolvedType, new Map()))
+          ) {
+            // Resolve each direction through the schema so symbol identity and
+            // distinct annotated input/output types are both preserved.
+            rawTypes.set(schemaName, {
+              input: this.resolveType(sourceFile, "__TempInput", context.inlineTypeReferences),
+              output: this.resolveType(sourceFile, "__TempOutput", context.inlineTypeReferences),
+              isExported,
+            });
+            continue;
+          }
           // A non-exported schema whose explicit annotation names a locally
           // declared type that recurses back to itself still needs a name
           // for its own recursion point (and every other same-file
@@ -358,6 +379,7 @@ export class ZodTypeExtractor {
           });
         } finally {
           this.cleanupExplicitType(sourceFile);
+          if (isExported) this.cleanupTemporaryTypes(sourceFile);
         }
         continue;
       }
@@ -861,6 +883,23 @@ export class ZodTypeExtractor {
     const type = typeAlias.getType();
     let rawType = type.getText(typeAlias, this.typeTextFormatFlags());
     rawType = this.trimPrintedType(rawType);
+
+    // A computed symbol key needs its original identity. Refer to an exported
+    // schema's inferred type instead of emitting a dangling local value name.
+    if (
+      (typeName === "__TempInput" || typeName === "__TempOutput") &&
+      this.hasUnresolvableComputedKey(rawType, new Map())
+    ) {
+      const query = typeAlias.getFirstDescendantByKind(ts.SyntaxKind.TypeQuery);
+      const declaration = query && sourceFile.getVariableDeclaration(query.getExprName().getText());
+      if (declaration) {
+        for (const [exportName, declarations] of sourceFile.getExportedDeclarations()) {
+          if (!declarations.includes(declaration)) continue;
+          const kind = typeName === "__TempInput" ? "input" : "output";
+          return `import("zod").${kind}<typeof import("${this.modulePathFor(sourceFile)}").${exportName}>`;
+        }
+      }
+    }
 
     // The printer synthesizes `import("...")` references for named types
     // declared in another file that isn't otherwise visible at this print

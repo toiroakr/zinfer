@@ -58,7 +58,7 @@
     "tsdown": "0.23.0",
     "typescript": "7.0.2",
     "vitest": "4.1.11",
-    "zod": "4.5.4"
+    "zod": "4.6.1"
   },
   "peerDependencies": {
     "typescript": ">=5.0.0",
