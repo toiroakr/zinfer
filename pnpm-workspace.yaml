@@ -6,4 +6,6 @@ allowBuilds:
   lefthook: true
 
 minimumReleaseAgeExclude:
-  - zod@4.6.1
+  - valibot
+  - zod
+  - "@zod/mini"

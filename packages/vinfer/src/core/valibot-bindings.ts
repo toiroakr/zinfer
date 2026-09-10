@@ -347,6 +347,7 @@ export const VALIBOT_TYPE_CHANGING_ACTIONS: ReadonlySet<string> = new Set([
   "readonly",
   "transform",
   "transformAsync",
+  "awaitAsync",
   "rawTransform",
   "rawTransformAsync",
   "args",
