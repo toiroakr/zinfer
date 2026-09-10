@@ -1,5 +1,3 @@
-export { NORMALIZE_TYPE_DEFINITION, createTempTypeAlias } from "./normalizer.js";
-
 export { ValibotTypeExtractor } from "./extractor.js";
 
 export {
@@ -22,8 +20,6 @@ export {
 } from "./type-printer.js";
 
 export { SchemaDetector } from "./schema-detector.js";
-
-export { ValibotBindings, VALIBOT_PRINTED_TYPE_NAMES } from "./valibot-bindings.js";
 
 export { NameMapper, createNameMapper } from "./name-mapper.js";
 
@@ -57,5 +53,4 @@ export type {
   OutputOptions,
   GeneratedFile,
   DeclarationOptions,
-  FieldDescription,
 } from "./types.js";

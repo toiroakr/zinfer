@@ -282,8 +282,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       '@zod/mini':
-        specifier: 4.5.4
-        version: 4.5.4(zod@4.5.4)
+        specifier: 4.6.1
+        version: 4.6.1(zod@4.6.1)
       knip:
         specifier: 6.34.0
         version: 6.34.0
@@ -303,8 +303,8 @@ importers:
         specifier: 4.1.11
         version: 4.1.11(@types/node@25.9.5)(vite@7.3.1(@types/node@25.9.5)(jiti@2.7.0)(yaml@2.9.0))
       zod:
-        specifier: 4.5.4
-        version: 4.5.4
+        specifier: 4.6.1
+        version: 4.6.1
 
 packages:
 
@@ -1634,10 +1634,10 @@ packages:
   '@yuku-toolchain/types@0.9.4':
     resolution: {integrity: sha512-dqnMswJWE7YBbPEvGstgFlWFTRn20V/Hu82XTDjWxzaU18rGpxBqxhKlBlgyWrPARRvNLIqY2XA6S9edR+2AsA==}
 
-  '@zod/mini@4.5.4':
-    resolution: {integrity: sha512-/LFQsBM2q92NTOozWQRmun1NfqMDEiNVf52P0znYSHItcyr7HzFW5hJC1y8+x2o0A3D4PZilwoP8DfJ5f5QTiQ==}
+  '@zod/mini@4.6.1':
+    resolution: {integrity: sha512-B6F4Af6/d0JLKF+bs+1fYL8nWHO9i21E//t95omWrgqrXVIBuhl2+SLQZ8rsZSoCyfpqvAF5y6H3TLRYFL+hPA==}
     peerDependencies:
-      zod: ^4.5.0
+      zod: ^4.6.0
 
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
@@ -2173,6 +2173,9 @@ packages:
 
   zod@4.5.4:
     resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
+
+  zod@4.6.1:
+    resolution: {integrity: sha512-341aRWQsve0rvronKNTqZpjmzdbUDlFuzHaI/XLg/Ej82qffDJRRfBTCuv7+9q/rMjB6LSLyEBnW4InJeMtt/Q==}
 
 snapshots:
 
@@ -3006,9 +3009,9 @@ snapshots:
 
   '@yuku-toolchain/types@0.9.4': {}
 
-  '@zod/mini@4.5.4(zod@4.5.4)':
+  '@zod/mini@4.6.1(zod@4.6.1)':
     dependencies:
-      zod: 4.5.4
+      zod: 4.6.1
 
   assertion-error@2.0.1: {}
 
@@ -3584,3 +3587,5 @@ snapshots:
       '@yuku-parser/binding-win32-x64': 0.9.4
 
   zod@4.5.4: {}
+
+  zod@4.6.1: {}
