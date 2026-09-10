@@ -6,6 +6,7 @@ import {
   Project,
   type SourceFile,
   type Type,
+  ts,
 } from "ts-morph";
 
 // These are implementation utilities or duplicate entry points, rather than schema APIs.
@@ -30,6 +31,19 @@ export function collectSurface(source: SourceFile): string {
     throw new Error("Cannot inspect an unresolved or empty library API");
   }
 
+  const checker = source.getProject().getTypeChecker().compilerObject;
+  function signatures(type: Type): string[] {
+    return [...type.getCallSignatures(), ...type.getConstructSignatures()].map((signature) => {
+      // Record the public declaration, not every instantiation of an inherited generic method.
+      const declared = checker.getSignatureFromDeclaration(signature.getDeclaration().compilerNode);
+      return checker.signatureToString(
+        declared ?? signature.compilerSignature,
+        undefined,
+        ts.TypeFormatFlags.NoTruncation,
+      );
+    });
+  }
+
   const exports: string[] = [];
   function visit(type: Type, prefix: string, ancestors: Set<Type>): void {
     for (const property of type.getProperties()) {
@@ -47,7 +61,11 @@ export function collectSurface(source: SourceFile): string {
           : value.getConstructSignatures().length
             ? "constructor"
             : "value";
-        exports.push(`${name}: ${kind}`);
+        exports.push(
+          `${name}: ${kind}${signatures(value)
+            .map((signature) => `\n  ${signature}`)
+            .join("")}`,
+        );
       }
     }
   }
@@ -64,10 +82,12 @@ export function collectSurface(source: SourceFile): string {
       .map(
         (property) =>
           property.getName() +
-          (property.getTypeAtLocation(source).getCallSignatures().length ? "()" : ""),
+          signatures(property.getTypeAtLocation(source))
+            .map((signature) => `: ${signature}`)
+            .join(" | "),
       )
       .sort();
-    const key = names.join(", ");
+    const key = names.join("\n  ");
     members.set(key, [...(members.get(key) ?? []), symbol.getName()]);
   }
   const groups = [...members]

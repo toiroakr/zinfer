@@ -32,7 +32,7 @@ describe("upstream API inventory", () => {
     const original = baseline + "export interface Child extends Schema { shape: {}; }";
     const changed = original + "export interface Schema { exactPartial(): Schema; }";
     expect(surface(changed)).not.toBe(surface(original));
-    expect(surface(changed)).toContain("exactPartial()");
+    expect(surface(changed)).toContain("exactPartial: (): Schema");
     expect(surface(changed)).toContain("shape");
   });
 
@@ -49,6 +49,38 @@ describe("upstream API inventory", () => {
       surface(baseline),
     );
     expect(surface("export const string = 1;")).toContain("string: value");
+  });
+
+  test("detects parameter, optionality, generic, and return-type changes", () => {
+    const original = "export declare function transform<T>(value: T): T;";
+    for (const changed of [
+      "export declare function transform<T>(value: string): T;",
+      "export declare function transform<T>(value?: T): T;",
+      "export declare function transform<T extends string>(value: T): T;",
+      "export declare function transform<T>(value: T): Promise<T>;",
+    ]) {
+      expect(surface(changed)).not.toBe(surface(original));
+    }
+  });
+
+  test("detects overload-only changes", () => {
+    const original = "export declare function parse(value: string): string;";
+    expect(surface(original + "export declare function parse(value: number): number;")).not.toBe(
+      surface(original),
+    );
+  });
+
+  test("detects inherited method signature changes", () => {
+    const original = baseline + "export interface Child extends Schema {}";
+    expect(
+      surface(original.replace("parse(value: unknown): string", "parse(value: unknown): number")),
+    ).not.toBe(surface(original));
+  });
+
+  test("detects constructor signature changes", () => {
+    expect(surface("export declare class Schema { constructor(value: string); }")).not.toBe(
+      surface("export declare class Schema { constructor(value: number); }"),
+    );
   });
 
   test("is stable across declaration order and comments", () => {

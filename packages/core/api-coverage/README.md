@@ -12,11 +12,12 @@ Both `zod/mini` and the `@zod/mini` package are checked against the Mini baselin
 The `.txt` baselines record:
 
 - Runtime export names, including aliases, and whether they are callable,
-  constructors, values, or namespaces.
+  constructors, values, or namespaces. Declared call/construct signatures record
+  parameters, optionality, generics, overloads (in order), and return types.
 - Namespace members such as `iso.datetime` and `coerce.string`, including newly
   exported namespaces.
 - Public members of exported schema/action types, including inherited members.
-  Identical member sets are grouped to keep the baseline readable.
+  Their declared callable signatures are recorded too. Identical member sets are grouped to keep the baseline readable.
 
 Zod's `core`, `util`, `regexes`, and `locales` namespace contents are excluded as
 implementation/utility APIs. The duplicate `z` and `default` namespaces are also
@@ -41,8 +42,10 @@ members beginning with `_`, `$`, or `~` are omitted.
 
 Updating a snapshot alone does not establish support. The initial baselines record
 main's installed API surface; they do not certify that every existing API is
-supported. Signature-only changes, behavioral changes, type-only utility exports,
-and APIs inside excluded namespaces are not detected by this inventory. Generated
+supported. Behavioral changes, changes inside referenced type aliases, type-only
+utility exports, and APIs inside excluded namespaces are not detected by this inventory.
+Inherited generic methods are recorded as declared, rather than repeated for every
+instantiation of their type parameters. Generated
 input/output type tests remain necessary for those cases.
 
 The guard deliberately runs separately from the peer-floor suite: an older supported
@@ -54,5 +57,5 @@ update is required to inspect a newly published version; this check does not pol
 
 `pnpm --filter @zinfer-monorepo/core test` includes synthetic upstream changes that
 exercise new builders, aliases, namespace APIs, inherited methods, removals, and
-module-resolution failures. `pnpm test:api` fails on missing baselines as well as
+signature changes, and module-resolution failures. `pnpm test:api` fails on missing baselines as well as
 differences; snapshots are only written with an explicit `--update`.

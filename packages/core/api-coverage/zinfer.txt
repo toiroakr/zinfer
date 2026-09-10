@@ -5,334 +5,1673 @@ $output: value
 NEVER: value
 TimePrecision: value
 ZodAny: constructor
+  (def: D): T
 ZodArray: constructor
+  (def: D): T
 ZodBase64: constructor
+  (def: D): T
 ZodBase64URL: constructor
+  (def: D): T
 ZodBigInt: constructor
+  (def: D): T
 ZodBigIntFormat: constructor
+  (def: D): T
 ZodBoolean: constructor
+  (def: D): T
 ZodCIDRv4: constructor
+  (def: D): T
 ZodCIDRv6: constructor
+  (def: D): T
 ZodCUID2: constructor
+  (def: D): T
 ZodCUID: constructor
+  (def: D): T
 ZodCatch: constructor
+  (def: D): T
 ZodCodec: constructor
+  (def: D): T
 ZodCompileAsyncError: constructor
+  (message?: string | undefined): ZodCompileAsyncError
 ZodCompileUnsupportedError: constructor
+  (feature: string, islandable?: boolean | undefined): ZodCompileUnsupportedError
 ZodCreditCard: constructor
+  (def: D): T
 ZodCustom: constructor
+  (def: D): T
 ZodCustomStringFormat: constructor
+  (def: D): T
 ZodDate: constructor
+  (def: D): T
 ZodDefault: constructor
+  (def: D): T
 ZodDiscriminatedUnion: constructor
+  (def: D): T
 ZodE164: constructor
+  (def: D): T
 ZodEmail: constructor
+  (def: D): T
 ZodEmoji: constructor
+  (def: D): T
 ZodEnum: constructor
+  (def: D): T
 ZodError: constructor
+  (def: D): T
 ZodExactOptional: constructor
+  (def: D): T
 ZodFile: constructor
+  (def: D): T
 ZodFirstPartyTypeKind: value
 ZodFunction: constructor
+  (def: D): T
 ZodGUID: constructor
+  (def: D): T
 ZodIPv4: constructor
+  (def: D): T
 ZodIPv6: constructor
+  (def: D): T
 ZodISODate: constructor
+  (def: D): T
 ZodISODateTime: constructor
+  (def: D): T
 ZodISODuration: constructor
+  (def: D): T
 ZodISOTime: constructor
+  (def: D): T
 ZodIntersection: constructor
+  (def: D): T
 ZodIssueCode: value
 ZodJWT: constructor
+  (def: D): T
 ZodKSUID: constructor
+  (def: D): T
 ZodLazy: constructor
+  (def: D): T
 ZodLiteral: constructor
+  (def: D): T
 ZodMAC: constructor
+  (def: D): T
 ZodMap: constructor
+  (def: D): T
 ZodNaN: constructor
+  (def: D): T
 ZodNanoID: constructor
+  (def: D): T
 ZodNever: constructor
+  (def: D): T
 ZodNonOptional: constructor
+  (def: D): T
 ZodNull: constructor
+  (def: D): T
 ZodNullable: constructor
+  (def: D): T
 ZodNumber: constructor
+  (def: D): T
 ZodNumberFormat: constructor
+  (def: D): T
 ZodObject: constructor
+  (def: D): T
 ZodOptional: constructor
+  (def: D): T
 ZodPipe: constructor
+  (def: D): T
 ZodPrefault: constructor
+  (def: D): T
 ZodPreprocess: constructor
+  (def: D): T
 ZodPromise: constructor
+  (def: D): T
 ZodReadonly: constructor
+  (def: D): T
 ZodRealError: constructor
+  (def: D): T
 ZodRecord: constructor
+  (def: D): T
 ZodSet: constructor
+  (def: D): T
 ZodString: constructor
+  (def: D): T
 ZodStringFormat: constructor
+  (def: D): T
 ZodSuccess: constructor
+  (def: D): T
 ZodSymbol: constructor
+  (def: D): T
 ZodTemplateLiteral: constructor
+  (def: D): T
 ZodTransform: constructor
+  (def: D): T
 ZodTuple: constructor
+  (def: D): T
 ZodType: constructor
+  (def: D): T
 ZodULID: constructor
+  (def: D): T
 ZodURL: constructor
+  (def: D): T
 ZodUUID: constructor
+  (def: D): T
 ZodUndefined: constructor
+  (def: D): T
 ZodUnion: constructor
+  (def: D): T
 ZodUnknown: constructor
+  (def: D): T
 ZodVoid: constructor
+  (def: D): T
 ZodXID: constructor
+  (def: D): T
 ZodXor: constructor
+  (def: D): T
 _ZodString: constructor
+  (def: D): T
 _default: callable
+  <T extends core.SomeType>(innerType: T, defaultValue: NoUndefined<output<T>> | (() => NoUndefined<output<T>>)): ZodDefault<T>
 _function: callable
+  (): ZodFunction<$ZodFunctionArgs, $ZodFunctionOut>
+  <const In extends ReadonlyArray<core.$ZodType>>(params: { input: In; }): ZodFunction<ZodTuple<In, null>, $ZodFunctionOut>
+  <const In extends ReadonlyArray<core.$ZodType>, const Out extends core.$ZodFunctionOut = $ZodFunctionOut>(params: { input: In; output: Out; }): ZodFunction<ZodTuple<In, null>, Out>
+  <const In extends core.$ZodFunctionIn = $ZodFunctionArgs>(params: { input: In; }): ZodFunction<In, $ZodFunctionOut>
+  <const Out extends core.$ZodFunctionOut = $ZodFunctionOut>(params: { output: Out; }): ZodFunction<$ZodFunctionArgs, Out>
+  <In extends core.$ZodFunctionIn = $ZodFunctionArgs, Out extends core.$ZodType = $ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>>(params?: { input: In; output: Out; } | undefined): ZodFunction<In, Out>
 any: callable
+  (): ZodAny
 array: callable
+  <T extends core.SomeType>(element: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodArray<T>
 base64: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodBase64
 base64url: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodBase64URL
 bigint: callable
+  (params?: string | { coerce?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodBigInt
 boolean: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodBoolean
 catch: callable
+  <T extends core.SomeType>(innerType: T, catchValue: output<T> | ((ctx: $ZodCatchCtx) => output<T>)): ZodCatch<T>
 check: callable
+  <O = unknown>(fn: CheckFn<O>): $ZodCheck<O>
 cidrv4: callable
+  (params?: string | { abort?: boolean | undefined; version?: "v4" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodCIDRv4
 cidrv6: callable
+  (params?: string | { abort?: boolean | undefined; version?: "v6" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodCIDRv6
 clone: callable
+  <T extends schemas.$ZodType>(inst: T, def?: T["_zod"]["def"] | undefined, params?: { parent: boolean; } | undefined): T
 codec: callable
+  <const A extends core.SomeType, B extends core.SomeType = $ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>>(in_: A, out: B, params: { decode: (value: output<A>, payload: ParsePayload<output<A>>) => MaybeAsync<input<B>>; encode: (value: input<B>, payload: ParsePayload<input<B>>) => MaybeAsync<output<A>>; }): ZodCodec<A, B>
 coerce.bigint: callable
+  <T = unknown>(params?: string | { coerce?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodCoercedBigInt<T>
 coerce.boolean: callable
+  <T = unknown>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodCoercedBoolean<T>
 coerce.date: callable
+  <T = unknown>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodCoercedDate<T>
 coerce.number: callable
+  <T = unknown>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodCoercedNumber<T>
 coerce.string: callable
+  <T = unknown>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodCoercedString<T>
 coerce: namespace
 compile: callable
+  <T extends SomeType>(schema: T, options?: CompileOptions | undefined): T
 config: callable
+  (newConfig?: Partial<$ZodConfig> | undefined): $ZodConfig
 core: namespace (excluded)
 creditCard: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodCreditCard
 cuid2: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodCUID2
 cuid: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodCUID
 custom: callable
+  <O>(fn?: ((data: unknown) => unknown) | undefined, _params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): ZodCustom<O, O>
 date: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodDate
 decode: callable
+  <T extends core.$ZodType>(schema: T, value: input<T>, _ctx?: ParseContext<$ZodIssue> | undefined, _params?: { callee?: AnyFunc | undefined; Err?: $ZodErrorClass | undefined; } | undefined): output<T>
 decodeAsync: callable
+  <T extends core.$ZodType>(schema: T, value: input<T>, _ctx?: ParseContext<$ZodIssue> | undefined, _params?: { callee?: AnyFunc | undefined; Err?: $ZodErrorClass | undefined; } | undefined): Promise<output<T>>
 deepPartial: callable
+  <T extends core.SomeType>(schema: T): DeepPartial<T>
 default: namespace (excluded)
 describe: callable
+  <T>(description: string): $ZodCheck<T>
 discriminatedUnion: callable
+  <Types extends readonly [core.$ZodTypeDiscriminable, ...core.$ZodTypeDiscriminable[]], Disc extends string>(discriminator: Disc, options: Types, params?: string | { inclusive?: boolean | undefined; unionFallback?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidUnion>> | undefined; message?: string | undefined; } | undefined): ZodDiscriminatedUnion<Types, Disc>
 e164: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodE164
 email: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodEmail
 emoji: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodEmoji
 encode: callable
+  <T extends core.$ZodType>(schema: T, value: output<T>, _ctx?: ParseContext<$ZodIssue> | undefined, _params?: { callee?: AnyFunc | undefined; Err?: $ZodErrorClass | undefined; } | undefined): input<T>
 encodeAsync: callable
+  <T extends core.$ZodType>(schema: T, value: output<T>, _ctx?: ParseContext<$ZodIssue> | undefined, _params?: { callee?: AnyFunc | undefined; Err?: $ZodErrorClass | undefined; } | undefined): Promise<input<T>>
 endsWith: callable
+  (suffix: string, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): $ZodCheckEndsWith
 enum: callable
+  <const T extends readonly string[]>(values: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<{ [k in keyof { [k in T[number]]: k; }]: { [k in T[number]]: k; }[k]; }>
+  <const T extends util.EnumLike>(entries: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<T>
 exactOptional: callable
+  <T extends core.SomeType>(innerType: T): ZodExactOptional<T>
 file: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodFile
 flattenError: callable
+  <T>(error: $ZodError<T>): _FlattenedError<T, string>
+  <T, U>(error: $ZodError<T>, mapper?: ((issue: $ZodIssue) => U) | undefined): _FlattenedError<T, U>
 float32: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"number"> | $ZodIssueTooSmall<"number">>> | undefined; message?: string | undefined; } | undefined): ZodFloat32
 float64: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"number"> | $ZodIssueTooSmall<"number">>> | undefined; message?: string | undefined; } | undefined): ZodFloat64
 formatError: callable
+  <T>(error: $ZodError<T>): $ZodFormattedError<T, string>
+  <T, U>(error: $ZodError<T>, mapper?: ((issue: $ZodIssue) => U) | undefined): $ZodFormattedError<T, U>
 fromJSONSchema: callable
+  (schema: boolean | JSONSchema, params?: FromJSONSchemaParams | undefined): ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>
 function: callable
+  (): ZodFunction<$ZodFunctionArgs, $ZodFunctionOut>
+  <const In extends ReadonlyArray<core.$ZodType>>(params: { input: In; }): ZodFunction<ZodTuple<In, null>, $ZodFunctionOut>
+  <const In extends ReadonlyArray<core.$ZodType>, const Out extends core.$ZodFunctionOut = $ZodFunctionOut>(params: { input: In; output: Out; }): ZodFunction<ZodTuple<In, null>, Out>
+  <const In extends core.$ZodFunctionIn = $ZodFunctionArgs>(params: { input: In; }): ZodFunction<In, $ZodFunctionOut>
+  <const Out extends core.$ZodFunctionOut = $ZodFunctionOut>(params: { output: Out; }): ZodFunction<$ZodFunctionArgs, Out>
+  <In extends core.$ZodFunctionIn = $ZodFunctionArgs, Out extends core.$ZodType = $ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>>(params?: { input: In; output: Out; } | undefined): ZodFunction<In, Out>
 getDiscriminatedOption: callable
+  <Options extends readonly SomeType[], Disc extends string, const V extends $DiscriminatorValue<Options, Disc>>(union: $ZodDiscriminatedUnion<Options, Disc>, value: V): $DiscriminatedOption<Options, Disc, V>
 getErrorMap: callable
+  (): $ZodErrorMap<$ZodIssue> | undefined
 globalRegistry: value
 gt: callable
+  (value: Numeric, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckGreaterThan<Numeric>
 gte: callable
+  (value: Numeric, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckGreaterThan<Numeric>
 guid: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodGUID
 hash: callable
+  <Alg extends util.HashAlgorithm, Enc extends util.HashEncoding = "hex">(alg: Alg, params?: ({ enc?: Enc | undefined; } & { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; }) | undefined): ZodCustomStringFormat<`${Alg}_${Enc}`>
 hex: callable
+  (_params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodCustomStringFormat<"hex">
 hostname: callable
+  (_params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodCustomStringFormat<"hostname">
 httpUrl: callable
+  (params?: string | Omit<{ abort?: boolean | undefined; pattern?: RegExp | undefined; hostname?: RegExp | undefined; protocol?: RegExp | undefined; normalize?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; }, "hostname" | "protocol"> | undefined): ZodURL
 includes: callable
+  (includes: string, params?: string | { abort?: boolean | undefined; position?: number | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): $ZodCheckIncludes
 input: callable
+  <T extends core.$ZodType>(schema: T): ZodType<input<T>, input<T>, $ZodTypeInternals<input<T>, input<T>>>
 instanceof: callable
+  <T extends typeof util.Class>(cls: T, params?: { when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; error?: string | $ZodErrorMap<$ZodIssueCustom> | undefined; message?: string | undefined; } | undefined): ZodCustom<InstanceType<T>, InstanceType<T>>
 int32: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"number"> | $ZodIssueTooSmall<"number">>> | undefined; message?: string | undefined; } | undefined): ZodInt32
 int64: callable
+  (params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"bigint"> | $ZodIssueTooSmall<"bigint">>> | undefined; message?: string | undefined; } | undefined): ZodInt64
 int: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"number"> | $ZodIssueTooSmall<"number">>> | undefined; message?: string | undefined; } | undefined): ZodInt
 intersection: callable
+  <T extends core.SomeType, U extends core.SomeType>(left: T, right: U): ZodIntersection<T, U>
 invertCodec: callable
+  <A extends core.SomeType, B extends core.SomeType>(codec: ZodCodec<A, B>): ZodCodec<B, A>
 ipv4: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodIPv4
 ipv6: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodIPv6
 iso.ZodISODate: constructor
+  (def: D): T
 iso.ZodISODateTime: constructor
+  (def: D): T
 iso.ZodISODuration: constructor
+  (def: D): T
 iso.ZodISOTime: constructor
+  (def: D): T
 iso.date: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodISODate
 iso.datetime: callable
+  (params?: string | { abort?: boolean | undefined; precision?: number | null | undefined; offset?: boolean | undefined; local?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodISODateTime
 iso.duration: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodISODuration
 iso.time: callable
+  (params?: string | { abort?: boolean | undefined; precision?: number | null | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodISOTime
 iso: namespace
 json: callable
+  (params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): ZodJSONSchema
 jwt: callable
+  (params?: string | { abort?: boolean | undefined; alg?: JWTAlgorithm | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodJWT
 keyof: callable
+  <T extends ZodObject>(schema: T): ZodEnum<{ [k in keyof { [k in Exclude<keyof T["_zod"]["output"], symbol>]: k; }]: { [k in Exclude<keyof T["_zod"]["output"], symbol>]: k; }[k]; }>
 ksuid: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodKSUID
 lazy: callable
+  <T extends core.SomeType>(getter: () => T): ZodLazy<T>
 length: callable
+  (length: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueTooBig<HasLength> | $ZodIssueTooSmall<HasLength>>> | undefined; message?: string | undefined; } | undefined): $ZodCheckLengthEquals<HasLength>
 literal: callable
+  <const T extends ReadonlyArray<util.Literal>>(value: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodLiteral<T[number]>
+  <const T extends util.Literal>(value: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodLiteral<T>
 locales: namespace (excluded)
 looseObject: callable
+  <T extends core.$ZodLooseShape>(shape: T, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueUnrecognizedKeys | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodObject<{ -readonly [P in keyof T]: T[P]; }, $loose>
 looseRecord: callable
+  <Key extends core.$ZodRecordKey, Value extends core.SomeType>(keyType: Key, valueType: Value, params?: string | { mode?: "strict" | "loose" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueInvalidKey<Record<PropertyKey, unknown>>>> | undefined; message?: string | undefined; } | undefined): ZodRecord<Key, Value>
 lowercase: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): $ZodCheckLowerCase
 lt: callable
+  (value: Numeric, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckLessThan<Numeric>
 lte: callable
+  (value: Numeric, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckLessThan<Numeric>
 mac: callable
+  (params?: string | { abort?: boolean | undefined; delimiter?: string | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMAC
 map: callable
+  <Key extends core.SomeType, Value extends core.SomeType>(keyType: Key, valueType: Value, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueInvalidKey<unknown> | $ZodIssueInvalidElement<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodMap<Key, Value>
 maxLength: callable
+  (maximum: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<HasLength>> | undefined; message?: string | undefined; } | undefined): $ZodCheckMaxLength<HasLength>
 maxSize: callable
+  (maximum: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<HasSize>> | undefined; message?: string | undefined; } | undefined): $ZodCheckMaxSize<HasSize>
 memoizer: callable
+  (): $ZodMemoizer
 meta: callable
+  <T>(metadata: GlobalMeta): $ZodCheck<T>
 mime: callable
+  (types: MimeTypes[], params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): $ZodCheckMimeType<File>
 minLength: callable
+  (minimum: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasLength>> | undefined; message?: string | undefined; } | undefined): $ZodCheckMinLength<HasLength>
 minSize: callable
+  (minimum: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasSize>> | undefined; message?: string | undefined; } | undefined): $ZodCheckMinSize<HasSize>
 multipleOf: callable
+  (value: number | bigint, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueNotMultipleOf<number | bigint>> | undefined; message?: string | undefined; } | undefined): $ZodCheckMultipleOf<number | bigint>
 nan: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNaN
 nanoid: callable
+  (params?: string | { length?: number | undefined; abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodNanoID
 nativeEnum: callable
+  <T extends util.EnumLike>(entries: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<T>
 negative: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckLessThan<Numeric>
 never: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNever
 nonnegative: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckGreaterThan<Numeric>
 nonoptional: callable
+  <T extends core.SomeType>(innerType: T, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<T>
 nonpositive: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckLessThan<Numeric>
 normalize: callable
+  (form?: (string & {}) | "NFC" | "NFD" | "NFKC" | "NFKD" | undefined): $ZodCheckOverwrite<string>
 null: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNull
 nullable: callable
+  <T extends core.SomeType>(innerType: T): ZodNullable<T>
 nullish: callable
+  <T extends core.SomeType>(innerType: T): ZodOptional<ZodNullable<T>>
 number: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNumber
 object: callable
+  <T extends core.$ZodLooseShape = Partial<Record<never, SomeType>>>(shape?: T | undefined, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueUnrecognizedKeys | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodObject<{ -readonly [P in keyof T]: T[P]; }, $strip>
 optional: callable
+  <T extends core.SomeType>(innerType: T): ZodOptional<T>
 output: callable
+  <T extends core.$ZodType>(schema: T): ZodType<output<T>, output<T>, $ZodTypeInternals<output<T>, output<T>>>
 overwrite: callable
+  <T>(tx: (input: T) => T): $ZodCheckOverwrite<T>
 parse: callable
+  <T extends core.$ZodType>(schema: T, value: unknown, _ctx?: ParseContext<$ZodIssue> | undefined, _params?: { callee?: AnyFunc | undefined; Err?: $ZodErrorClass | undefined; } | undefined): output<T>
 parseAsync: callable
+  <T extends core.$ZodType>(schema: T, value: unknown, _ctx?: ParseContext<$ZodIssue> | undefined, _params?: { callee?: AnyFunc | undefined; Err?: $ZodErrorClass | undefined; } | undefined): Promise<output<T>>
 partialRecord: callable
+  <Key extends core.$ZodRecordKey, Value extends core.SomeType>(keyType: Key, valueType: Value, params?: string | { mode?: "strict" | "loose" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueInvalidKey<Record<PropertyKey, unknown>>>> | undefined; message?: string | undefined; } | undefined): ZodRecord<Key & $partial, Value>
 pipe: callable
+  <const A extends core.SomeType, B extends core.$ZodType<unknown, core.output<A>> = $ZodType<unknown, output<A>, $ZodTypeInternals<unknown, output<A>>>>(in_: A, out: B | $ZodType<unknown, output<A>, $ZodTypeInternals<unknown, output<A>>>): ZodPipe<A, B>
 positive: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): $ZodCheckGreaterThan<Numeric>
 prefault: callable
+  <T extends core.SomeType>(innerType: T, defaultValue: input<T> | (() => input<T>)): ZodPrefault<T>
 preprocess: callable
+  <A, U extends core.SomeType, B = unknown>(fn: (arg: B, ctx: $RefinementCtx<unknown>) => A, schema: U): ZodPreprocess<U, B>
 prettifyError: callable
+  (error: FailureResult): string
 promise: callable
+  <T extends core.SomeType>(innerType: T): ZodPromise<T>
 properties: callable
+  <Shape extends schemas.$ZodShape>(shape: Shape): $ZodCheckProperty<{ -readonly [k in keyof Shape]: output<Shape[k]>; }>[]
 property: callable
+  <K extends string, T extends schemas.$ZodType>(property: K, schema: T, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): $ZodCheckProperty<{ [k in K]: output<T>; }>
 readonly: callable
+  <T extends core.SomeType>(innerType: T): ZodReadonly<T>
 record: callable
+  <Key extends core.$ZodRecordKey, Value extends core.SomeType>(keyType: Key, valueType: Value, params?: string | { mode?: "strict" | "loose" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueInvalidKey<Record<PropertyKey, unknown>>>> | undefined; message?: string | undefined; } | undefined): ZodRecord<Key, Value>
 refine: callable
+  <T>(fn: (arg: NoInfer<T>) => unknown, _params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): $ZodCheck<T>
 regex: callable
+  (pattern: RegExp, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): $ZodCheckRegex
 regexes: namespace (excluded)
 registry: callable
+  <T extends MetadataType = MetadataType, S extends $ZodType = $ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>>(): $ZodRegistry<T, S>
 safeDecode: callable
+  <T extends core.$ZodType>(schema: T, value: input<T>, _ctx?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<T>>
 safeDecodeAsync: callable
+  <T extends core.$ZodType>(schema: T, value: input<T>, _ctx?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<T>>>
 safeEncode: callable
+  <T extends core.$ZodType>(schema: T, value: output<T>, _ctx?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<T>>
 safeEncodeAsync: callable
+  <T extends core.$ZodType>(schema: T, value: output<T>, _ctx?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<T>>>
 safeParse: callable
+  <T extends core.$ZodType>(schema: T, value: unknown, _ctx?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<T>>
 safeParseAsync: callable
+  <T extends core.$ZodType>(schema: T, value: unknown, _ctx?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<T>>>
 set: callable
+  <Value extends core.SomeType>(valueType: Value, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodSet<Value>
 setErrorMap: callable
+  (map: $ZodErrorMap<$ZodIssue>): void
 size: callable
+  (size: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueTooBig<HasSize> | $ZodIssueTooSmall<HasSize>>> | undefined; message?: string | undefined; } | undefined): $ZodCheckSizeEquals<HasSize>
 slugify: callable
+  (): $ZodCheckOverwrite<string>
 startsWith: callable
+  (prefix: string, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): $ZodCheckStartsWith
 strictObject: callable
+  <T extends core.$ZodLooseShape>(shape: T, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueUnrecognizedKeys | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodObject<{ -readonly [P in keyof T]: T[P]; }, $strict>
 string: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodString
+  <T extends string>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): $ZodType<T, T, $ZodTypeInternals<T, T>>
 stringFormat: callable
+  <Format extends string>(format: Format, fnOrRegex: RegExp | ((arg: string) => unknown), _params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodCustomStringFormat<Format>
 stringbool: callable
+  (_params?: string | $ZodStringBoolParams | undefined): ZodCodec<ZodString, ZodBoolean>
 success: callable
+  <T extends core.SomeType>(innerType: T): ZodSuccess<T>
 superRefine: callable
+  <T>(fn: (arg: T, payload: $RefinementCtx<T>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): $ZodCheck<T>
 symbol: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodSymbol
 templateLiteral: callable
+  <const Parts extends core.$ZodTemplateLiteralPart[]>(parts: Parts, params?: string | { format?: string | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodTemplateLiteral<$PartsToTemplateLiteral<Parts>>
 toJSONSchema: callable
+  <T extends schemas.$ZodType>(schema: T, params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<T>
+  (registry: $ZodRegistry<{ id?: string | undefined; }, $ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>>, params?: RegistryToJSONSchemaParams | undefined): { schemas: Record<string, ZodStandardJSONSchemaPayload<$ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>>>; }
 toLowerCase: callable
+  (): $ZodCheckOverwrite<string>
 toUpperCase: callable
+  (): $ZodCheckOverwrite<string>
 toZod: callable
+  <T>(): <S extends schemas.$ZodType>(schema: AssertEqual<S["_zod"]["output"], T> extends true ? S : ToZodTarget<S, T>) => S
 transform: callable
+  <I = unknown, O = I>(fn: (input: I, ctx: $RefinementCtx<unknown>) => O): ZodTransform<Awaited<O>, I>
 treeifyError: callable
+  <T>(error: $ZodError<T>): $ZodErrorTree<T, string>
+  <T, U>(error: $ZodError<T>, mapper?: ((issue: $ZodIssue) => U) | undefined): $ZodErrorTree<T, U>
 trim: callable
+  (): $ZodCheckOverwrite<string>
 tuple: callable
+  <T extends readonly [core.SomeType, ...core.SomeType[]]>(items: T, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<unknown[]> | $ZodIssueTooSmall<unknown[]>>> | undefined; message?: string | undefined; } | undefined): ZodTuple<T, null>
+  <T extends readonly [core.SomeType, ...core.SomeType[]], Rest extends core.SomeType>(items: T, rest: Rest, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<unknown[]> | $ZodIssueTooSmall<unknown[]>>> | undefined; message?: string | undefined; } | undefined): ZodTuple<T, Rest>
+  (items: [], params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<unknown[]> | $ZodIssueTooSmall<unknown[]>>> | undefined; message?: string | undefined; } | undefined): ZodTuple<[], null>
 uint32: callable
+  (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"number"> | $ZodIssueTooSmall<"number">>> | undefined; message?: string | undefined; } | undefined): ZodUInt32
 uint64: callable
+  (params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"bigint"> | $ZodIssueTooSmall<"bigint">>> | undefined; message?: string | undefined; } | undefined): ZodUInt64
 ulid: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodULID
 undefined: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodUndefined
 union: callable
+  <const T extends readonly core.SomeType[]>(options: T, params?: string | { inclusive?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidUnion>> | undefined; message?: string | undefined; } | undefined): ZodUnion<T>
 unknown: callable
+  (): ZodUnknown
 uppercase: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): $ZodCheckUpperCase
 url: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; hostname?: RegExp | undefined; protocol?: RegExp | undefined; normalize?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodURL
 util: namespace (excluded)
 uuid: callable
+  (params?: string | { abort?: boolean | undefined; version?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodUUID
 uuidv4: callable
+  (params?: string | { abort?: boolean | undefined; version?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodUUID
 uuidv6: callable
+  (params?: string | { abort?: boolean | undefined; version?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodUUID
 uuidv7: callable
+  (params?: string | { abort?: boolean | undefined; version?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodUUID
 validate: callable
+  <T extends schemas.$ZodType>(schema: T, value: unknown, _ctx?: ParseContext<$ZodIssue> | undefined): value is input<T>
 validateAsync: callable
+  <T extends schemas.$ZodType>(schema: T, value: unknown, _ctx?: ParseContext<$ZodIssue> | undefined): Promise<boolean>
 void: callable
+  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodVoid
 xid: callable
+  (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodXID
 xor: callable
+  <const T extends readonly core.SomeType[]>(options: T, params?: string | { inclusive?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidUnion>> | undefined; message?: string | undefined; } | undefined): ZodXor<T>
 z: namespace (excluded)
 
 # Schema and action members
 Schema, ZodAny, ZodBoolean, ZodCoercedBoolean, ZodCustom, ZodIntersection, ZodNaN, ZodNever, ZodNull, ZodSchema, ZodSymbol, ZodTemplateLiteral, ZodTransform, ZodType, ZodTypeAny, ZodUndefined, ZodUnknown, ZodVoid, _ZodBoolean, _ZodType
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodArray
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, element, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), length(), max(), meta(), min(), nonempty(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, unwrap(), with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  element
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  length: (len: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueTooBig<HasLength> | $ZodIssueTooSmall<HasLength>>> | undefined; message?: string | undefined; } | undefined): this
+  max: (maxLength: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<HasLength>> | undefined; message?: string | undefined; } | undefined): this
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  min: (minLength: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasLength>> | undefined; message?: string | undefined; } | undefined): this
+  nonempty: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasLength>> | undefined; message?: string | undefined; } | undefined): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  unwrap: (): T
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodBase64, ZodBase64URL, ZodCIDRv4, ZodCIDRv6, ZodCUID, ZodCUID2, ZodCoercedString, ZodCreditCard, ZodCustomStringFormat, ZodE164, ZodEmail, ZodEmoji, ZodGUID, ZodIPv4, ZodIPv6, ZodISODate, ZodISODateTime, ZodISODuration, ZodISOTime, ZodJWT, ZodKSUID, ZodMAC, ZodNanoID, ZodStringFormat, ZodULID, ZodURL, ZodUUID, ZodXID, _ZodString
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), endsWith(), exactOptional(), format, includes(), isNullable(), isOptional(), length(), lowercase(), max(), maxLength, meta(), min(), minLength, nonempty(), nonoptional(), normalize(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), regex(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), slugify(), spa(), startsWith(), superRefine(), toJSONSchema(), toLowerCase(), toUpperCase(), transform(), trim(), type, uppercase(), with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  endsWith: (value: string, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  exactOptional: (): ZodExactOptional<this>
+  format
+  includes: (value: string, params?: string | { abort?: boolean | undefined; position?: number | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  isNullable: (): boolean
+  isOptional: (): boolean
+  length: (len: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueTooBig<HasLength> | $ZodIssueTooSmall<HasLength>>> | undefined; message?: string | undefined; } | undefined): this
+  lowercase: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  max: (maxLength: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<HasLength>> | undefined; message?: string | undefined; } | undefined): this
+  maxLength
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  min: (minLength: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasLength>> | undefined; message?: string | undefined; } | undefined): this
+  minLength
+  nonempty: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasLength>> | undefined; message?: string | undefined; } | undefined): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  normalize: (form?: (string & {}) | "NFC" | "NFD" | "NFKC" | "NFKD" | undefined): this
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  regex: (regex: RegExp, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  slugify: (): this
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  startsWith: (value: string, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  toLowerCase: (): this
+  toUpperCase: (): this
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  trim: (): this
+  type
+  uppercase: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodBigInt, ZodBigIntFormat, ZodCoercedBigInt, ZodInt64, ZodUInt64, _ZodBigInt
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), format, gt(), gte(), isNullable(), isOptional(), lt(), lte(), max(), maxValue, meta(), min(), minValue, multipleOf(), negative(), nonnegative(), nonoptional(), nonpositive(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), positive(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  format
+  gt: (value: bigint, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  gte: (value: bigint, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  isNullable: (): boolean
+  isOptional: (): boolean
+  lt: (value: bigint, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  lte: (value: bigint, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  max: (value: bigint, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  maxValue
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  min: (value: bigint, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  minValue
+  multipleOf: (value: bigint, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueNotMultipleOf<number | bigint>> | undefined; message?: string | undefined; } | undefined): this
+  negative: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  nonnegative: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nonpositive: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  positive: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodCatch
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), removeCatch(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, unwrap(), with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  removeCatch: (): T
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  unwrap: (): T
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodCodec, ZodPipe, ZodPreprocess
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), in, isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), out, overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  in
+  isNullable: (): boolean
+  isOptional: (): boolean
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  out
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodCoercedDate, ZodDate, _ZodDate
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), max(), maxDate, meta(), min(), minDate, nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  max: (value: number | Date, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  maxDate
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  min: (value: number | Date, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  minDate
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodCoercedNumber, ZodFloat32, ZodFloat64, ZodInt, ZodInt32, ZodNumber, ZodNumberFormat, ZodUInt32, _ZodNumber
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), finite(), format, gt(), gte(), int(), isFinite, isInt, isNullable(), isOptional(), lt(), lte(), max(), maxValue, meta(), min(), minValue, multipleOf(), negative(), nonnegative(), nonoptional(), nonpositive(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), positive(), prefault(), readonly(), refine(), register(), safe(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), step(), superRefine(), toJSONSchema(), transform(), type, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  finite: (params?: unknown): this
+  format
+  gt: (value: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  gte: (value: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  int: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"number"> | $ZodIssueTooSmall<"number">>> | undefined; message?: string | undefined; } | undefined): this
+  isFinite
+  isInt
+  isNullable: (): boolean
+  isOptional: (): boolean
+  lt: (value: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  lte: (value: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  max: (value: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  maxValue
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  min: (value: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  minValue
+  multipleOf: (value: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueNotMultipleOf<number | bigint>> | undefined; message?: string | undefined; } | undefined): this
+  negative: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  nonnegative: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nonpositive: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  positive: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<Numeric>> | undefined; message?: string | undefined; } | undefined): this
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safe: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidType<unknown> | $ZodIssueTooBig<"number"> | $ZodIssueTooSmall<"number">>> | undefined; message?: string | undefined; } | undefined): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  step: (value: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueNotMultipleOf<number | bigint>> | undefined; message?: string | undefined; } | undefined): this
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodDefault
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), removeDefault(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, unwrap(), with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  removeDefault: (): T
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  unwrap: (): T
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodDiscriminatedUnion, ZodJSONSchema, ZodUnion, ZodXor
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), options, or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  options
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodEnum
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), enum, exactOptional(), exclude(), extract(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), options, or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  enum
+  exactOptional: (): ZodExactOptional<this>
+  exclude: <const U extends readonly (keyof T)[]>(values: U, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<{ [k in keyof Omit<T, U[number]>]: Omit<T, U[number]>[k]; }>
+  extract: <const U extends readonly (keyof T)[]>(values: U, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<{ [k in keyof Pick<T, U[number]>]: Pick<T, U[number]>[k]; }>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  options
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodError
-  addIssue(), addIssues(), cause, flatten(), format(), isEmpty, issues, message, name, stack, type
+  addIssue: (issue: $ZodIssue): void
+  addIssues: (issues: $ZodIssue[]): void
+  cause
+  flatten: (): $ZodFlattenedError<T, string> | : <U>(mapper: (issue: $ZodIssue) => U): $ZodFlattenedError<T, U>
+  format: (): $ZodFormattedError<T, string> | : <U>(mapper: (issue: $ZodIssue) => U): $ZodFormattedError<T, U>
+  isEmpty
+  issues
+  message
+  name
+  stack
+  type
 
 ZodExactOptional, ZodLazy, ZodNonOptional, ZodNullable, ZodOptional, ZodPrefault, ZodPromise, ZodReadonly, ZodSuccess
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, unwrap(), with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  unwrap: (): T
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodFile
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), max(), meta(), mime(), min(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  max: (size: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<HasSize>> | undefined; message?: string | undefined; } | undefined): this
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  mime: (types: MimeTypes | MimeTypes[], params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): this
+  min: (size: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasSize>> | undefined; message?: string | undefined; } | undefined): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodFirstPartySchemaTypes
   
 
 ZodFunction
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), implement(), implementAsync(), input(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), output(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  implement: <F extends $InferInnerFunctionType<Args, Returns>>(func: F): (...args: Parameters<this["_output"]>) => ReturnType<F> extends ReturnType<this["_output"]> ? ReturnType<F> : ReturnType<this["_output"]>
+  implementAsync: <F extends $InferInnerFunctionTypeAsync<Args, Returns>>(func: F): F extends $InferOuterFunctionTypeAsync<Args, Returns> ? F : $InferOuterFunctionTypeAsync<Args, Returns>
+  input: <const Items extends util.TupleItems, const Rest extends core.$ZodFunctionOut = $ZodFunctionOut>(args: Items, rest?: Rest | undefined): ZodFunction<$ZodTuple<Items, Rest>, Returns> | : <NewArgs extends core.$ZodFunctionIn>(args: NewArgs): ZodFunction<NewArgs, Returns> | : (...args: any[]): ZodFunction<any, Returns>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  output: <NewReturns extends core.$ZodType>(output: NewReturns): ZodFunction<Args, NewReturns>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodLiteral
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, value, values, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  value
+  values
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodMap
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), keyType, max(), meta(), min(), nonempty(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), size(), spa(), superRefine(), toJSONSchema(), transform(), type, valueType, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  keyType
+  max: (maxSize: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<HasSize>> | undefined; message?: string | undefined; } | undefined): this
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  min: (minSize: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasSize>> | undefined; message?: string | undefined; } | undefined): this
+  nonempty: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasSize>> | undefined; message?: string | undefined; } | undefined): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  size: (size: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueTooBig<HasSize> | $ZodIssueTooSmall<HasSize>>> | undefined; message?: string | undefined; } | undefined): this
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  valueType
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodObject
-  and(), apply(), array(), brand(), catch(), catchall(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), exactPartial(), extend(), isNullable(), isOptional(), keyof(), loose(), merge(), meta(), nonoptional(), nullable(), nullish(), omit(), optional(), or(), overwrite(), parse(), parseAsync(), partial(), passthrough(), pick(), pipe(), prefault(), readonly(), refine(), register(), required(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeExtend(), safeParse(), safeParseAsync(), shape, spa(), strict(), strip(), superRefine(), toJSONSchema(), transform(), type, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  catchall: <T extends core.SomeType>(schema: T): ZodObject<Shape, $catchall<T>>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  exactPartial: (): ZodObject<{ -readonly [k in keyof Shape]: ZodExactOptional<Shape[k]>; }, Config> | : <M extends util.Mask<keyof Shape>>(mask: M & Record<Exclude<keyof M, keyof Shape>, never>): ZodObject<{ -readonly [k in keyof Shape]: k extends keyof M ? ZodExactOptional<Shape[k]> : Shape[k]; }, Config>
+  extend: <U extends core.$ZodLooseShape>(shape: U): ZodObject<{ [k in keyof (keyof Shape & keyof U extends never ? Shape & { -readonly [P in keyof U]: U[P]; } : { [K in keyof Shape as K extends keyof U ? never : K]: Shape[K]; } & { [K in keyof { -readonly [P in keyof U]: U[P]; }]: { -readonly [P in keyof U]: U[P]; }[K]; })]: (keyof Shape & keyof U extends never ? Shape & { -readonly [P in keyof U]: U[P]; } : { [K in keyof Shape as K extends keyof U ? never : K]: Shape[K]; } & { [K in keyof { -readonly [P in keyof U]: U[P]; }]: { -readonly [P in keyof U]: U[P]; }[K]; })[k]; }, Config>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  keyof: (): ZodEnum<{ [k in keyof { [k in keyof Shape & string]: k; }]: { [k in keyof Shape & string]: k; }[k]; }>
+  loose: (): ZodObject<Shape, $loose>
+  merge: <U extends ZodObject>(other: U): ZodObject<{ [k in keyof (keyof Shape & keyof U["shape"] extends never ? Shape & U["shape"] : { [K in keyof Shape as K extends keyof U["shape"] ? never : K]: Shape[K]; } & { [K in keyof U["shape"]]: U["shape"][K]; })]: (keyof Shape & keyof U["shape"] extends never ? Shape & U["shape"] : { [K in keyof Shape as K extends keyof U["shape"] ? never : K]: Shape[K]; } & { [K in keyof U["shape"]]: U["shape"][K]; })[k]; }, U["_zod"]["config"]>
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  omit: <M extends util.Mask<keyof Shape>>(mask: M & Record<Exclude<keyof M, keyof Shape>, never>): ZodObject<{ [k in keyof Omit<Shape, Extract<keyof Shape, keyof M>>]: Omit<Shape, Extract<keyof Shape, keyof M>>[k]; }, Config>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  partial: (): ZodObject<{ -readonly [k in keyof Shape]: ZodOptional<Shape[k]>; }, Config> | : <M extends util.Mask<keyof Shape>>(mask: M & Record<Exclude<keyof M, keyof Shape>, never>): ZodObject<{ -readonly [k in keyof Shape]: k extends keyof M ? ZodOptional<Shape[k]> : Shape[k]; }, Config>
+  passthrough: (): ZodObject<Shape, $loose>
+  pick: <M extends util.Mask<keyof Shape>>(mask: M & Record<Exclude<keyof M, keyof Shape>, never>): ZodObject<{ [k in keyof Pick<Shape, Extract<keyof Shape, keyof M>>]: Pick<Shape, Extract<keyof Shape, keyof M>>[k]; }, Config>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  required: (): ZodObject<{ -readonly [k in keyof Shape]: ZodNonOptional<Shape[k]>; }, Config> | : <M extends util.Mask<keyof Shape>>(mask: M & Record<Exclude<keyof M, keyof Shape>, never>): ZodObject<{ -readonly [k in keyof Shape]: k extends keyof M ? ZodNonOptional<Shape[k]> : Shape[k]; }, Config>
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeExtend: <U extends core.$ZodLooseShape>(shape: SafeExtendShape<Shape, U> & Partial<Record<keyof Shape, SomeType>>): ZodObject<{ [k in keyof (keyof Shape & keyof U extends never ? Shape & { -readonly [P in keyof U]: U[P]; } : { [K in keyof Shape as K extends keyof U ? never : K]: Shape[K]; } & { [K in keyof { -readonly [P in keyof U]: U[P]; }]: { -readonly [P in keyof U]: U[P]; }[K]; })]: (keyof Shape & keyof U extends never ? Shape & { -readonly [P in keyof U]: U[P]; } : { [K in keyof Shape as K extends keyof U ? never : K]: Shape[K]; } & { [K in keyof { -readonly [P in keyof U]: U[P]; }]: { -readonly [P in keyof U]: U[P]; }[K]; })[k]; }, Config>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  shape
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  strict: (): ZodObject<Shape, $strict>
+  strip: (): ZodObject<Shape, $strip>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodRecord
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), keyType, meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, valueType, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  keyType
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  valueType
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodSet
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), max(), meta(), min(), nonempty(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), size(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  max: (maxSize: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<HasSize>> | undefined; message?: string | undefined; } | undefined): this
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  min: (minSize: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasSize>> | undefined; message?: string | undefined; } | undefined): this
+  nonempty: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasSize>> | undefined; message?: string | undefined; } | undefined): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  size: (size: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueTooBig<HasSize> | $ZodIssueTooSmall<HasSize>>> | undefined; message?: string | undefined; } | undefined): this
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
 
 ZodString
-  and(), apply(), array(), base64(), base64url(), brand(), catch(), check(), cidrv4(), cidrv6(), clone(), cuid(), cuid2(), date(), datetime(), decode(), decodeAsync(), def, default(), describe(), description, duration(), e164(), email(), emoji(), encode(), encodeAsync(), endsWith(), exactOptional(), format, guid(), includes(), ipv4(), ipv6(), isNullable(), isOptional(), jwt(), ksuid(), length(), lowercase(), max(), maxLength, meta(), min(), minLength, nanoid(), nonempty(), nonoptional(), normalize(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), pipe(), prefault(), readonly(), refine(), regex(), register(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), slugify(), spa(), startsWith(), superRefine(), time(), toJSONSchema(), toLowerCase(), toUpperCase(), transform(), trim(), type, ulid(), uppercase(), url(), uuid(), uuidv4(), uuidv6(), uuidv7(), with(), xid()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  base64: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  base64url: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  cidrv4: (params?: string | { abort?: boolean | undefined; version?: "v4" | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  cidrv6: (params?: string | { abort?: boolean | undefined; version?: "v6" | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  cuid2: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  cuid: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  date: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  datetime: (params?: string | { abort?: boolean | undefined; precision?: number | null | undefined; offset?: boolean | undefined; local?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  duration: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  e164: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  email: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  emoji: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  endsWith: (value: string, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  exactOptional: (): ZodExactOptional<this>
+  format
+  guid: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this | : (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  includes: (value: string, params?: string | { abort?: boolean | undefined; position?: number | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  ipv4: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  ipv6: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  isNullable: (): boolean
+  isOptional: (): boolean
+  jwt: (params?: string | { abort?: boolean | undefined; alg?: JWTAlgorithm | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  ksuid: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  length: (len: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueTooBig<HasLength> | $ZodIssueTooSmall<HasLength>>> | undefined; message?: string | undefined; } | undefined): this
+  lowercase: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  max: (maxLength: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooBig<HasLength>> | undefined; message?: string | undefined; } | undefined): this
+  maxLength
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  min: (minLength: number, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasLength>> | undefined; message?: string | undefined; } | undefined): this
+  minLength
+  nanoid: (params?: string | { length?: number | undefined; abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  nonempty: (params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueTooSmall<HasLength>> | undefined; message?: string | undefined; } | undefined): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  normalize: (form?: (string & {}) | "NFC" | "NFD" | "NFKC" | "NFKD" | undefined): this
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  regex: (regex: RegExp, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  slugify: (): this
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  startsWith: (value: string, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  time: (params?: string | { abort?: boolean | undefined; precision?: number | null | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  toLowerCase: (): this
+  toUpperCase: (): this
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  trim: (): this
+  type
+  ulid: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  uppercase: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  url: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; hostname?: RegExp | undefined; protocol?: RegExp | undefined; normalize?: boolean | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  uuid: (params?: string | { abort?: boolean | undefined; version?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  uuidv4: (params?: string | { abort?: boolean | undefined; version?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  uuidv6: (params?: string | { abort?: boolean | undefined; version?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  uuidv7: (params?: string | { abort?: boolean | undefined; version?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  xid: (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<$ZodIssueInvalidStringFormat> | undefined; message?: string | undefined; } | undefined): this
 
 ZodTuple
-  and(), apply(), array(), brand(), catch(), check(), clone(), decode(), decodeAsync(), def, default(), describe(), description, encode(), encodeAsync(), exactOptional(), isNullable(), isOptional(), meta(), nonoptional(), nullable(), nullish(), optional(), or(), overwrite(), parse(), parseAsync(), partial(), pipe(), prefault(), readonly(), refine(), register(), rest(), safeDecode(), safeDecodeAsync(), safeEncode(), safeEncodeAsync(), safeParse(), safeParseAsync(), spa(), superRefine(), toJSONSchema(), transform(), type, with()
+  and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
+  apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
+  array: (): ZodArray<this>
+  brand: <T extends PropertyKey = PropertyKey, Dir extends "in" | "out" | "inout" = "out">(value?: T | undefined): PropertyKey extends T ? this : $ZodBranded<this, T, Dir>
+  catch: (def: output<this>): ZodCatch<this> | : (def: (ctx: $ZodCatchCtx) => output<this>): ZodCatch<this>
+  check: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
+  clone: (def?: Internals["def"] | undefined, params?: { parent: boolean; } | undefined): this
+  decode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  decodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  def
+  default: (def: NoUndefined<output<this>>): ZodDefault<this> | : (def: () => NoUndefined<output<this>>): ZodDefault<this>
+  describe: (description: string): this
+  description
+  encode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): input<this>
+  encodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<input<this>>
+  exactOptional: (): ZodExactOptional<this>
+  isNullable: (): boolean
+  isOptional: (): boolean
+  meta: (): { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; } | undefined | : (data: { [x: string]: unknown; id?: string | undefined; title?: string | undefined; description?: string | undefined; deprecated?: boolean | undefined; }): this
+  nonoptional: (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNonOptional<this>
+  nullable: (): ZodNullable<this>
+  nullish: (): ZodOptional<ZodNullable<this>>
+  optional: (): ZodOptional<this>
+  or: <T extends core.SomeType>(option: T): ZodUnion<[this, T]>
+  overwrite: (fn: (x: output<this>) => output<this>): this
+  parse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): output<this>
+  parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
+  partial: (): ZodTuple<{ -readonly [k in keyof T]: ZodOptional<T[k]>; }, Rest>
+  pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
+  prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
+  readonly: (): ZodReadonly<this>
+  refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
+  register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this
+  rest: <Rest extends core.SomeType = $ZodType<unknown, unknown, $ZodTypeInternals<unknown, unknown>>>(rest: Rest): ZodTuple<T, Rest>
+  safeDecode: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeDecodeAsync: (data: input<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  safeEncode: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<input<this>>
+  safeEncodeAsync: (data: output<this>, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<input<this>>>
+  safeParse: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): ZodSafeParseResult<output<this>>
+  safeParseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  spa: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<ZodSafeParseResult<output<this>>>
+  superRefine: (refinement: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => void | Promise<void>, params?: $ZodSuperRefineParams | undefined): this
+  toJSONSchema: (params?: ToJSONSchemaParams | undefined): ZodStandardJSONSchemaPayload<this>
+  transform: <NewOut>(transform: (arg: output<this>, ctx: $RefinementCtx<output<this>>) => NewOut | Promise<NewOut>): ZodPipe<this, ZodTransform<Awaited<NewOut>, output<this>>>
+  type
+  with: (...checks: (CheckFn<output<this>> | $ZodCheck<output<this>>)[]): this
