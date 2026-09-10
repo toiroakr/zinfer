@@ -25,9 +25,16 @@ it.skipIf(!("iban" in schemaLibrary))(
       .map((declaration) => declaration.getName())
       .filter(
         (name) =>
-          !["Factory", "AppliedValue", "Validation", "Check", "TAG", "ClassicApplied"].includes(
-            name,
-          ),
+          ![
+            "Factory",
+            "AppliedValue",
+            "Validation",
+            "Check",
+            "TAG",
+            "ClassicApplied",
+            "ClassicAppliedFn",
+            "AppliedFnValue",
+          ].includes(name),
       );
     expect(project.formatDiagnosticsWithColorAndContext(project.getPreEmitDiagnostics())).toBe("");
     const results = new ZodMiniTypeExtractor().extractAll(fixture);

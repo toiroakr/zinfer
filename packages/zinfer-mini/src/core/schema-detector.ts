@@ -142,7 +142,8 @@ export class SchemaDetector {
       const callee = unwrapped.getExpression();
       if (Node.isPropertyAccessExpression(callee) && callee.getName() === "apply") {
         const type = unwrapped.getType();
-        return type.getProperty("_zod") !== undefined && type.getProperty("_input") === undefined;
+        // Mini functions also expose _input; optional() belongs only to classic schemas.
+        return type.getProperty("_zod") !== undefined && type.getProperty("optional") === undefined;
       }
     }
 

@@ -48,6 +48,10 @@ export const Readonly = z.readonly(z.array(z.string()));
 export const Nonoptional = z.nonoptional(z.optional(z.string()));
 export const Transform = z.transform((value: string) => value.length);
 export const Fn = z.function({ input: [z.string()], output: z.number() });
+export const AppliedFn = z
+  .function({ input: [z.string()], output: z.number() })
+  .apply((fn) => fn.output(z.string()));
+export const AppliedFnInput = Fn.apply((fn) => fn.input([z.number()]));
 
 // Utilities and factory functions are not schema declarations.
 export const Factory = z.toZod<string>();
@@ -75,3 +79,8 @@ export const NamedExactPartial = exactPartialSchema(z.object({ name: z.string() 
 
 import { z as classic } from "zod";
 export const ClassicApplied = classic.string().apply((schema) => schema);
+
+export const ClassicAppliedFn = Fn.apply(() =>
+  classic.function({ input: [classic.string()], output: classic.number() }),
+);
+export const AppliedFnValue = Fn.apply((fn) => fn.implement((value) => value.length));
