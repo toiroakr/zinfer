@@ -5,6 +5,12 @@ lockfile-installed Zod, Zod Mini, and Valibot versions. Renovate dependency upda
 therefore fail CI when the upstream API inventory changes, even if our existing
 fixtures do not use the new API yet.
 
+Updates to `valibot`, `zod`, and `@zod/mini` have no release-age delay in pnpm or
+Renovate, but Renovate automerge is disabled for these packages, including
+devDependencies. Review the dependency changes and upstream release notes before
+merging even when the inventory is unchanged. This compatibility check does not
+establish release safety or detect runtime-only changes.
+
 The inventory is collected from the upstream TypeScript declarations, independently
 of the adapters' builder/action registries. Each adapter's own installed dependency
 is resolved; no network request or execution of upstream schema factories is needed.
