@@ -198,6 +198,24 @@ export class SchemaDetector {
     "properties",
   ]);
 
+  private static readonly ZOD_VALUE_METHODS = new Set([
+    "parse",
+    "parseAsync",
+    "safeParse",
+    "safeParseAsync",
+    "spa",
+    "decode",
+    "decodeAsync",
+    "safeDecode",
+    "safeDecodeAsync",
+    "encode",
+    "encodeAsync",
+    "safeEncode",
+    "safeEncodeAsync",
+    "validate",
+    "validateAsync",
+  ]);
+
   /**
    * Checks if a variable declaration is a Zod schema.
    *
@@ -232,13 +250,23 @@ export class SchemaDetector {
       ) {
         return true;
       }
-      // A builder prefix does not imply that the final method returns a schema.
-      // Inspect chained results before the syntax fallback, including any/unknown parse results.
-      if (
-        (Node.isPropertyAccessExpression(callee) || Node.isElementAccessExpression(callee)) &&
-        Node.isCallExpression(callee.getExpression())
-      ) {
-        return this.hasSchemaType(initializer);
+      if (Node.isPropertyAccessExpression(callee) || Node.isElementAccessExpression(callee)) {
+        const member = Node.isPropertyAccessExpression(callee)
+          ? callee.getNameNode()
+          : callee.getArgumentExpression();
+        const method = Node.isStringLiteral(member) ? member.getLiteralValue() : member?.getText();
+        // Parsed data can itself have every field of a schema, so check the operation first.
+        if (
+          method &&
+          SchemaDetector.ZOD_VALUE_METHODS.has(method) &&
+          this.hasSchemaType(callee.getExpression())
+        ) {
+          return false;
+        }
+        // A builder prefix does not imply that the final method returns a schema.
+        if (Node.isCallExpression(callee.getExpression())) {
+          return this.hasSchemaType(initializer);
+        }
       }
     }
 
@@ -269,12 +297,9 @@ export class SchemaDetector {
 
   private hasSchemaType(expression: Node): boolean {
     const type = expression.getType();
-    // Data can have fields named like Zod internals; a schema also exposes a parser.
-    const parse = type.getProperty("parse")?.getTypeAtLocation(expression);
     return (
       type.getProperty("_input") !== undefined &&
-      (type.getProperty("_zod") !== undefined || type.getProperty("_def") !== undefined) &&
-      (parse?.getCallSignatures().length ?? 0) > 0
+      (type.getProperty("_zod") !== undefined || type.getProperty("_def") !== undefined)
     );
   }
 
