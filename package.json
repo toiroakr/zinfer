@@ -16,7 +16,7 @@
     "test:api": "pnpm --filter @zinfer-monorepo/core test:api"
   },
   "devDependencies": {
-    "@changesets/cli": "3.0.1",
+    "@changesets/cli": "3.0.2",
     "lefthook": "2.1.12",
     "oxfmt": "0.66.0",
     "oxlint": "1.81.0"
