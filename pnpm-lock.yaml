@@ -282,8 +282,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       '@zod/mini':
-        specifier: 4.6.1
-        version: 4.6.1(zod@4.6.1)
+        specifier: 4.6.4
+        version: 4.6.4(zod@4.6.1)
       knip:
         specifier: 6.34.0
         version: 6.34.0
@@ -1330,8 +1330,8 @@ packages:
   '@yuku-toolchain/types@0.9.5':
     resolution: {integrity: sha512-KiuLNNgX9uNealaWAR+G3/cMXnRk9x4TY2EkYe/KIag+UPdwiA0RRf1hr1WAxzTP8KGzCTkqUdLPvqh32sEO3w==}
 
-  '@zod/mini@4.6.1':
-    resolution: {integrity: sha512-B6F4Af6/d0JLKF+bs+1fYL8nWHO9i21E//t95omWrgqrXVIBuhl2+SLQZ8rsZSoCyfpqvAF5y6H3TLRYFL+hPA==}
+  '@zod/mini@4.6.4':
+    resolution: {integrity: sha512-FMm6ONI98PwDlZ4HwKPgY4+Mfedsvyql9/SepoNKqxVEhMuzjXhBMvdcS4ASgSaWadP3zN42CbfGOdyLdoa1eg==}
     peerDependencies:
       zod: ^4.6.0
 
@@ -2593,7 +2593,7 @@ snapshots:
 
   '@yuku-toolchain/types@0.9.5': {}
 
-  '@zod/mini@4.6.1(zod@4.6.1)':
+  '@zod/mini@4.6.4(zod@4.6.1)':
     dependencies:
       zod: 4.6.1
 
