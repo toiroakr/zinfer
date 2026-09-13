@@ -251,8 +251,8 @@ importers:
         specifier: 5.0.0
         version: 5.0.0(@types/node@25.9.5)(vite@8.2.2(@types/node@25.9.5)(jiti@2.7.0))
       zod:
-        specifier: 4.6.1
-        version: 4.6.1
+        specifier: 4.6.4
+        version: 4.6.4
 
   packages/zinfer-mini:
     dependencies:
@@ -283,7 +283,7 @@ importers:
         version: link:../core
       '@zod/mini':
         specifier: 4.6.1
-        version: 4.6.1(zod@4.6.1)
+        version: 4.6.1(zod@4.6.4)
       knip:
         specifier: 6.34.0
         version: 6.34.0
@@ -303,8 +303,8 @@ importers:
         specifier: 5.0.0
         version: 5.0.0(@types/node@25.9.5)(vite@8.2.2(@types/node@25.9.5)(jiti@2.7.0))
       zod:
-        specifier: 4.6.1
-        version: 4.6.1
+        specifier: 4.6.4
+        version: 4.6.4
 
 packages:
 
@@ -1939,6 +1939,9 @@ packages:
   zod@4.6.1:
     resolution: {integrity: sha512-341aRWQsve0rvronKNTqZpjmzdbUDlFuzHaI/XLg/Ej82qffDJRRfBTCuv7+9q/rMjB6LSLyEBnW4InJeMtt/Q==}
 
+  zod@4.6.4:
+    resolution: {integrity: sha512-AXSD6hvGdvRjajG/l1cC+d6IrhH+sjmPKtYeQdJIK8MFJl3LyClzS+o/YsVC+zQZPupAaeH5skwwm8YqYH7BqA==}
+
 snapshots:
 
   '@changesets/apply-release-plan@8.1.0':
@@ -2593,9 +2596,9 @@ snapshots:
 
   '@yuku-toolchain/types@0.9.5': {}
 
-  '@zod/mini@4.6.1(zod@4.6.1)':
+  '@zod/mini@4.6.1(zod@4.6.4)':
     dependencies:
-      zod: 4.6.1
+      zod: 4.6.4
 
   assertion-error@2.0.1: {}
 
@@ -3153,3 +3156,5 @@ snapshots:
       '@yuku-parser/binding-win32-x64': 0.9.5
 
   zod@4.6.1: {}
+
+  zod@4.6.4: {}
