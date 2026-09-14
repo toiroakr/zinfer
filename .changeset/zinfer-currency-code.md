@@ -4,4 +4,4 @@
 
 Support the Zod `currencyCode` string format schema.
 
-Stop treating standalone `z.properties(shape)` as a schema declaration: Zod 4.6.5 turns it into a check rather than a schema, so extracting Input/Output types for it was misleading. `z.instanceof(...).properties(...)` is unaffected.
+Detect standalone `z.properties(shape)` correctly across its supported peer range: a schema on Zod 4.6.0-4.6.2, and a check (not a schema declaration) on 4.6.3+. `z.instanceof(...).properties(...)` is unaffected either way.

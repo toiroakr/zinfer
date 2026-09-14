@@ -4,4 +4,4 @@
 
 Support the Zod Mini `currencyCode` string format schema.
 
-Stop treating standalone `z.properties(shape)` as a schema declaration: Zod 4.6.5 turns it into a check rather than a schema, so extracting Input/Output types for it was misleading. Zod Mini has no schema-returning form of `properties`; it stays supported only inside `.check(...z.properties(...))`.
+Detect standalone `z.properties(shape)` correctly across its supported peer range: a schema on Zod Mini 4.6.0-4.6.2, and a check (supported inside `.check(...z.properties(...))`, not as a standalone schema declaration) on 4.6.3+.
