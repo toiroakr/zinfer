@@ -43,7 +43,13 @@
       "automerge": false
     },
     {
-      "matchPackageNames": ["valibot", "zod", "@zod/mini"],
+      "groupName": "zod",
+      "matchPackageNames": ["zod", "@zod/mini"],
+      "minimumReleaseAge": "0 days",
+      "automerge": false
+    },
+    {
+      "matchPackageNames": ["valibot"],
       "minimumReleaseAge": "0 days",
       "automerge": false
     }
