@@ -73,6 +73,17 @@ jobs:
           FILTER='{dependencies, peerDependencies, optionalDependencies}'
           CHANGED_PACKAGES=""
           for pkg_json in packages/*/package.json; do
+            # Private packages (e.g. @zinfer-monorepo/core) are never
+            # published, so they never need a changeset entry even when their
+            # own dependencies change. Any transitive effect on consumers is
+            # already covered separately, since core's npm deps are
+            # duplicated into each public package's own package.json (core's
+            # source is inlined at build time, but its non-workspace deps are
+            # kept external and so must be declared by the consumer too).
+            if [ "$(jq -r '.private == true' "$pkg_json")" = "true" ]; then
+              continue
+            fi
+
             if git show "${BASE_SHA}:${pkg_json}" > /tmp/base-pkg.json 2>/dev/null; then
               jq -S "$FILTER" /tmp/base-pkg.json > /tmp/base-runtime-deps.json
             else
