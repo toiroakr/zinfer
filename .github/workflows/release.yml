@@ -33,7 +33,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Select Changesets mode
         id: select-mode
-        uses: changesets/action/select-mode@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
+        uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
 
   version:
     name: Create release PR
@@ -62,7 +62,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Version packages
-        uses: changesets/action/version@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
+        uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: pnpm changeset version
@@ -93,7 +93,7 @@ jobs:
         run: pnpm -r build
       - name: Pack packages
         id: pack
-        uses: changesets/action/pack@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
+        uses: changesets/action/pack@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
 
@@ -116,7 +116,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Publish packages
-        uses: changesets/action/publish@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
+        uses: changesets/action/publish@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
           create-github-releases: true
