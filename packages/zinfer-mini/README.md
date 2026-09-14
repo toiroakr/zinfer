@@ -23,8 +23,9 @@ than zinfer's method-chain style (`z.object({...}).optional()`), so it needs its
 
 Verified against Zod 4.6.5, including string formats, codecs,
 `compile`/`withParser`, `input`/`output`, `deepPartial`, `exactPartial`, `toZod`,
-`getDiscriminatedOption`, `iban`, and `currencyCode`. `z.properties(...)` returns a
-check, not a schema, and is only supported via `.check(...z.properties(...))`.
+`getDiscriminatedOption`, `iban`, and `currencyCode`. `z.properties(...)` is
+detected either way: as a schema on Zod 4.6.0-4.6.2, and as a check (supported
+via `.check(...z.properties(...))`) on 4.6.3+.
 Recursive `json()` types remain recursive, including inside other schemas.
 For exported schemas with symbol keys, generated types reference the source
 schema's inferred input/output type to preserve the original symbol identity;
