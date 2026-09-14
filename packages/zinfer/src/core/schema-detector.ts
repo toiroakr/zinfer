@@ -154,6 +154,7 @@ export class SchemaDetector {
     "e164",
     "creditCard",
     "iban",
+    "currencyCode",
     "jwt",
     "stringFormat",
     "hostname",

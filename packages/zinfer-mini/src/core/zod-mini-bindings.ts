@@ -201,6 +201,7 @@ export const ZOD_MINI_SCHEMA_BUILDERS: ReadonlySet<string> = new Set([
   // Primitives and string formats
   "creditCard",
   "iban",
+  "currencyCode",
   "string",
   "email",
   "guid",

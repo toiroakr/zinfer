@@ -4,6 +4,7 @@ import { iso, coerce, compile as compileSchema, toZod as typedSchema } from "zod
 export const Email = z.email();
 export const CreditCard = z.creditCard();
 export const IBAN = z.iban();
+export const CurrencyCode = z.currencyCode();
 export const ISO = z.iso.datetime();
 export const Coerced = z.coerce.number();
 export const Integer = z.int();

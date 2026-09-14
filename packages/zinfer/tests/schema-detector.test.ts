@@ -25,6 +25,7 @@ describe("SchemaDetector", () => {
       export const Output = z.output(z.stringbool());
       export const DeepPartial = z.deepPartial(z.object({ name: z.string() }));
       export const IBAN = z.iban();
+      export const CurrencyCode = z.currencyCode();
       export const Properties = z.properties({ name: z.string() });
     `,
     );
@@ -35,6 +36,7 @@ describe("SchemaDetector", () => {
       "Output",
       "DeepPartial",
       "IBAN",
+      "CurrencyCode",
       "Properties",
     ]);
   });

@@ -15,6 +15,7 @@ it("detects current Mini schema builders and nested namespaces", () => {
     export const Output = z.output(z.stringbool());
     export const DeepPartial = z.deepPartial(z.object({ name: z.string() }));
     export const IBAN = z.iban();
+    export const CurrencyCode = z.currencyCode();
     export const Properties = z.properties({ name: z.string() });
     export const JSON = z.json();
     export const Fn = z.function({ input: [z.string()], output: z.number() });
@@ -29,6 +30,7 @@ it("detects current Mini schema builders and nested namespaces", () => {
     "Output",
     "DeepPartial",
     "IBAN",
+    "CurrencyCode",
     "Properties",
     "JSON",
     "Fn",
