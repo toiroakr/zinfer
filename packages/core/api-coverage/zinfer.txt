@@ -125,8 +125,6 @@ ZodPreprocess: constructor
   (def: D): T
 ZodPromise: constructor
   (def: D): T
-ZodProperties: constructor
-  (def: D): T
 ZodReadonly: constructor
   (def: D): T
 ZodRealError: constructor
@@ -211,9 +209,9 @@ coerce.boolean: callable
 coerce.date: callable
   <T = unknown>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodCoercedDate<T>
 coerce.number: callable
-  <T = unknown>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodCoercedNumber<T>
+  <T = unknown>(params?: string | $ZodNumberParams | undefined): ZodCoercedNumber<T>
 coerce.string: callable
-  <T = unknown>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodCoercedString<T>
+  <T = unknown>(params?: string | $ZodStringParams | undefined): ZodCoercedString<T>
 coerce: namespace
 compile: callable
   <T extends SomeType>(schema: T, options?: CompileOptions | undefined): T
@@ -226,6 +224,8 @@ cuid2: callable
   (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodCUID2
 cuid: callable
   (params?: string | { abort?: boolean | undefined; pattern?: RegExp | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodCUID
+currencyCode: callable
+  (_params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodCustomStringFormat<"currency_code">
 custom: callable
   <O>(fn?: ((data: unknown) => unknown) | undefined, _params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): ZodCustom<O, O>
 date: callable
@@ -408,7 +408,7 @@ nullable: callable
 nullish: callable
   <T extends core.SomeType>(innerType: T): ZodOptional<ZodNullable<T>>
 number: callable
-  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodNumber
+  (params?: string | $ZodNumberParams | undefined): ZodNumber
 object: callable
   <T extends core.$ZodLooseShape = Partial<Record<never, SomeType>>>(shape?: T | undefined, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueUnrecognizedKeys | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodObject<{ -readonly [P in keyof T]: T[P]; }, $strip>
 optional: callable
@@ -436,7 +436,7 @@ prettifyError: callable
 promise: callable
   <T extends core.SomeType>(innerType: T): ZodPromise<T>
 properties: callable
-  <Shape extends core.$ZodShape>(shape: Shape, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodProperties<Shape>
+  <Shape extends schemas.$ZodShape>(shape: Shape, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): $ZodCheckProperties<Shape>
 property: callable
   <K extends string, T extends schemas.$ZodType>(property: K, schema: T, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): $ZodCheckProperty<{ [k in K]: Widen<input<T>>; }>
 readonly: callable
@@ -475,8 +475,8 @@ startsWith: callable
 strictObject: callable
   <T extends core.$ZodLooseShape>(shape: T, params?: string | { error?: string | $ZodErrorMap<NonNullable<$ZodIssueUnrecognizedKeys | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodObject<{ -readonly [P in keyof T]: T[P]; }, $strict>
 string: callable
-  (params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodString
-  <T extends string>(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): $ZodType<T, T, $ZodTypeInternals<T, T>>
+  (params?: string | $ZodStringParams | undefined): ZodString
+  <T extends string>(params?: string | $ZodStringParams | undefined): $ZodType<T, T, $ZodTypeInternals<T, T>>
 stringFormat: callable
   <Format extends string>(format: Format, fnOrRegex: RegExp | ((arg: string) => unknown), _params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssueInvalidStringFormat | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodCustomStringFormat<Format>
 stringbool: callable
@@ -549,7 +549,7 @@ xor: callable
 z: namespace (excluded)
 
 # Schema and action members
-Schema, ZodAny, ZodBoolean, ZodCoercedBoolean, ZodCustom, ZodIntersection, ZodNaN, ZodNever, ZodNull, ZodProperties, ZodSchema, ZodSymbol, ZodTemplateLiteral, ZodTransform, ZodType, ZodTypeAny, ZodUndefined, ZodUnknown, ZodVoid, _ZodBoolean, _ZodType
+Schema, ZodAny, ZodBoolean, ZodCoercedBoolean, ZodCustom, ZodIntersection, ZodNaN, ZodNever, ZodNull, ZodSchema, ZodSymbol, ZodTemplateLiteral, ZodTransform, ZodType, ZodTypeAny, ZodUndefined, ZodUnknown, ZodVoid, _ZodBoolean, _ZodType
   and: <T extends core.SomeType>(incoming: T): ZodIntersection<this, T>
   apply: <T, TArgs extends unknown[] = []>(fn: (schema: this, ...args: TArgs) => T, ...args: TArgs): T
   array: (): ZodArray<this>
@@ -1348,7 +1348,7 @@ ZodInstanceOf
   parseAsync: (data: unknown, params?: ParseContext<$ZodIssue> | undefined): Promise<output<this>>
   pipe: <T extends core.$ZodType<any, core.output<this>>>(target: T | $ZodType<any, output<this>, $ZodTypeInternals<any, output<this>>>): ZodPipe<this, T>
   prefault: (def: () => input<this>): ZodPrefault<this> | : (def: input<this>): ZodPrefault<this>
-  properties: <Shape extends core.$ZodShape>(shape: Shape, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue | $ZodIssueInvalidType<unknown>>> | undefined; message?: string | undefined; } | undefined): ZodInstanceOf<T & $InferObjectInput<Shape, {}>>
+  properties: <Shape extends { [k in keyof T as T[k] extends Function ? never : k]?: core.$ZodType<unknown, T[k]>; }>(shape: Shape, params?: string | { abort?: boolean | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): ZodInstanceOf<T & $InferObjectInput<Shape, {}>>
   readonly: (): ZodReadonly<this>
   refine: <Ch extends (arg: core.output<this>) => unknown | Promise<unknown>>(check: Ch, params?: string | { abort?: boolean | undefined; when?: ((payload: ParsePayload<unknown>) => boolean) | undefined; path?: PropertyKey[] | undefined; params?: Record<string, any> | undefined; error?: string | $ZodErrorMap<NonNullable<$ZodIssue>> | undefined; message?: string | undefined; } | undefined): Ch extends (arg: any) => arg is infer R ? this & ZodType<R, input<this>, $ZodTypeInternals<R, input<this>>> : this
   register: <R extends core.$ZodRegistry>(registry: R, ...meta: this extends R["_schema"] ? undefined extends R["_meta"] ? [($replace<R["_meta"], this> | undefined)?] : [$replace<R["_meta"], this>] : ["Incompatible schema"]): this

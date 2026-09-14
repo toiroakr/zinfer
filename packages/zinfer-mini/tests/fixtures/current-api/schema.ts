@@ -4,6 +4,7 @@ import { iso, coerce, compile as compileSchema, toZod as typedSchema } from "zod
 export const Email = z.email();
 export const CreditCard = z.creditCard();
 export const IBAN = z.iban();
+export const CurrencyCode = z.currencyCode();
 export const ISO = z.iso.datetime();
 export const Coerced = z.coerce.number();
 export const Integer = z.int();
@@ -35,7 +36,6 @@ export const Selected = z.getDiscriminatedOption(
   ]),
   "a",
 );
-export const Properties = z.properties({ name: z.string() });
 export const Applied = z.string().apply((schema) => z.optional(schema));
 export const JSON = z.json();
 export const ExactOptional = z.exactOptional(z.string());
@@ -58,6 +58,7 @@ export const Factory = z.toZod<string>();
 export const AppliedValue = z.string().apply(() => 42);
 export const Validation = z.safeParse(z.string(), "x");
 export const Check = z.check<string>(() => {});
+export const Properties = z.properties({ name: z.string() });
 
 export const NamedISO = iso.date();
 export const NamedCoerced = coerce.boolean();

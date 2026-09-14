@@ -251,8 +251,8 @@ importers:
         specifier: 5.0.0
         version: 5.0.0(@types/node@25.9.5)(vite@8.3.0(@types/node@25.9.5)(jiti@2.7.0))
       zod:
-        specifier: 4.6.1
-        version: 4.6.1
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/zinfer-mini:
     dependencies:
@@ -282,8 +282,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       '@zod/mini':
-        specifier: 4.6.1
-        version: 4.6.1(zod@4.6.1)
+        specifier: 4.6.5
+        version: 4.6.5(zod@4.6.5)
       knip:
         specifier: 6.34.0
         version: 6.34.0
@@ -303,8 +303,8 @@ importers:
         specifier: 5.0.0
         version: 5.0.0(@types/node@25.9.5)(vite@8.3.0(@types/node@25.9.5)(jiti@2.7.0))
       zod:
-        specifier: 4.6.1
-        version: 4.6.1
+        specifier: 4.6.5
+        version: 4.6.5
 
 packages:
 
@@ -1330,8 +1330,8 @@ packages:
   '@yuku-toolchain/types@0.9.5':
     resolution: {integrity: sha512-KiuLNNgX9uNealaWAR+G3/cMXnRk9x4TY2EkYe/KIag+UPdwiA0RRf1hr1WAxzTP8KGzCTkqUdLPvqh32sEO3w==}
 
-  '@zod/mini@4.6.1':
-    resolution: {integrity: sha512-B6F4Af6/d0JLKF+bs+1fYL8nWHO9i21E//t95omWrgqrXVIBuhl2+SLQZ8rsZSoCyfpqvAF5y6H3TLRYFL+hPA==}
+  '@zod/mini@4.6.5':
+    resolution: {integrity: sha512-TSoVYZYRDIVdCGpaikfJ+mZ6RDSb4fOT/iV/GGBpuaD4/+U9Y+gEVNVFJx0uYWbvQidIKNgPWKG/jy0o2VBoJg==}
     peerDependencies:
       zod: ^4.6.0
 
@@ -1938,6 +1938,9 @@ packages:
 
   zod@4.6.1:
     resolution: {integrity: sha512-341aRWQsve0rvronKNTqZpjmzdbUDlFuzHaI/XLg/Ej82qffDJRRfBTCuv7+9q/rMjB6LSLyEBnW4InJeMtt/Q==}
+
+  zod@4.6.5:
+    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
 
 snapshots:
 
@@ -2593,9 +2596,9 @@ snapshots:
 
   '@yuku-toolchain/types@0.9.5': {}
 
-  '@zod/mini@4.6.1(zod@4.6.1)':
+  '@zod/mini@4.6.5(zod@4.6.5)':
     dependencies:
-      zod: 4.6.1
+      zod: 4.6.5
 
   assertion-error@2.0.1: {}
 
@@ -3153,3 +3156,5 @@ snapshots:
       '@yuku-parser/binding-win32-x64': 0.9.5
 
   zod@4.6.1: {}
+
+  zod@4.6.5: {}

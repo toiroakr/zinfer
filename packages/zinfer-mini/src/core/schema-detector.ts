@@ -135,6 +135,11 @@ export class SchemaDetector {
       if (callName === "toZod") {
         return Node.isCallExpression(unwrapped) && Node.isCallExpression(unwrapped.getExpression());
       }
+      if (callName === "properties") {
+        // Schemas expose `.parse()`; the $ZodCheckProperties check (Zod Mini
+        // 4.6.3+) does not.
+        return unwrapped.getType().getProperty("parse") !== undefined;
+      }
       return true;
     }
 

@@ -201,6 +201,7 @@ export const ZOD_MINI_SCHEMA_BUILDERS: ReadonlySet<string> = new Set([
   // Primitives and string formats
   "creditCard",
   "iban",
+  "currencyCode",
   "string",
   "email",
   "guid",
@@ -308,6 +309,11 @@ export const ZOD_MINI_SCHEMA_BUILDERS: ReadonlySet<string> = new Set([
   "function",
   "transform",
   "instanceof",
+  // Zod Mini <4.6.3 returned a schema (ZodMiniProperties) from a standalone
+  // z.properties(shape) call; 4.6.3+ returns a check ($ZodCheckProperties)
+  // meant only for a schema's `.check(...)`. Both forms are within this
+  // package's supported peer range, so SchemaDetector special-cases this
+  // name and checks the resolved type instead of trusting membership alone.
   "properties",
   "deepPartial",
   "input",
