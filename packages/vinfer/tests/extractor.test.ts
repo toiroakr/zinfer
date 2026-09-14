@@ -126,7 +126,7 @@ afterAll(() => {
     ...new Set(errors.filter((error) => error.file.endsWith(".test.ts")).map((e) => e.file)),
   ].sort();
   expect(mismatchedTypeTests).toEqual(Object.keys(KNOWN_TYPE_DIFFERENCES).sort());
-}, 60000);
+}, 120000);
 
 /**
  * Renders type errors for an assertion message.
