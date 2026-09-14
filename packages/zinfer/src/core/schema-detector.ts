@@ -196,7 +196,6 @@ export class SchemaDetector {
     "withParser",
     "getDiscriminatedOption",
     "fromJSONSchema",
-    "properties",
   ]);
 
   private static readonly ZOD_VALUE_METHODS = new Set([

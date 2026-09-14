@@ -15,9 +15,11 @@ A tool to extract TypeScript input/output types from Zod schemas.
 
 ## Schema API compatibility
 
-Verified against Zod 4.6.1, including string formats, codecs,
+Verified against Zod 4.6.5, including string formats, codecs,
 `compile`/`withParser`, `input`/`output`, `deepPartial`, `exactPartial`, `toZod`,
-`getDiscriminatedOption`, `iban`, and `properties`.
+`getDiscriminatedOption`, `iban`, and `currencyCode`. `z.instanceof(...).properties(...)`
+is supported as a schema; the standalone `z.properties(...)` check is not (Zod 4.6.5
+returns a check from it, not a schema).
 Recursive `json()` types remain recursive, including inside other schemas.
 For exported schemas with symbol keys, generated types reference the source
 schema's inferred input/output type to preserve the original symbol identity;

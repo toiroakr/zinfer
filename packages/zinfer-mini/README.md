@@ -21,9 +21,10 @@ than zinfer's method-chain style (`z.object({...}).optional()`), so it needs its
 
 ## Schema API compatibility
 
-Verified against Zod 4.6.1, including string formats, codecs,
+Verified against Zod 4.6.5, including string formats, codecs,
 `compile`/`withParser`, `input`/`output`, `deepPartial`, `exactPartial`, `toZod`,
-`getDiscriminatedOption`, `iban`, and `properties`.
+`getDiscriminatedOption`, `iban`, and `currencyCode`. `z.properties(...)` returns a
+check, not a schema, and is only supported via `.check(...z.properties(...))`.
 Recursive `json()` types remain recursive, including inside other schemas.
 For exported schemas with symbol keys, generated types reference the source
 schema's inferred input/output type to preserve the original symbol identity;

@@ -35,7 +35,6 @@ export const Selected = z.getDiscriminatedOption(
   ]),
   "a",
 );
-export const Properties = z.properties({ name: z.string() });
 export const Applied = z.string().apply((schema) => schema.optional());
 export const JSON = z.json();
 export const FromJSON = z.fromJSONSchema({ type: "string" });
@@ -55,6 +54,7 @@ export const Factory = z.toZod<string>();
 export const AppliedValue = z.string().apply(() => 42);
 export const Validation = z.safeParse(z.string(), "x");
 export const Check = z.check<string>(() => {});
+export const Properties = z.properties({ name: z.string() });
 
 export const NestedJSON = z.object({ payload: z.json() });
 export const TAG = Symbol("tag");

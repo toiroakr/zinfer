@@ -309,7 +309,6 @@ export const ZOD_MINI_SCHEMA_BUILDERS: ReadonlySet<string> = new Set([
   "function",
   "transform",
   "instanceof",
-  "properties",
   "deepPartial",
   "input",
   "output",

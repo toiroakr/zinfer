@@ -42,6 +42,7 @@ it.skipIf(!("iban" in schemaLibrary))(
             "Metadata",
             "JSONSchema",
             "Check",
+            "Properties",
             "TAG",
           ].includes(name),
       );

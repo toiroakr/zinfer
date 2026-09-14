@@ -26,7 +26,7 @@ describe("SchemaDetector", () => {
       export const DeepPartial = z.deepPartial(z.object({ name: z.string() }));
       export const IBAN = z.iban();
       export const CurrencyCode = z.currencyCode();
-      export const Properties = z.properties({ name: z.string() });
+      export const InstanceProperties = z.instanceof(Date).properties({ tag: z.string() });
     `,
     );
     expect(detector.getSchemaNames(sourceFile)).toEqual([
@@ -37,8 +37,20 @@ describe("SchemaDetector", () => {
       "DeepPartial",
       "IBAN",
       "CurrencyCode",
-      "Properties",
+      "InstanceProperties",
     ]);
+  });
+
+  it("does not detect a standalone z.properties() call as a schema", () => {
+    const project = new Project();
+    const source = project.createSourceFile(
+      "standalone-properties.ts",
+      `
+      import { z } from "zod";
+      export const Properties = z.properties({ name: z.string() });
+    `,
+    );
+    expect(detector.getSchemaNames(source)).toEqual([]);
   });
 
   it("does not detect ordinary clone, pipe, or catch calls as schemas", () => {
