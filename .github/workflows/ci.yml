@@ -29,6 +29,8 @@ jobs:
           runtime: node@24.20.0
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Review upstream API surface
+        run: pnpm test:api
       - name: Build
         # zinfer/vinfer resolve @zinfer-monorepo/core (a private, unpublished
         # workspace package bundled into their own dist at publish time)
@@ -42,8 +44,6 @@ jobs:
         run: pnpm -r lint
       - name: Format
         run: pnpm -r format:check
-      - name: Review upstream API surface
-        run: pnpm test:api
       - name: Test
         run: pnpm -r test
 
