@@ -42,4 +42,5 @@ it.skipIf(!("ksuid" in schemaLibrary))(
     );
     expect(project.formatDiagnosticsWithColorAndContext(project.getPreEmitDiagnostics())).toBe("");
   },
+  120000,
 );

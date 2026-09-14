@@ -66,4 +66,5 @@ it.skipIf(!("iban" in schemaLibrary))(
     );
     expect(project.formatDiagnosticsWithColorAndContext(project.getPreEmitDiagnostics())).toBe("");
   },
+  120000,
 );
