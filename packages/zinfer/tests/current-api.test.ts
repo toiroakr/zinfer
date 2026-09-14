@@ -6,7 +6,7 @@ import { ZodTypeExtractor } from "../src/core/extractor.js";
 import { createNameMapper } from "../src/core/name-mapper.js";
 import { generateDeclarationFile } from "../src/core/type-printer.js";
 
-it.skipIf(!("iban" in schemaLibrary))(
+it.skipIf(!("iban" in schemaLibrary) || !("currencyCode" in schemaLibrary))(
   "extracts current Zod APIs with the same input and output types as Zod",
   () => {
     const fixture = resolve(import.meta.dirname, "fixtures/current-api/schema.ts");
