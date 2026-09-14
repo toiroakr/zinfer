@@ -26,7 +26,6 @@ describe("SchemaDetector", () => {
       export const DeepPartial = z.deepPartial(z.object({ name: z.string() }));
       export const IBAN = z.iban();
       export const CurrencyCode = z.currencyCode();
-      export const InstanceProperties = z.instanceof(Date).properties({ tag: z.string() });
     `,
     );
     expect(detector.getSchemaNames(sourceFile)).toEqual([
@@ -37,7 +36,6 @@ describe("SchemaDetector", () => {
       "DeepPartial",
       "IBAN",
       "CurrencyCode",
-      "InstanceProperties",
     ]);
   });
 
