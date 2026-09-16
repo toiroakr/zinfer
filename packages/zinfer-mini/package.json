@@ -54,7 +54,7 @@
     "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "@zinfer-monorepo/core": "workspace:*",
     "@zod/mini": "4.6.5",
-    "knip": "6.35.0",
+    "knip": "6.35.1",
     "oxfmt": "0.67.0",
     "oxlint": "1.82.0",
     "tsdown": "0.23.0",
