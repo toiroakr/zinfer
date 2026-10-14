@@ -382,7 +382,12 @@ files via an `import type` is unaffected either way.
 
 ```typescript
 export type JsonValue =
-  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 
 export const JsonValueSchema: v.GenericSchema<JsonValue> = v.lazy(() =>
   v.union([
