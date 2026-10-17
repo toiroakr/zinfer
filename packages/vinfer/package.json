@@ -55,7 +55,7 @@
     "knip": "6.39.0",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
-    "tsdown": "0.23.0",
+    "tsdown": "0.23.1",
     "typescript": "7.0.2",
     "valibot": "1.5.0",
     "vitest": "5.0.3"
