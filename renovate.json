@@ -17,6 +17,7 @@
   "packageRules": [
     {
       "matchDatasources": ["npm"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
       "minimumReleaseAge": "7 days"
     },
     {
