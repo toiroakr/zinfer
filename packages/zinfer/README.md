@@ -363,7 +363,12 @@ export const CategorySchema: z.ZodType<Category> = CategoryBaseSchema;
 
 ```typescript
 export type JsonValue =
-  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 
 export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   z.union([
