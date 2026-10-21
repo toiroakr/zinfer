@@ -1,4 +1,5 @@
-import { SourceFile, ImportDeclaration, Project } from "ts-morph";
+import * as compiler from "./compiler.js";
+import { SourceFile, ImportDeclaration, Project } from "./compiler.js";
 import { join } from "pathe";
 import { logDebugError } from "./logger.js";
 import type { DetectedSchema } from "./types.js";
@@ -49,21 +50,21 @@ export class ImportResolver {
    * Finds all imported schemas in a source file.
    *
    * @param sourceFile - The source file to analyze
-   * @param project - The ts-morph project for module resolution
+   * @param project - The native compiler project for module resolution
    * @returns Map of local names to imported schema info
    */
   findImportedSchemas(sourceFile: SourceFile, project: Project): ImportedSchemaMap {
     const result: ImportedSchemaMap = new Map();
-    const imports = sourceFile.getImportDeclarations();
+    const imports = compiler.getImportDeclarations(sourceFile);
 
     for (const importDecl of imports) {
-      const moduleSpecifier = importDecl.getModuleSpecifierValue();
+      const moduleSpecifier = compiler.getModuleSpecifierValue(importDecl);
 
       // Skip bare module specifiers (node_modules), but allow relative,
       // absolute, and subpath imports (package.json "imports" field, e.g.
       // "#/schemas/user.js"). Subpath imports — including the "#/*" form — are
       // resolved by TypeScript's own module resolution (requires the
-      // TypeScript 6 bundled by ts-morph).
+      // native TypeScript compiler).
       if (
         !moduleSpecifier.startsWith(".") &&
         !moduleSpecifier.startsWith("/") &&
@@ -80,10 +81,10 @@ export class ImportResolver {
       }
 
       // Check named imports
-      const namedImports = importDecl.getNamedImports();
+      const namedImports = compiler.getNamedImports(importDecl);
       for (const namedImport of namedImports) {
-        const importedName = namedImport.getName();
-        const localName = namedImport.getAliasNode()?.getText() || importedName;
+        const importedName = compiler.getName(namedImport);
+        const localName = compiler.getAliasNode(namedImport)?.getText() || importedName;
 
         // Find the actual source file containing the schema definition
         // This handles re-exports from index.ts files
@@ -93,7 +94,7 @@ export class ImportResolver {
           result.set(localName, {
             localName,
             originalName: actualSource.schemaName,
-            sourceFilePath: actualSource.sourceFile.getFilePath(),
+            sourceFilePath: compiler.getFilePath(actualSource.sourceFile),
             resolved: true,
           });
         }
@@ -113,7 +114,7 @@ export class ImportResolver {
     project: Project,
     visited: Set<string> = new Set(),
   ): { sourceFile: SourceFile; schemaName: string } | undefined {
-    const filePath = sourceFile.getFilePath();
+    const filePath = compiler.getFilePath(sourceFile);
 
     // Check cross-call cache first
     const cacheKey = `${filePath}:${schemaName}`;
@@ -136,13 +137,13 @@ export class ImportResolver {
     }
 
     // Check export declarations for re-exports
-    const exportDecls = sourceFile.getExportDeclarations();
+    const exportDecls = compiler.getExportDeclarations(sourceFile);
     for (const exportDecl of exportDecls) {
-      const moduleSpecifier = exportDecl.getModuleSpecifierValue();
+      const moduleSpecifier = compiler.getModuleSpecifierValue(exportDecl);
       if (!moduleSpecifier) continue;
 
       // Check if this is "export * from" or "export { name } from"
-      const namedExports = exportDecl.getNamedExports();
+      const namedExports = compiler.getNamedExports(exportDecl);
 
       if (namedExports.length === 0) {
         // This is "export * from './module'" - follow it
@@ -157,9 +158,10 @@ export class ImportResolver {
       } else {
         // Check named exports
         for (const namedExport of namedExports) {
-          const exportedName = namedExport.getAliasNode()?.getText() || namedExport.getName();
+          const exportedName =
+            compiler.getAliasNode(namedExport)?.getText() || compiler.getName(namedExport);
           if (exportedName === schemaName) {
-            const originalName = namedExport.getName();
+            const originalName = compiler.getName(namedExport);
             const reExportedFile = this.resolveModuleSpecifier(
               sourceFile,
               moduleSpecifier,
@@ -189,7 +191,9 @@ export class ImportResolver {
     moduleSpecifier: string,
     project: Project,
   ): SourceFile | undefined {
-    const sourceDir = fromFile.getDirectoryPath();
+    const resolved = project.resolveModule(moduleSpecifier, fromFile.fileName);
+    if (resolved) return project.addSourceFileAtPathIfExists(resolved.resolvedFileName);
+    const sourceDir = compiler.getDirectoryPath(fromFile);
     return this.resolveFromPossiblePaths(sourceDir, moduleSpecifier, project);
   }
 
@@ -241,18 +245,18 @@ export class ImportResolver {
     sourceFile: SourceFile,
     project: Project,
   ): SourceFile | undefined {
-    const moduleSpecifier = importDecl.getModuleSpecifierValue();
+    const moduleSpecifier = compiler.getModuleSpecifierValue(importDecl);
 
     try {
       // Get the module specifier source file
-      const moduleSourceFile = importDecl.getModuleSpecifierSourceFile();
+      const moduleSourceFile = compiler.getModuleSpecifierSourceFile(importDecl);
 
       if (moduleSourceFile) {
         return moduleSourceFile;
       }
 
       // Try to resolve manually for index.ts patterns
-      const sourceDir = sourceFile.getDirectoryPath();
+      const sourceDir = compiler.getDirectoryPath(sourceFile);
       return this.resolveFromPossiblePaths(sourceDir, moduleSpecifier, project);
     } catch (error) {
       logDebugError(`Module resolution failed for ${moduleSpecifier}`, error);

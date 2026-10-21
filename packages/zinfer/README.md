@@ -5,7 +5,7 @@ A tool to extract TypeScript input/output types from Zod schemas.
 ## Features
 
 - Extract `z.input<T>` / `z.output<T>` types as text from Zod schemas
-- Accurate type analysis using TypeScript Compiler API (ts-morph)
+- Accurate type analysis using TypeScript 7.1 native compiler API
 - Non-invasive: does not modify original source files
 - Supports both CLI and library API
 - Handles circular references (`z.lazy`, getter patterns)
@@ -26,6 +26,20 @@ schema's inferred input/output type to preserve the original symbol identity;
 keep that source module available to TypeScript.
 This also applies to explicit type annotations: input and output are resolved
 independently, including Zod 4's default `unknown` input for `z.ZodType<T>`.
+
+## TypeScript compiler
+
+Type analysis uses TypeScript 7.1 Beta, installed under the `typescript-native`
+package alias independently of your project's `typescript` version. The native
+compiler executable for your platform must be installed with optional dependencies
+enabled. The CLI and extraction helpers keep source changes in memory and release
+compiler resources after each operation.
+
+Generated property and literal-union ordering can differ from previous releases.
+Recursive types may retain references to exported source interfaces.
+`SchemaDetector` now accepts native TypeScript AST nodes instead of ts-morph nodes;
+use the extractor's `getSchemaNames(filePath)` to discover schemas without managing
+compiler ASTs.
 
 ## Installation
 

@@ -13,7 +13,7 @@ export type UserInput = {
   /** User's age in years */
   age?: number | undefined;
   /** User's role in the system */
-  role: "admin" | "user" | "guest";
+  role: "admin" | "guest" | "user";
 };
 
 export type UserOutput = {
@@ -26,7 +26,7 @@ export type UserOutput = {
   /** User's age in years */
   age?: number | undefined;
   /** User's role in the system */
-  role: "admin" | "user" | "guest";
+  role: "admin" | "guest" | "user";
 };
 
 export type AddressInput = {

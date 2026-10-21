@@ -1,6 +1,7 @@
+import { afterEach } from "vitest";
 import { describe, it, expect, beforeEach } from "vitest";
 import { resolve } from "path";
-import { Project } from "ts-morph";
+import { Project } from "@zinfer-monorepo/core";
 import { ImportResolver } from "../src/core/import-resolver.js";
 import { SchemaDetector } from "../src/core/schema-detector.js";
 
@@ -9,6 +10,7 @@ const fixturesDir = resolve(import.meta.dirname, "fixtures");
 describe("ImportResolver", () => {
   let resolver: ImportResolver;
   let project: Project;
+  afterEach(() => project.close());
 
   beforeEach(() => {
     resolver = new ImportResolver(new SchemaDetector());
@@ -41,20 +43,10 @@ describe("ImportResolver", () => {
 
       const importedSchemas = resolver.findImportedSchemas(sourceFile, project);
 
-      // Re-export resolution depends on ts-morph's module resolution
-      // Current implementation may not resolve all re-export patterns
-      // This test documents the current behavior
-      if (importedSchemas.size > 0) {
-        expect(importedSchemas.has("SharedSchema")).toBe(true);
-        const sharedInfo = importedSchemas.get("SharedSchema")!;
-        expect(sharedInfo.resolved).toBe(true);
-        // Should resolve to the original source file
-        expect(sharedInfo.sourceFilePath).toContain("shared.ts");
-      } else {
-        // If re-exports are not resolved, the map will be empty
-        // This is a known limitation with certain module resolution configurations
-        expect(importedSchemas.size).toBe(0);
-      }
+      expect(importedSchemas.size).toBe(1);
+      const sharedInfo = importedSchemas.get("SharedSchema")!;
+      expect(sharedInfo.resolved).toBe(true);
+      expect(sharedInfo.sourceFilePath).toContain("shared.ts");
     });
 
     it("should ignore node_modules imports", () => {

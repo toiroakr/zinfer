@@ -10,7 +10,7 @@ than zinfer's method-chain style (`z.object({...}).optional()`), so it needs its
 ## Features
 
 - Extract `z.input<T>` / `z.output<T>` types as text from zod/mini schemas
-- Accurate type analysis using the TypeScript Compiler API (ts-morph)
+- Accurate type analysis using the TypeScript 7.1 native compiler API
 - Non-invasive: does not modify original source files
 - Works with both `import * as z from "zod/mini"` and named imports (`import { object, string } from "zod/mini"`)
 - Handles circular references (`z.lazy()`, getter patterns)
@@ -34,6 +34,20 @@ keep that source module available to TypeScript.
 The `iso` and `coerce` namespaces work with namespace imports and named
 imports (including aliases). Schema-returning `.apply()` calls are detected;
 callbacks returning plain values are excluded.
+
+## TypeScript compiler
+
+Type analysis uses TypeScript 7.1 Beta, installed under the `typescript-native`
+package alias independently of your project's `typescript` version. The native
+compiler executable for your platform must be installed with optional dependencies
+enabled. The CLI and extraction helpers keep source changes in memory and release
+compiler resources after each operation.
+
+Generated property and literal-union ordering can differ from previous releases.
+Recursive types may retain references to exported source interfaces.
+`SchemaDetector` now accepts native TypeScript AST nodes instead of ts-morph nodes;
+use the extractor's `getSchemaNames(filePath)` to discover schemas without managing
+compiler ASTs.
 
 ## Installation
 

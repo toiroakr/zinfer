@@ -1,4 +1,4 @@
-import { Node } from "ts-morph";
+import { Node } from "@zinfer-monorepo/core";
 import {
   ValibotBindings,
   VALIBOT_ARRAY_BUILDERS,
@@ -47,7 +47,7 @@ export function unwrapExpression(node: Node): Node {
     Node.isParenthesizedExpression(current) ||
     Node.isTypeAssertion(current)
   ) {
-    current = current.getExpression();
+    current = current.expression;
   }
   return current;
 }
@@ -92,7 +92,7 @@ export function analyzeSchemaExpression(
     const callName = bindings.getCallName(current);
     if (!callName) return null;
 
-    const args = current.getArguments();
+    const args = current.arguments;
 
     if (VALIBOT_OPTIONAL_WRAPPERS.has(callName)) {
       if (args.length === 0) return null;

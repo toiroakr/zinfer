@@ -1,9 +1,9 @@
 import { expect, it } from "vitest";
-import { Project, ts } from "ts-morph";
+import { Project, ts } from "@zinfer-monorepo/core";
 import { SchemaDetector } from "../src/core/schema-detector.js";
 
 it("detects current Mini schema builders and nested namespaces", () => {
-  const project = new Project();
+  using project = new Project();
   const file = project.createSourceFile(
     "current-mini.ts",
     `
@@ -37,7 +37,7 @@ it("detects current Mini schema builders and nested namespaces", () => {
 });
 
 it("does not detect a standalone z.properties() call as a schema", () => {
-  const project = new Project();
+  using project = new Project();
   const file = project.createSourceFile(
     "standalone-mini-properties.ts",
     `
@@ -53,8 +53,7 @@ it("detects a standalone z.properties() call as a schema on legacy Zod Mini (pre
   // check. This stubs zod/mini's module shape as it was on 4.6.0-4.6.2,
   // where properties() returned a schema (exposing .parse()), to keep this
   // branch covered without pinning a second zod version for the whole suite.
-  const project = new Project({
-    useInMemoryFileSystem: true,
+  using project = new Project({
     compilerOptions: { moduleResolution: ts.ModuleResolutionKind.Bundler },
   });
   project.createSourceFile(

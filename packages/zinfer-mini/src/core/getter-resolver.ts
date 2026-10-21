@@ -1,4 +1,5 @@
-import { SourceFile, SyntaxKind, Node } from "ts-morph";
+import * as compiler from "@zinfer-monorepo/core";
+import { SourceFile, SyntaxKind, Node } from "@zinfer-monorepo/core";
 import { ZodMiniBindings } from "./zod-mini-bindings.js";
 import { analyzeSchemaExpression, type SchemaExpressionRef } from "./schema-expression.js";
 import { isEscaped } from "./string-scan.js";
@@ -24,7 +25,7 @@ export class GetterResolver {
   /**
    * Analyzes a source file to find getter field mappings.
    *
-   * @param sourceFile - The ts-morph SourceFile to analyze
+   * @param sourceFile - The native TypeScript SourceFile to analyze
    * @param schemaNames - When given, only these schemas are analyzed
    * @returns Map of schema name to field info
    */
@@ -32,13 +33,13 @@ export class GetterResolver {
     const result: GetterFieldMap = new Map();
     const bindings = ZodMiniBindings.from(sourceFile);
 
-    const statements = sourceFile.getVariableStatements();
+    const statements = compiler.getVariableStatements(sourceFile);
     for (const stmt of statements) {
-      for (const decl of stmt.getDeclarations()) {
-        const schemaName = decl.getName();
+      for (const decl of compiler.getDeclarations(stmt)) {
+        const schemaName = compiler.getName(decl);
         if (schemaNames && !schemaNames.has(schemaName)) continue;
 
-        const init = decl.getInitializer();
+        const init = decl.initializer;
         if (!init) continue;
 
         const fieldMap = this.extractGetterFieldsFromAST(init, schemaName, bindings);
@@ -63,18 +64,18 @@ export class GetterResolver {
     const fieldMap = new Map<string, GetterFieldInfo>();
 
     // Find all getter declarations within the node
-    const getters = node.getDescendantsOfKind(SyntaxKind.GetAccessor);
+    const getters = compiler.getDescendantsOfKind(node, SyntaxKind.GetAccessor);
 
     for (const getter of getters) {
-      const fieldName = getter.getName();
-      const body = getter.getBody();
+      const fieldName = compiler.getName(getter);
+      const body = getter.body;
       if (!body) continue;
 
       // Find return statement
-      const returnStmt = body.getFirstDescendantByKind(SyntaxKind.ReturnStatement);
+      const returnStmt = compiler.getFirstDescendantByKind(body, SyntaxKind.ReturnStatement);
       if (!returnStmt) continue;
 
-      const returnExpr = returnStmt.getExpression();
+      const returnExpr = returnStmt.expression;
       if (!returnExpr) continue;
 
       // Any identifier can be the referenced schema here: a getter exists

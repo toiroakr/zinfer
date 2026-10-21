@@ -9,25 +9,25 @@ export type MixedValueInput = JsonValueInput | Function;
 export type MixedValueOutput = JsonValueOutput | Function;
 
 export type ReferencedValueInput = {
+  kind: "reference";
+  value?: MixedValueInput;
   reference: {
     name: string;
   };
-  kind: "reference";
-  value?: MixedValueInput;
 } | {
-  referenceName: string;
   kind: "reference";
   value?: MixedValueInput;
+  referenceName: string;
 };
 
 export type ReferencedValueOutput = {
-  referenceName: string;
   kind: "reference";
   value?: MixedValueOutput;
+  referenceName: string;
 } | {
-  referenceName: string;
   kind: "reference";
   value?: MixedValueOutput;
+  referenceName: string;
 };
 
 export type CallableValueInput = {

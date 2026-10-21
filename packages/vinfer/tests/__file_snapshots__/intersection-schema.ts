@@ -13,15 +13,15 @@ export type EntityOutput = {
 };
 
 export type MergedInput = {
+  id: string;
   createdAt: Date;
   updatedAt: Date;
-  id: string;
 };
 
 export type MergedOutput = {
+  id: string;
   createdAt: Date;
   updatedAt: Date;
-  id: string;
 };
 
 export type AndInput = {

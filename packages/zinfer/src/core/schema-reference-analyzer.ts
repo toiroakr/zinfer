@@ -1,4 +1,5 @@
-import { SourceFile, Node, CallExpression } from "ts-morph";
+import * as compiler from "@zinfer-monorepo/core";
+import { SourceFile, Node, CallExpression } from "@zinfer-monorepo/core";
 
 /**
  * Information about a schema reference within another schema.
@@ -66,13 +67,13 @@ export class SchemaReferenceAnalyzer {
     const references: SchemaReferenceMap = new Map();
     const unionReferences: UnionReferenceMap = new Map();
 
-    const statements = sourceFile.getVariableStatements();
+    const statements = compiler.getVariableStatements(sourceFile);
     for (const stmt of statements) {
-      for (const decl of stmt.getDeclarations()) {
-        const schemaName = decl.getName();
+      for (const decl of compiler.getDeclarations(stmt)) {
+        const schemaName = compiler.getName(decl);
         if (!schemaNames.has(schemaName)) continue;
 
-        const init = decl.getInitializer();
+        const init = decl.initializer;
         if (!init) continue;
 
         const refs = this.findSchemaReferences(init, schemaNames, schemaName);
@@ -101,14 +102,14 @@ export class SchemaReferenceAnalyzer {
     // Unwrap type-preserving wrappers like z.union([...]).describe("...")
     let current = node;
     while (Node.isCallExpression(current)) {
-      const callee = current.getExpression();
+      const callee = current.expression;
       if (
         !Node.isPropertyAccessExpression(callee) ||
-        !SchemaReferenceAnalyzer.TYPE_PRESERVING_METHODS.has(callee.getName())
+        !SchemaReferenceAnalyzer.TYPE_PRESERVING_METHODS.has(compiler.getName(callee))
       ) {
         break;
       }
-      current = callee.getExpression();
+      current = callee.expression;
     }
 
     // Check if this is a z.discriminatedUnion() or z.union() call
@@ -116,13 +117,13 @@ export class SchemaReferenceAnalyzer {
       return undefined;
     }
 
-    const expr = current.getExpression();
+    const expr = current.expression;
     if (!Node.isPropertyAccessExpression(expr)) {
       return undefined;
     }
 
-    const obj = expr.getExpression();
-    const method = expr.getName();
+    const obj = expr.expression;
+    const method = compiler.getName(expr);
 
     if (!Node.isIdentifier(obj) || obj.getText() !== "z") {
       return undefined;
@@ -147,7 +148,7 @@ export class SchemaReferenceAnalyzer {
     schemaNames: Set<string>,
     currentSchema: string,
   ): UnionReferenceInfo | undefined {
-    const args = node.getArguments();
+    const args = node.arguments;
     if (args.length < 2) {
       return undefined;
     }
@@ -156,7 +157,7 @@ export class SchemaReferenceAnalyzer {
     const discriminatorArg = args[0];
     let discriminatorKey: string | undefined;
     if (Node.isStringLiteral(discriminatorArg)) {
-      discriminatorKey = discriminatorArg.getLiteralText();
+      discriminatorKey = compiler.getLiteralText(discriminatorArg);
     }
 
     // Second arg is the array of schemas
@@ -187,7 +188,7 @@ export class SchemaReferenceAnalyzer {
     schemaNames: Set<string>,
     currentSchema: string,
   ): UnionReferenceInfo | undefined {
-    const args = node.getArguments();
+    const args = node.arguments;
     if (args.length < 1) {
       return undefined;
     }
@@ -225,7 +226,7 @@ export class SchemaReferenceAnalyzer {
 
     const members: string[] = [];
     let hasInlineMembers = false;
-    for (const element of node.getElements()) {
+    for (const element of node.elements) {
       if (Node.isIdentifier(element)) {
         const name = element.getText();
         if (schemaNames.has(name) && name !== currentSchema) {
@@ -253,7 +254,7 @@ export class SchemaReferenceAnalyzer {
     const objectCalls = this.findZodObjectCalls(node);
 
     for (const objectCall of objectCalls) {
-      const args = objectCall.getArguments();
+      const args = objectCall.arguments;
       if (args.length === 0) continue;
 
       const objectLiteral = args[0];
@@ -287,18 +288,19 @@ export class SchemaReferenceAnalyzer {
 
     const refsByField = new Map<string, SchemaReferenceInfo | null>();
 
-    for (const prop of objectLiteral.getProperties()) {
+    for (const prop of objectLiteral.properties) {
       if (Node.isSpreadAssignment(prop)) {
-        const expression = prop.getExpression();
+        const expression = prop.expression;
         if (!Node.isIdentifier(expression)) {
           refsByField.clear();
           continue;
         }
 
-        const declaration = objectLiteral
-          .getSourceFile()
-          .getVariableDeclaration(expression.getText());
-        let initializer = declaration?.getInitializer();
+        const declaration = compiler.getVariableDeclaration(
+          objectLiteral.getSourceFile(),
+          expression.getText(),
+        );
+        let initializer = declaration?.initializer;
         while (
           initializer &&
           (Node.isAsExpression(initializer) ||
@@ -306,14 +308,14 @@ export class SchemaReferenceAnalyzer {
             Node.isParenthesizedExpression(initializer) ||
             Node.isTypeAssertion(initializer))
         ) {
-          initializer = initializer.getExpression();
+          initializer = initializer.expression;
         }
         if (!declaration || !initializer || !Node.isObjectLiteralExpression(initializer)) {
           refsByField.clear();
           continue;
         }
 
-        const shapeId = `${declaration.getSourceFile().getFilePath()}:${declaration.getStart()}`;
+        const shapeId = `${compiler.getFilePath(declaration.getSourceFile())}:${declaration.getStart()}`;
         if (visitedShapes.has(shapeId)) continue;
 
         const nextVisitedShapes = new Set(visitedShapes);
@@ -331,8 +333,8 @@ export class SchemaReferenceAnalyzer {
 
       if (!Node.isPropertyAssignment(prop)) continue;
 
-      const fieldName = prop.getName();
-      const initializer = prop.getInitializer();
+      const fieldName = compiler.getName(prop);
+      const initializer = prop.initializer;
       if (!initializer) continue;
 
       const refInfo = this.analyzeFieldValue(initializer, fieldName, schemaNames, currentSchema);
@@ -351,10 +353,10 @@ export class SchemaReferenceAnalyzer {
     // Check the node itself
     const checkNode = (n: Node) => {
       if (Node.isCallExpression(n)) {
-        const expr = n.getExpression();
+        const expr = n.expression;
         if (Node.isPropertyAccessExpression(expr)) {
-          const obj = expr.getExpression();
-          const method = expr.getName();
+          const obj = expr.expression;
+          const method = compiler.getName(expr);
           if (
             Node.isIdentifier(obj) &&
             obj.getText() === "z" &&
@@ -367,7 +369,7 @@ export class SchemaReferenceAnalyzer {
     };
 
     checkNode(node);
-    node.forEachDescendant(checkNode);
+    compiler.forEachDescendant(node, checkNode);
 
     return calls;
   }
@@ -389,11 +391,11 @@ export class SchemaReferenceAnalyzer {
     // Unwrap method chains
     let current = node;
     while (Node.isCallExpression(current)) {
-      const expr = current.getExpression();
+      const expr = current.expression;
 
       if (Node.isPropertyAccessExpression(expr)) {
-        const method = expr.getName();
-        const base = expr.getExpression();
+        const method = compiler.getName(expr);
+        const base = expr.expression;
 
         if (method === "optional" || method === "nullable") {
           isOptional = true;
@@ -417,7 +419,7 @@ export class SchemaReferenceAnalyzer {
             }
           } else if (Node.isIdentifier(base) && base.getText() === "z") {
             // z.array(SchemaName)
-            const args = current.getArguments();
+            const args = current.arguments;
             if (args.length > 0 && Node.isIdentifier(args[0])) {
               const name = args[0].getText();
               if (schemaNames.has(name) && name !== currentSchema) {
@@ -433,7 +435,7 @@ export class SchemaReferenceAnalyzer {
 
         if (method === "record" && Node.isIdentifier(base) && base.getText() === "z") {
           // z.record(key, SchemaName)
-          const args = current.getArguments();
+          const args = current.arguments;
           if (args.length >= 2 && Node.isIdentifier(args[1])) {
             const name = args[1].getText();
             if (schemaNames.has(name) && name !== currentSchema) {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { resolve } from "path";
-import { Project } from "ts-morph";
+import { Project } from "@zinfer-monorepo/core";
 import { SchemaDetector } from "../src/core/schema-detector.js";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
@@ -9,12 +9,12 @@ describe("SchemaDetector", () => {
   const detector = new SchemaDetector();
 
   function getSourceFile(filename: string) {
-    const project = new Project();
+    using project = new Project();
     return project.addSourceFileAtPath(resolve(fixturesDir, filename));
   }
 
   it("detects current Zod schema builders", () => {
-    const project = new Project();
+    using project = new Project();
     const sourceFile = project.createSourceFile(
       "current-api.ts",
       `
@@ -40,7 +40,7 @@ describe("SchemaDetector", () => {
   });
 
   it("does not detect a standalone z.properties() call as a schema", () => {
-    const project = new Project();
+    using project = new Project();
     const source = project.createSourceFile(
       "standalone-properties.ts",
       `
@@ -52,7 +52,7 @@ describe("SchemaDetector", () => {
   });
 
   it("does not detect ordinary clone, pipe, or catch calls as schemas", () => {
-    const project = new Project();
+    using project = new Project();
     const source = project.createSourceFile(
       "plain-values.ts",
       `
@@ -66,7 +66,7 @@ describe("SchemaDetector", () => {
   });
 
   it("distinguishes Zod method chains from ordinary APIs with the same method names", () => {
-    const project = new Project();
+    using project = new Project();
     const source = project.createSourceFile(
       resolve(fixturesDir, "method-results.ts"),
       `
@@ -83,7 +83,7 @@ describe("SchemaDetector", () => {
   });
 
   it("excludes parsed values while preserving schema-returning method chains", () => {
-    const project = new Project();
+    using project = new Project();
     const source = project.createSourceFile(
       resolve(fixturesDir, "parsed-values.ts"),
       `
@@ -148,7 +148,7 @@ describe("SchemaDetector", () => {
       // Inline source keeps the line breaks that formatters like prettier
       // insert between "z" and the builder method, which fixtures on disk
       // would lose to this repository's own formatter.
-      const project = new Project();
+      using project = new Project();
       const sourceFile = project.createSourceFile(
         "multiline-schema.ts",
         [

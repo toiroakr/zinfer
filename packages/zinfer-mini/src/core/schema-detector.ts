@@ -1,4 +1,5 @@
-import { Node, SourceFile, VariableDeclaration } from "ts-morph";
+import * as compiler from "@zinfer-monorepo/core";
+import { Node, SourceFile, VariableDeclaration } from "@zinfer-monorepo/core";
 import { ZodMiniBindings, ZOD_MINI_SCHEMA_BUILDERS } from "./zod-mini-bindings.js";
 import { unwrapExpression } from "./schema-expression.js";
 import { isEscaped } from "./string-scan.js";
@@ -28,11 +29,11 @@ export class SchemaDetector {
   /**
    * Detects all zod/mini schemas in a source file.
    *
-   * @param sourceFile - The ts-morph SourceFile to analyze
+   * @param sourceFile - The native TypeScript SourceFile to analyze
    * @returns Array of detected schema information (including non-exported schemas)
    */
   detectExportedSchemas(sourceFile: SourceFile): DetectedSchema[] {
-    const filePath = sourceFile.getFilePath();
+    const filePath = compiler.getFilePath(sourceFile);
     const cached = this.cache.get(filePath);
     if (cached) return cached;
 
@@ -40,17 +41,17 @@ export class SchemaDetector {
     const bindings = ZodMiniBindings.from(sourceFile);
 
     // Find all variable declarations
-    const variableStatements = sourceFile.getVariableStatements();
+    const variableStatements = compiler.getVariableStatements(sourceFile);
 
     for (const statement of variableStatements) {
-      const isExported = statement.isExported();
+      const isExported = compiler.isExported(statement);
 
-      for (const declaration of statement.getDeclarations()) {
+      for (const declaration of compiler.getDeclarations(statement)) {
         if (this.isZodMiniSchema(declaration, bindings)) {
           schemas.push({
-            name: declaration.getName(),
+            name: compiler.getName(declaration),
             isExported,
-            line: declaration.getStartLineNumber(),
+            line: compiler.getStartLineNumber(declaration),
             explicitType: this.extractExplicitType(declaration),
           });
         }
@@ -58,16 +59,16 @@ export class SchemaDetector {
     }
 
     // Also check for re-exports: export { X as Y }
-    const exportDeclarations = sourceFile.getExportDeclarations();
+    const exportDeclarations = compiler.getExportDeclarations(sourceFile);
     for (const exportDecl of exportDeclarations) {
-      const namedExports = exportDecl.getNamedExports();
+      const namedExports = compiler.getNamedExports(exportDecl);
       for (const namedExport of namedExports) {
-        const aliasNode = namedExport.getAliasNode();
-        const exportedName = aliasNode ? aliasNode.getText() : namedExport.getName();
+        const aliasNode = compiler.getAliasNode(namedExport);
+        const exportedName = aliasNode ? aliasNode.getText() : compiler.getName(namedExport);
 
         // Check if the original variable is a zod/mini schema
-        const originalName = namedExport.getName();
-        const originalDecl = sourceFile.getVariableDeclaration(originalName);
+        const originalName = compiler.getName(namedExport);
+        const originalDecl = compiler.getVariableDeclaration(sourceFile, originalName);
 
         if (originalDecl && this.isZodMiniSchema(originalDecl, bindings)) {
           // If the exported name is different from original (alias), add new entry
@@ -77,7 +78,7 @@ export class SchemaDetector {
                 name: exportedName,
                 localName: originalName,
                 isExported: true,
-                line: namedExport.getStartLineNumber(),
+                line: compiler.getStartLineNumber(namedExport),
               });
             }
           } else {
@@ -89,7 +90,7 @@ export class SchemaDetector {
               schemas.push({
                 name: exportedName,
                 isExported: true,
-                line: namedExport.getStartLineNumber(),
+                line: compiler.getStartLineNumber(namedExport),
               });
             }
           }
@@ -116,12 +117,12 @@ export class SchemaDetector {
     visitedDeclarations?: Set<string>,
   ): boolean {
     // Explicit zod/mini schema annotation (z.ZodMiniType<T>)
-    const typeNode = declaration.getTypeNode();
+    const typeNode = declaration.type;
     if (typeNode && this.isZodMiniTypeAnnotation(typeNode, bindings)) {
       return true;
     }
 
-    const initializer = declaration.getInitializer();
+    const initializer = declaration.initializer;
     if (!initializer) {
       return false;
     }
@@ -133,20 +134,20 @@ export class SchemaDetector {
     const callName = bindings.getCallName(unwrapped);
     if (callName !== undefined && ZOD_MINI_SCHEMA_BUILDERS.has(callName)) {
       if (callName === "toZod") {
-        return Node.isCallExpression(unwrapped) && Node.isCallExpression(unwrapped.getExpression());
+        return Node.isCallExpression(unwrapped) && Node.isCallExpression(unwrapped.expression);
       }
       if (callName === "properties") {
         // Schemas expose `.parse()`; the $ZodCheckProperties check (Zod Mini
         // 4.6.3+) does not.
-        return unwrapped.getType().getProperty("parse") !== undefined;
+        return compiler.typeOf(unwrapped).getProperty("parse") !== undefined;
       }
       return true;
     }
 
     if (Node.isCallExpression(unwrapped)) {
-      const callee = unwrapped.getExpression();
-      if (Node.isPropertyAccessExpression(callee) && callee.getName() === "apply") {
-        const type = unwrapped.getType();
+      const callee = unwrapped.expression;
+      if (Node.isPropertyAccessExpression(callee) && compiler.getName(callee) === "apply") {
+        const type = compiler.typeOf(unwrapped);
         // Mini functions also expose _input; optional() belongs only to classic schemas.
         return type.getProperty("_zod") !== undefined && type.getProperty("optional") === undefined;
       }
@@ -168,14 +169,14 @@ export class SchemaDetector {
    */
   private isZodMiniTypeAnnotation(typeNode: Node, bindings: ZodMiniBindings): boolean {
     if (!Node.isTypeReference(typeNode)) return false;
-    const typeName = typeNode.getTypeName();
+    const typeName = typeNode.typeName;
 
     if (Node.isQualifiedName(typeName)) {
-      const left = typeName.getLeft();
+      const left = typeName.left;
       return (
         Node.isIdentifier(left) &&
         bindings.isNamespace(left.getText()) &&
-        SCHEMA_TYPE_ANNOTATIONS.includes(typeName.getRight().getText())
+        SCHEMA_TYPE_ANNOTATIONS.includes(typeName.right.getText())
       );
     }
 
@@ -220,15 +221,15 @@ export class SchemaDetector {
     visitedDeclarations: Set<string> = new Set(),
   ): boolean {
     if (!Node.isCallExpression(node)) return false;
-    const callee = node.getExpression();
+    const callee = node.expression;
     if (
       !Node.isPropertyAccessExpression(callee) ||
-      !SchemaDetector.SCHEMA_RETURNING_METHODS.has(callee.getName())
+      !SchemaDetector.SCHEMA_RETURNING_METHODS.has(compiler.getName(callee))
     ) {
       return false;
     }
 
-    const receiver = unwrapExpression(callee.getExpression());
+    const receiver = unwrapExpression(callee.expression);
 
     if (Node.isCallExpression(receiver)) {
       const callName = bindings.getCallName(receiver);
@@ -237,12 +238,15 @@ export class SchemaDetector {
     }
 
     if (Node.isIdentifier(receiver)) {
-      const receiverDecl = receiver.getSourceFile().getVariableDeclaration(receiver.getText());
+      const receiverDecl = compiler.getVariableDeclaration(
+        receiver.getSourceFile(),
+        receiver.getText(),
+      );
       if (!receiverDecl) return false;
       // Guards against a pathological mutual reference between two variable
       // declarations (invalid at runtime, but not something ts-morph's
       // static AST walk rejects on its own) recursing forever.
-      const key = `${receiverDecl.getSourceFile().getFilePath()}:${receiverDecl.getStart()}`;
+      const key = `${compiler.getFilePath(receiverDecl.getSourceFile())}:${receiverDecl.getStart()}`;
       if (visitedDeclarations.has(key)) return false;
       visitedDeclarations.add(key);
       return this.isZodMiniSchema(receiverDecl, bindings, visitedDeclarations);
@@ -254,7 +258,7 @@ export class SchemaDetector {
   /**
    * Gets all schema names from a source file.
    *
-   * @param sourceFile - The ts-morph SourceFile to analyze
+   * @param sourceFile - The native TypeScript SourceFile to analyze
    * @returns Array of schema names
    */
   getSchemaNames(sourceFile: SourceFile): string[] {
@@ -268,7 +272,7 @@ export class SchemaDetector {
    * @returns The explicit type string if found, undefined otherwise
    */
   private extractExplicitType(declaration: VariableDeclaration): string | undefined {
-    const typeNode = declaration.getTypeNode();
+    const typeNode = declaration.type;
     if (!typeNode) {
       return undefined;
     }

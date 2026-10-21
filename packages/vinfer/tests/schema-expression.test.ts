@@ -1,5 +1,6 @@
+import * as compiler from "@zinfer-monorepo/core";
 import { describe, it, expect } from "vitest";
-import { Project } from "ts-morph";
+import { Project } from "@zinfer-monorepo/core";
 import { ValibotBindings } from "../src/core/valibot-bindings.js";
 import { analyzeSchemaExpression, unwrapExpression } from "../src/core/schema-expression.js";
 
@@ -9,12 +10,12 @@ let fileCounter = 0;
  * Analyzes `const Target = <expression>;` against the given known schema names.
  */
 function analyze(expression: string, knownSchemas: string[] = ["AddressSchema"]) {
-  const project = new Project();
+  using project = new Project();
   const sourceFile = project.createSourceFile(
     `expr-${fileCounter++}.ts`,
     ['import * as v from "valibot";', `const Target = ${expression};`].join("\n"),
   );
-  const initializer = sourceFile.getVariableDeclarationOrThrow("Target").getInitializerOrThrow();
+  const initializer = compiler.getVariableDeclaration(sourceFile, "Target")!.initializer!;
   const names = new Set(knownSchemas);
 
   return analyzeSchemaExpression(initializer, ValibotBindings.from(sourceFile), (name) =>
@@ -154,12 +155,12 @@ describe("analyzeSchemaExpression", () => {
 
 describe("unwrapExpression", () => {
   it("strips as, satisfies and parentheses", () => {
-    const project = new Project();
+    using project = new Project();
     const sourceFile = project.createSourceFile(
       "unwrap.ts",
       ["type T = unknown;", "const Target = ((1 as T) satisfies T);"].join("\n"),
     );
-    const initializer = sourceFile.getVariableDeclarationOrThrow("Target").getInitializerOrThrow();
+    const initializer = compiler.getVariableDeclaration(sourceFile, "Target")!.initializer!;
     expect(unwrapExpression(initializer).getText()).toBe("1");
   });
 });

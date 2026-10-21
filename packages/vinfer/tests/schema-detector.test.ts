@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { resolve } from "path";
-import { Project } from "ts-morph";
+import { Project } from "@zinfer-monorepo/core";
 import { SchemaDetector } from "../src/core/schema-detector.js";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
@@ -9,12 +9,12 @@ describe("SchemaDetector", () => {
   const detector = new SchemaDetector();
 
   function getSourceFile(filename: string) {
-    const project = new Project();
+    using project = new Project();
     return project.addSourceFileAtPath(resolve(fixturesDir, filename));
   }
 
   function createSourceFile(filename: string, content: string) {
-    const project = new Project();
+    using project = new Project();
     return project.createSourceFile(filename, content);
   }
 

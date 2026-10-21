@@ -62,3 +62,5 @@ export {
   type ExtractorLike,
   type DescriptionExtractorLike,
 } from "./cli-runner.js";
+
+export * from "./compiler.js";

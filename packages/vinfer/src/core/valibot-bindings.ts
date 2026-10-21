@@ -1,4 +1,5 @@
-import { Node, type SourceFile } from "ts-morph";
+import * as compiler from "@zinfer-monorepo/core";
+import { Node, type SourceFile } from "@zinfer-monorepo/core";
 import { escapeRegExp } from "./regexp.js";
 
 /**
@@ -44,23 +45,23 @@ export class ValibotBindings {
     const namespaceAliases = new Set<string>();
     const namedImports = new Map<string, string>();
 
-    for (const importDecl of sourceFile.getImportDeclarations()) {
-      if (!VALIBOT_MODULES.has(importDecl.getModuleSpecifierValue())) continue;
+    for (const importDecl of compiler.getImportDeclarations(sourceFile)) {
+      if (!VALIBOT_MODULES.has(compiler.getModuleSpecifierValue(importDecl))) continue;
 
-      const namespaceImport = importDecl.getNamespaceImport();
+      const namespaceImport = compiler.getNamespaceImport(importDecl);
       if (namespaceImport) {
         namespaceAliases.add(namespaceImport.getText());
       }
 
       // `import v from "valibot"` also exposes the whole namespace under esModuleInterop.
-      const defaultImport = importDecl.getDefaultImport();
+      const defaultImport = compiler.getDefaultImport(importDecl);
       if (defaultImport) {
         namespaceAliases.add(defaultImport.getText());
       }
 
-      for (const namedImport of importDecl.getNamedImports()) {
-        const exportName = namedImport.getName();
-        const localName = namedImport.getAliasNode()?.getText() ?? exportName;
+      for (const namedImport of compiler.getNamedImports(importDecl)) {
+        const exportName = compiler.getName(namedImport);
+        const localName = compiler.getAliasNode(namedImport)?.getText() ?? exportName;
         namedImports.set(localName, exportName);
       }
     }
@@ -92,12 +93,12 @@ export class ValibotBindings {
   getCallName(node: Node): string | undefined {
     if (!Node.isCallExpression(node)) return undefined;
 
-    const callee = node.getExpression();
+    const callee = node.expression;
 
     if (Node.isPropertyAccessExpression(callee)) {
-      const target = callee.getExpression();
+      const target = callee.expression;
       if (Node.isIdentifier(target) && this.isNamespace(target.getText())) {
-        return callee.getName();
+        return compiler.getName(callee);
       }
       return undefined;
     }

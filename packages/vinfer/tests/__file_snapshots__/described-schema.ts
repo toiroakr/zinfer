@@ -5,7 +5,7 @@ export type UserInput = {
   name: string;
   email: string;
   age?: number | undefined;
-  role: "admin" | "user" | "guest";
+  role: "admin" | "guest" | "user";
 };
 
 export type UserOutput = {
@@ -13,7 +13,7 @@ export type UserOutput = {
   name: string;
   email: string;
   age?: number | undefined;
-  role: "admin" | "user" | "guest";
+  role: "admin" | "guest" | "user";
 };
 
 export type AddressInput = {

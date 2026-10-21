@@ -1,4 +1,5 @@
-import { SourceFile, Node, CallExpression } from "ts-morph";
+import * as compiler from "@zinfer-monorepo/core";
+import { SourceFile, Node, CallExpression } from "@zinfer-monorepo/core";
 import {
   ZodMiniBindings,
   ZOD_MINI_OBJECT_BUILDERS,
@@ -64,13 +65,13 @@ export class SchemaReferenceAnalyzer {
     const unionReferences: UnionReferenceMap = new Map();
     const bindings = ZodMiniBindings.from(sourceFile);
 
-    const statements = sourceFile.getVariableStatements();
+    const statements = compiler.getVariableStatements(sourceFile);
     for (const stmt of statements) {
-      for (const decl of stmt.getDeclarations()) {
-        const schemaName = decl.getName();
+      for (const decl of compiler.getDeclarations(stmt)) {
+        const schemaName = compiler.getName(decl);
         if (!schemaNames.has(schemaName)) continue;
 
-        const init = decl.getInitializer();
+        const init = decl.initializer;
         if (!init) continue;
 
         const refs = this.findSchemaReferences(init, schemaNames, schemaName, bindings);
@@ -127,7 +128,7 @@ export class SchemaReferenceAnalyzer {
     schemaNames: Set<string>,
     currentSchema: string,
   ): UnionReferenceInfo | undefined {
-    const args = node.getArguments();
+    const args = node.arguments;
     if (args.length < 2) {
       return undefined;
     }
@@ -136,7 +137,7 @@ export class SchemaReferenceAnalyzer {
     const discriminatorArg = args[0];
     let discriminatorKey: string | undefined;
     if (Node.isStringLiteral(discriminatorArg)) {
-      discriminatorKey = discriminatorArg.getLiteralText();
+      discriminatorKey = compiler.getLiteralText(discriminatorArg);
     }
 
     // Second arg is the array of schemas
@@ -166,7 +167,7 @@ export class SchemaReferenceAnalyzer {
     schemaNames: Set<string>,
     currentSchema: string,
   ): UnionReferenceInfo | undefined {
-    const args = node.getArguments();
+    const args = node.arguments;
     if (args.length < 1) {
       return undefined;
     }
@@ -204,7 +205,7 @@ export class SchemaReferenceAnalyzer {
 
     const members: string[] = [];
     let hasInlineMembers = false;
-    for (const element of arrayLiteral.getElements()) {
+    for (const element of arrayLiteral.elements) {
       const unwrapped = unwrapExpression(element);
       if (Node.isIdentifier(unwrapped)) {
         const name = unwrapped.getText();
@@ -234,7 +235,7 @@ export class SchemaReferenceAnalyzer {
     const objectCalls = this.findObjectCalls(node, bindings);
 
     for (const objectCall of objectCalls) {
-      const args = objectCall.getArguments();
+      const args = objectCall.arguments;
       if (args.length === 0) continue;
 
       const entries = unwrapExpression(args[0]);
@@ -270,25 +271,26 @@ export class SchemaReferenceAnalyzer {
 
     const refsByField = new Map<string, SchemaReferenceInfo | null>();
 
-    for (const prop of objectLiteral.getProperties()) {
+    for (const prop of objectLiteral.properties) {
       if (Node.isSpreadAssignment(prop)) {
-        const expression = prop.getExpression();
+        const expression = prop.expression;
         if (!Node.isIdentifier(expression)) {
           refsByField.clear();
           continue;
         }
 
-        const declaration = objectLiteral
-          .getSourceFile()
-          .getVariableDeclaration(expression.getText());
-        const initializer = declaration?.getInitializer();
+        const declaration = compiler.getVariableDeclaration(
+          objectLiteral.getSourceFile(),
+          expression.getText(),
+        );
+        const initializer = declaration?.initializer;
         const shape = initializer ? unwrapExpression(initializer) : undefined;
         if (!declaration || !shape || !Node.isObjectLiteralExpression(shape)) {
           refsByField.clear();
           continue;
         }
 
-        const shapeId = `${declaration.getSourceFile().getFilePath()}:${declaration.getStart()}`;
+        const shapeId = `${compiler.getFilePath(declaration.getSourceFile())}:${declaration.getStart()}`;
         if (visitedShapes.has(shapeId)) continue;
 
         const nextVisitedShapes = new Set(visitedShapes);
@@ -307,8 +309,8 @@ export class SchemaReferenceAnalyzer {
 
       if (!Node.isPropertyAssignment(prop)) continue;
 
-      const fieldName = prop.getName();
-      const initializer = prop.getInitializer();
+      const fieldName = compiler.getName(prop);
+      const initializer = prop.initializer;
       if (!initializer) continue;
 
       const ref = analyzeSchemaExpression(
@@ -342,7 +344,7 @@ export class SchemaReferenceAnalyzer {
     if (isObjectCall(node)) {
       calls.push(node as CallExpression);
     } else {
-      node.forEachDescendant((n, traversal) => {
+      compiler.forEachDescendant(node, (n, traversal) => {
         if (isObjectCall(n)) {
           calls.push(n as CallExpression);
           traversal.skip();

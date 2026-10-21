@@ -59,7 +59,10 @@ export type NullableRecursiveArrayInput = {
 
 export type NullableRecursiveArrayOutput = {
   name: string;
-  children: NullableRecursiveArrayOutput[] | null;
+  children: {
+    name: string;
+    children: import("../fixtures/recursive-record-schema").NullableRecursiveArrayShape[] | null;
+  }[] | null;
 };
 
 export type LeafRecordInput = {

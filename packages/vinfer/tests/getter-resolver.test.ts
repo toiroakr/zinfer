@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { resolve } from "path";
-import { Project } from "ts-morph";
+import { Project } from "@zinfer-monorepo/core";
 import { GetterResolver } from "../src/core/getter-resolver.js";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
@@ -9,7 +9,7 @@ describe("GetterResolver", () => {
   const resolver = new GetterResolver();
 
   function getSourceFile(filename: string) {
-    const project = new Project();
+    using project = new Project();
     return project.addSourceFileAtPath(resolve(fixturesDir, filename));
   }
 
