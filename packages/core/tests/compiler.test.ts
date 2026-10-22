@@ -60,21 +60,24 @@ it("resolves virtual imports without losing their original content across operat
   }
 });
 
-it("keeps explicitly loaded ambient modules available in subsequent operations", () => {
-  using project = new Project();
-  const dir = directory();
-  project.run(() =>
-    project.createSourceFile(
-      join(dir, "ambient.d.ts"),
-      'declare module "virtual" { export type Value = string; }',
-    ),
-  );
-  const source = project.createSourceFile(
-    join(dir, "entry.ts"),
-    'import type { Value } from "virtual"; type Result = Value;',
-  );
-  expect(typeOf(getTypeAlias(source, "Result")!).getText()).toBe("string");
-});
+it.each(["ambient.d.ts", "ambient.ts"])(
+  "keeps explicitly loaded ambient modules from %s available in subsequent operations",
+  (fileName) => {
+    using project = new Project();
+    const dir = directory();
+    project.run(() =>
+      project.createSourceFile(
+        join(dir, fileName),
+        'declare module "virtual" { export type Value = string; }',
+      ),
+    );
+    const source = project.createSourceFile(
+      join(dir, "entry.ts"),
+      'import type { Value } from "virtual"; type Result = Value;',
+    );
+    expect(typeOf(getTypeAlias(source, "Result")!).getText()).toBe("string");
+  },
+);
 
 it("respects JSONC extends and paths relative to the original configuration", () => {
   const dir = directory();

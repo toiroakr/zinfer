@@ -2269,18 +2269,24 @@ it.each(["Tree", "PublicTree"])(
     try {
       const filePath = resolve(dir, "schema.ts");
       writeFileSync(
+        resolve(dir, "types.ts"),
+        [
+          "interface Tree<T> { value: T; children: Tree<T>[]; } export type Root = { make<T>(): Tree<T>; };",
+          `export type { Tree as ${exportedName} };`,
+        ].join("\n"),
+      );
+      writeFileSync(
         filePath,
         [
-          "interface Tree { value: string; children: Tree[]; }",
-          `export type { Tree as ${exportedName} };`,
-          'import { z } from "zod"; export const TreeSchema: z.ZodType<Tree> = z.any();',
+          'import type { Root } from "./types";',
+          'import { z } from "zod"; export const TreeSchema: z.ZodType<Root> = z.any();',
         ].join("\n"),
       );
       const result = new ZodTypeExtractor().extractAll(filePath, {
         inlineTypeReferences: "local",
       })[0];
       expect(result.output).toContain(`).${exportedName}`);
-      expect(result.output).not.toMatch(/children: Tree\[\]/);
+      expect(result.output).not.toMatch(/: Tree</);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

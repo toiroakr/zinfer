@@ -1581,18 +1581,24 @@ it.each(["Tree", "PublicTree"])(
     try {
       const filePath = resolve(dir, "schema.ts");
       writeFileSync(
+        resolve(dir, "types.ts"),
+        [
+          "interface Tree<T> { value: T; children: Tree<T>[]; } export type Root = { make<T>(): Tree<T>; };",
+          `export type { Tree as ${exportedName} };`,
+        ].join("\n"),
+      );
+      writeFileSync(
         filePath,
         [
-          "interface Tree { value: string; children: Tree[]; }",
-          `export type { Tree as ${exportedName} };`,
-          'import * as v from "valibot"; export const TreeSchema: v.GenericSchema<Tree, Tree> = v.any();',
+          'import type { Root } from "./types";',
+          'import * as v from "valibot"; export const TreeSchema: v.GenericSchema<Root, Root> = v.any();',
         ].join("\n"),
       );
       const result = new ValibotTypeExtractor().extractAll(filePath, {
         inlineTypeReferences: "local",
       })[0];
       expect(result.output).toContain(`).${exportedName}`);
-      expect(result.output).not.toMatch(/children: Tree\[\]/);
+      expect(result.output).not.toMatch(/: Tree</);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

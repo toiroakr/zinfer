@@ -170,7 +170,9 @@ export class Project {
           rootFiles: [
             file,
             ...[...this.originals.values()]
-              .filter((source) => source.isDeclarationFile && source.fileName !== file)
+              .filter(
+                (source) => source.fileName !== file && /\.(?:[cm]?ts|tsx)$/i.test(source.fileName),
+              )
               .map((source) => source.fileName),
           ],
           compilerOptions: this.getCompilerOptions(),
