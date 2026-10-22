@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { API, ModuleKind, ModuleResolutionKind } from "typescript-native/sync";
 import { createFileSystemLayer } from "typescript-native/fs";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { Project, ts } from "@zinfer-monorepo/core";
 import { SchemaDetector } from "../src/core/schema-detector.js";
 
@@ -108,4 +108,22 @@ it("accepts caller-owned native projects with virtual sources", () => {
   expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
   expect(new SchemaDetector(project).getSchemaNames(source)).toEqual(["ExampleSchema"]);
   expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
+});
+
+it("reuses one owned compiler session for Mini apply detection", () => {
+  using api = new API();
+  using lease = api.createSourceFile(
+    resolve(import.meta.dirname, "fixtures/native-session.ts"),
+    'import * as z from "zod/mini"; const wrapper = { apply: () => z.optional(z.string()) }; export const FirstSchema = wrapper.apply(); export const SecondSchema = wrapper.apply();',
+  );
+  const snapshots = vi.spyOn(API.prototype, "createSnapshot", "get");
+  try {
+    expect(new SchemaDetector().getSchemaNames(lease.sourceFile)).toEqual([
+      "FirstSchema",
+      "SecondSchema",
+    ]);
+    expect(snapshots).toHaveBeenCalledTimes(1);
+  } finally {
+    snapshots.mockRestore();
+  }
 });
