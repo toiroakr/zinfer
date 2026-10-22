@@ -27,13 +27,10 @@ const cliPath = resolve(import.meta.dirname, "../src/cli.ts");
 // point through the Node executable instead, which works on every platform.
 const jitiCliPath = resolve(import.meta.dirname, "../node_modules/jiti/lib/jiti-cli.mjs");
 const packageJsonPath = resolve(import.meta.dirname, "../package.json");
-// tsgo's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
+// The compiler's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
 // Windows) that execFileSync cannot run directly without a shell; run its
 // real JS entry point through the Node executable instead.
-const tsgoPath = resolve(
-  import.meta.dirname,
-  "../node_modules/@typescript/native-preview/bin/tsgo",
-);
+const nativeTscPath = resolve(import.meta.dirname, "../node_modules/typescript-native/bin/tsc");
 
 describe("cli --version", () => {
   it("should report the version from package.json instead of a hardcoded value", () => {
@@ -378,7 +375,7 @@ export const WrapperSchema = z
     expect(testContent).toContain("__ZinferCanonBrand");
     expect(testContent).toContain("__ZinferZodBrandKey");
 
-    execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+    execFileSync(execPath, [nativeTscPath, "--noEmit", "schema.types.test.ts"], {
       cwd: workDir,
       stdio: "pipe",
       encoding: "utf-8",
@@ -392,7 +389,7 @@ export const WrapperSchema = z
     writeFileSync(join(workDir, "schema.types.ts"), typesContent.replace('"UserId"', '"WrongTag"'));
 
     expect(() =>
-      execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+      execFileSync(execPath, [nativeTscPath, "--noEmit", "schema.types.test.ts"], {
         cwd: workDir,
         stdio: "pipe",
         encoding: "utf-8",
@@ -429,7 +426,7 @@ export const TreeNodeSchema = z.object({
         brandStrategy: "local-symbol",
       });
 
-      execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+      execFileSync(execPath, [nativeTscPath, "--noEmit", "schema.types.test.ts"], {
         cwd: workDir,
         stdio: "pipe",
         encoding: "utf-8",
@@ -463,7 +460,7 @@ export const TreeNodeSchema = z.object({
       brandStrategy: "local-symbol",
     });
 
-    execFileSync(execPath, [tsgoPath, "--noEmit", "all.test.ts"], {
+    execFileSync(execPath, [nativeTscPath, "--noEmit", "all.test.ts"], {
       cwd: workDir,
       stdio: "pipe",
       encoding: "utf-8",
@@ -502,7 +499,7 @@ export const CoordWrapperSchema = z
       brandStrategy: "local-symbol",
     });
 
-    execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+    execFileSync(execPath, [nativeTscPath, "--noEmit", "schema.types.test.ts"], {
       cwd: workDir,
       stdio: "pipe",
       encoding: "utf-8",
@@ -519,7 +516,7 @@ export const CoordWrapperSchema = z
     );
 
     expect(() =>
-      execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+      execFileSync(execPath, [nativeTscPath, "--noEmit", "schema.types.test.ts"], {
         cwd: workDir,
         stdio: "pipe",
         encoding: "utf-8",

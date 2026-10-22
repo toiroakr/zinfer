@@ -9,10 +9,7 @@ import { execPath } from "process";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
 const snapshotsDir = resolve(import.meta.dirname, "__file_snapshots__");
-const tsgoPath = resolve(
-  import.meta.dirname,
-  "../node_modules/@typescript/native-preview/bin/tsgo",
-);
+const nativeTscPath = resolve(import.meta.dirname, "../node_modules/typescript-native/bin/tsc");
 const mapName = createNameMapper({ removeSuffix: "Schema" });
 
 /**
@@ -58,7 +55,7 @@ afterAll(() => {
   let output = "";
   let execError: unknown;
   try {
-    execFileSync(execPath, [tsgoPath, "--noEmit", "-p", tsconfigPath], {
+    execFileSync(execPath, [nativeTscPath, "--noEmit", "-p", tsconfigPath], {
       stdio: "pipe",
       encoding: "utf-8",
     });

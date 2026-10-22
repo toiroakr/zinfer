@@ -27,7 +27,7 @@ const ZOD_V4_ONLY_FIXTURES = ["strict-object-schema.ts"];
 // (Def, constrained to extend ZodTypeDef) that v4 dropped, so the same
 // annotation that's valid on v4 is a real TS error on v3 - this doesn't
 // affect zinfer's own extraction (these fixtures' extraction tests pass
-// under both versions), only the project-wide tsgo sanity check below.
+// under both versions), only the project-wide native tsc sanity check below.
 const ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS = [
   "degenerate-explicit-type/aliased-export-explicit-type-schema.ts",
   "degenerate-explicit-type/class-explicit-type-schema.ts",
@@ -52,14 +52,11 @@ const ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS = [
   "inline-external-types/generic-method-collision/schema.ts",
   "inline-external-types/suffix-wrap/schema.ts",
 ];
-// tsgo's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
+// The compiler's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
 // Windows) that execFileSync cannot run directly without a shell; run its
 // real JS entry point through the Node executable instead, matching how
 // tests/cli.test.ts invokes jiti.
-const tsgoPath = resolve(
-  import.meta.dirname,
-  "../node_modules/@typescript/native-preview/bin/tsgo",
-);
+const nativeTscPath = resolve(import.meta.dirname, "../node_modules/typescript-native/bin/tsc");
 const mapName = createNameMapper({ removeSuffix: "Schema" });
 
 /**
@@ -142,7 +139,7 @@ afterAll(() => {
   let output = "";
   let execError: unknown;
   try {
-    execFileSync(execPath, [tsgoPath, "--noEmit", "-p", tsconfigPath], {
+    execFileSync(execPath, [nativeTscPath, "--noEmit", "-p", tsconfigPath], {
       stdio: "pipe",
       encoding: "utf-8",
     });
@@ -155,7 +152,7 @@ afterAll(() => {
     .split("\n")
     .filter((line: string) => /error TS\d+/.test(line) && !line.includes("locales"));
 
-  // tsgo exited non-zero but produced no `error TSxxxx` lines - it failed to
+  // native tsc exited non-zero but produced no `error TSxxxx` lines - it failed to
   // run at all (bad path, missing tsconfig, etc.) rather than reporting type
   // errors. Surface the real failure instead of letting the checks below
   // report a misleading "KNOWN_TYPE_DIFFERENCES entries no longer reproduce".
@@ -227,7 +224,7 @@ afterAll(() => {
   if (typeFileErrors.length > 0) {
     throw new Error(`Type error(s) in generated type files:\n${typeFileErrors.join("\n")}`);
   }
-}, 30000); // 30 second timeout (tsgo is much faster)
+}, 30000);
 
 describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   const extractor = new ZodTypeExtractor();
@@ -1457,7 +1454,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       // the arrow's `=>` (which has no matching `<` to close) rather than
       // letting it desync the bracket depth. A desync would silently drop
       // the wrapping parens instead of failing to compile, so this checks
-      // the exact string rather than relying on tsgo to catch it.
+      // the exact string rather than relying on native tsc to catch it.
       expect(chain?.input).toContain("format: (((value: string) => string) | null)");
     });
 
@@ -1716,7 +1713,7 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   createSchemaTest(extractor, "inline-external-types/generic-method-collision/schema");
 
   // The tests above assert on individual substrings of the raw extracted
-  // type; none of them get run through tsgo. These mirror createSchemaTest
+  // type; none of them get run through native tsc. These mirror createSchemaTest
   // but with the flag on, so the afterAll sweep below actually type-checks
   // the novel output shapes this feature produces - parenthesized unions,
   // the cycle fallback, and multi-file expansion - the same way every other

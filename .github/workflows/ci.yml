@@ -60,7 +60,7 @@ jobs:
           # strictTsc gates the "Typecheck (tsc)" step below. It's false only
           # for zinfer/zinfer-mini rows that actually move the typescript
           # devDependency down to its peer floor (the "typescript" and
-          # "combined" rows): at typescript@5.0.2, tsc --noEmit (unlike tsgo)
+          # "combined" rows): at typescript@5.0.2, tsc --noEmit (unlike native tsc)
           # fails with TS18048 in description-extractor.ts/extractor.ts, an
           # error absent at the pinned typescript devDependency version -
           # zinfer-mini copies these files from zinfer and reproduces the same
@@ -139,7 +139,7 @@ jobs:
         run: pnpm --filter @zinfer-monorepo/core build
       - name: Install peerDependencies lower bound
         run: pnpm --filter ${{ matrix.package }} add -D ${{ matrix.packages }}
-      - name: Typecheck (tsgo)
+      - name: Typecheck (TypeScript 7.1 native)
         run: pnpm --filter ${{ matrix.package }} run typecheck
       - name: Typecheck (tsc)
         if: matrix.strictTsc
