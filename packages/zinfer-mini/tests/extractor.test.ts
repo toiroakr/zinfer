@@ -1,3 +1,4 @@
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { resolve, basename } from "pathe";
 import { ZodMiniTypeExtractor } from "../src/core/extractor.js";
@@ -386,4 +387,45 @@ describe("described-schema.ts - descriptions", () => {
       "The user's display name",
     );
   });
+});
+
+it.each(["Tree", "PublicTree"])(
+  "keeps a valid recursive fallback for local export %s",
+  (exportedName) => {
+    const dir = mkdtempSync(resolve(fixturesDir, "local-type-export-"));
+    try {
+      const filePath = resolve(dir, "schema.ts");
+      writeFileSync(
+        filePath,
+        [
+          "interface Tree { value: string; children: Tree[]; }",
+          `export type { Tree as ${exportedName} };`,
+          'import * as z from "zod/mini"; export const TreeSchema: z.ZodMiniType<Tree> = z.any();',
+        ].join("\n"),
+      );
+      const result = new ZodMiniTypeExtractor().extractAll(filePath, {
+        inlineTypeReferences: "local",
+      })[0];
+      expect(result.output).toContain(`).${exportedName}`);
+      expect(result.output).not.toMatch(/children: Tree\[\]/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
+
+it("can retry extraction after the caller interrupts an operation", () => {
+  const extractor = new ZodMiniTypeExtractor();
+  const filePath = resolve(fixturesDir, "basic-schema.ts");
+  expect(() =>
+    extractor.extractAll(filePath, {
+      get importableFiles(): Set<string> {
+        throw new Error("interrupted");
+      },
+    }),
+  ).toThrow("interrupted");
+  const results = extractor.extractAll(filePath);
+  expect(results.find((result) => result.schemaName === "UserSchema")?.output).toContain(
+    "name: string",
+  );
 });

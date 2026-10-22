@@ -2261,3 +2261,28 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     );
   });
 });
+
+it.each(["Tree", "PublicTree"])(
+  "keeps a valid recursive fallback for local export %s",
+  (exportedName) => {
+    const dir = mkdtempSync(resolve(fixturesDir, "local-type-export-"));
+    try {
+      const filePath = resolve(dir, "schema.ts");
+      writeFileSync(
+        filePath,
+        [
+          "interface Tree { value: string; children: Tree[]; }",
+          `export type { Tree as ${exportedName} };`,
+          'import { z } from "zod"; export const TreeSchema: z.ZodType<Tree> = z.any();',
+        ].join("\n"),
+      );
+      const result = new ZodTypeExtractor().extractAll(filePath, {
+        inlineTypeReferences: "local",
+      })[0];
+      expect(result.output).toContain(`).${exportedName}`);
+      expect(result.output).not.toMatch(/children: Tree\[\]/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);

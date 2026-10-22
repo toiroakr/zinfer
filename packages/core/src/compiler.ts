@@ -302,7 +302,15 @@ export function isExported(node: ast.Node): boolean {
   )
     return true;
   if (ast.isVariableDeclaration(node)) return isExported(node.parent.parent);
-  return false;
+  if (!("name" in node) || !node.name) return false;
+  const name = (node.name as ast.Node).getText();
+  return getExportDeclarations(node.getSourceFile()).some(
+    (declaration) =>
+      !declaration.moduleSpecifier &&
+      getNamedExports(declaration).some(
+        (specifier) => getName(specifier) === name && specifier.name.getText() === name,
+      ),
+  );
 }
 export function getTypeAliases(source: ast.SourceFile): ast.TypeAliasDeclaration[] {
   return current(source).statements.filter(ast.isTypeAliasDeclaration);

@@ -11,6 +11,8 @@ import {
   getTypeAlias,
   getVariableDeclaration,
   getName,
+  isExported,
+  getInterface,
   Node,
   typeOf,
 } from "../src/compiler.js";
@@ -124,4 +126,14 @@ it("preserves the spelling of quoted and computed property names", () => {
   if (Node.isObjectLiteralExpression(object)) {
     expect(object.properties.map(getName)).toEqual(["'quoted-key'", "[Symbol.iterator]"]);
   }
+});
+
+it("recognizes local type exports without inventing an original-name export for aliases", () => {
+  using project = new Project();
+  const source = project.createSourceFile(
+    join(directory(), "visibility.ts"),
+    "interface Tree { children: Tree[] } export type { Tree }; interface PrivateTree {} export type { PrivateTree as PublicTree };",
+  );
+  expect(isExported(getInterface(source, "Tree")!)).toBe(true);
+  expect(isExported(getInterface(source, "PrivateTree")!)).toBe(false);
 });

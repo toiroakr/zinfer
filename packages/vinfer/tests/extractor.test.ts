@@ -1,3 +1,4 @@
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { resolve, basename } from "pathe";
 import { ValibotTypeExtractor, type ExtractContext } from "../src/core/extractor.js";
@@ -1572,3 +1573,28 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 });
+
+it.each(["Tree", "PublicTree"])(
+  "keeps a valid recursive fallback for local export %s",
+  (exportedName) => {
+    const dir = mkdtempSync(resolve(fixturesDir, "local-type-export-"));
+    try {
+      const filePath = resolve(dir, "schema.ts");
+      writeFileSync(
+        filePath,
+        [
+          "interface Tree { value: string; children: Tree[]; }",
+          `export type { Tree as ${exportedName} };`,
+          'import * as v from "valibot"; export const TreeSchema: v.GenericSchema<Tree, Tree> = v.any();',
+        ].join("\n"),
+      );
+      const result = new ValibotTypeExtractor().extractAll(filePath, {
+        inlineTypeReferences: "local",
+      })[0];
+      expect(result.output).toContain(`).${exportedName}`);
+      expect(result.output).not.toMatch(/children: Tree\[\]/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);

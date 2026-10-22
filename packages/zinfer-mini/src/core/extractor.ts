@@ -152,12 +152,16 @@ export class ZodMiniTypeExtractor {
    * @returns Array of extraction results for each schema
    */
   extractAll(filePath: string, context: ExtractContext = {}): ExtractResult[] {
-    return this.project.run(() => {
-      const sourceFile = this.getOrAddSourceFile(filePath);
-      const schemas = this.schemaDetector.detectExportedSchemas(sourceFile);
+    try {
+      return this.project.run(() => {
+        const sourceFile = this.getOrAddSourceFile(filePath);
+        const schemas = this.schemaDetector.detectExportedSchemas(sourceFile);
 
-      return this.extractMultipleFromSourceFile(sourceFile, schemas, context);
-    });
+        return this.extractMultipleFromSourceFile(sourceFile, schemas, context);
+      });
+    } finally {
+      this.injectedTypeUtilityImports = new WeakMap();
+    }
   }
 
   /**
@@ -172,16 +176,20 @@ export class ZodMiniTypeExtractor {
     schemaNames: string[],
     context: ExtractContext = {},
   ): ExtractResult[] {
-    return this.project.run(() => {
-      const sourceFile = this.getOrAddSourceFile(filePath);
-      const allSchemas = this.schemaDetector.detectExportedSchemas(sourceFile);
-      const schemas = schemaNames.map((name) => {
-        const found = allSchemas.find((s) => s.name === name);
-        return found || { name, isExported: true, line: 0 };
-      });
+    try {
+      return this.project.run(() => {
+        const sourceFile = this.getOrAddSourceFile(filePath);
+        const allSchemas = this.schemaDetector.detectExportedSchemas(sourceFile);
+        const schemas = schemaNames.map((name) => {
+          const found = allSchemas.find((s) => s.name === name);
+          return found || { name, isExported: true, line: 0 };
+        });
 
-      return this.extractMultipleFromSourceFile(sourceFile, schemas, context);
-    });
+        return this.extractMultipleFromSourceFile(sourceFile, schemas, context);
+      });
+    } finally {
+      this.injectedTypeUtilityImports = new WeakMap();
+    }
   }
 
   /**
@@ -319,8 +327,8 @@ export class ZodMiniTypeExtractor {
         logDebugError(`Failed to extract imported schema "${localName}"`, error);
       } finally {
         this.cleanupTemporaryTypes(importedSourceFile);
-        this.cleanupNormalizeType(importedSourceFile);
         this.cleanupTypeUtilityImport(importedSourceFile);
+        this.cleanupNormalizeType(importedSourceFile);
       }
     }
 
@@ -405,8 +413,8 @@ export class ZodMiniTypeExtractor {
 
     // Clean up __Normalize and the type-utility import from the main source
     // file after all schemas are processed
-    this.cleanupNormalizeType(sourceFile);
     this.cleanupTypeUtilityImport(sourceFile);
+    this.cleanupNormalizeType(sourceFile);
 
     const schemasByName = new Map(schemas.map((schema) => [schema.name, schema]));
     // referenceMap/unionReferenceMap entries carry the identifier as written
