@@ -52,6 +52,18 @@ const ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS = [
   "inline-external-types/generic-method-collision/schema.ts",
   "inline-external-types/suffix-wrap/schema.ts",
 ];
+const ZOD_V3_RECURSIVE_GETTER_FIXTURES = [
+  "alias-getter-schema.ts",
+  "cross-file-recursive/union-node-schema.ts",
+  "getter-schema.ts",
+  "lazy-schema.ts",
+  "nonexported-recursive-getter-schema.ts",
+  "nonexported-recursive-name-collision-schema.ts",
+  "recursive-record-schema.ts",
+  "recursive-reference-schema.ts",
+  "same-file-nongenerated-recursive-schema.ts",
+  "with-descriptions/recursive-inline-description-schema.ts",
+];
 // The compiler's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
 // Windows) that execFileSync cannot run directly without a shell; run its
 // real JS entry point through the Node executable instead, matching how
@@ -171,6 +183,14 @@ afterAll(() => {
     if (line.includes("TS7022") || line.includes("TS7023")) return false;
     if (
       !isZodV4 &&
+      line.includes("error TS2615:") &&
+      ZOD_V3_RECURSIVE_GETTER_FIXTURES.some((file) =>
+        line.replaceAll("\\", "/").includes(`/fixtures/${file}(`),
+      )
+    )
+      return false;
+    if (
+      !isZodV4 &&
       [...ZOD_V4_ONLY_FIXTURES, ...ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS].some((f) =>
         line.includes(f),
       )
@@ -181,7 +201,7 @@ afterAll(() => {
   if (unexpectedFixtureErrors.length > 0) {
     const expected = isZodV4
       ? "TS7022/TS7023 on unannotated recursive getters"
-      : `TS7022/TS7023 on unannotated recursive getters, or errors from ${[...ZOD_V4_ONLY_FIXTURES, ...ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS].join(", ")} (zod v3 peerDependencies floor)`;
+      : `TS7022/TS7023 on unannotated recursive getters, TS2615 on Zod 3 recursive getter fixtures, or errors from ${[...ZOD_V4_ONLY_FIXTURES, ...ZOD_V3_EXPLICIT_ANNOTATION_TYPE_ERRORS].join(", ")} (zod v3 peerDependencies floor)`;
     throw new Error(
       `Unexpected type error(s) in tests/fixtures (expected only ${expected}):\n${unexpectedFixtureErrors.join("\n")}`,
     );
