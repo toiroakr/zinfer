@@ -148,12 +148,14 @@ describe("SchemaDetector", () => {
 it("accepts caller-owned native projects with virtual sources", () => {
   const file = resolve(import.meta.dirname, "fixtures/native-context.ts");
   const dependency = resolve(import.meta.dirname, "fixtures/virtual-library.d.ts");
-  const library = resolve(import.meta.dirname, "../node_modules/valibot/dist/index.d.mts");
   using api = new API();
   using snapshot = api.createSnapshot({
     fileSystem: createFileSystemLayer([
-      [file, 'import * as v from "valibot"; export const ExampleSchema = v.optional(v.string());'],
-      [dependency, `export * from "${library}";`],
+      [
+        file,
+        'import * as v from "schema-alias"; export const ExampleSchema = v.optional(v.string());',
+      ],
+      [dependency, 'export * from "valibot";'],
     ]),
     createPrograms: [
       {
@@ -163,7 +165,7 @@ it("accepts caller-owned native projects with virtual sources", () => {
           skipLibCheck: true,
           module: ModuleKind.ESNext,
           moduleResolution: ModuleResolutionKind.Bundler,
-          paths: { valibot: [dependency] },
+          paths: { "schema-alias": [dependency] },
         },
       },
     ],
