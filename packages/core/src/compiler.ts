@@ -58,6 +58,10 @@ export function registerCompilerContext(
   project.adoptSource(source);
 }
 
+export function runInCompilerSession<T>(source: ast.SourceFile, operation: () => T): T {
+  return owner(source).run(operation);
+}
+
 interface ProjectOptions {
   nativeProject?: NativeProject;
   tsConfigFilePath?: string;
@@ -77,6 +81,7 @@ export class Project {
   private sessionDepth = 0;
 
   run<T>(operation: () => T): T {
+    if (this.sessionDepth > 0) return operation();
     this.sessionDepth++;
     try {
       return operation();

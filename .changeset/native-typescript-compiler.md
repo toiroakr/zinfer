@@ -9,3 +9,5 @@ Use TypeScript 7.1 Beta's native compiler API for schema detection, module resol
 Generated property and literal-union ordering can change, and recursive declarations may reference exported source interfaces. `SchemaDetector` accepts native TypeScript AST nodes; callers using ts-morph should use the extractor's `getSchemaNames(filePath)` instead.
 
 Pass the originating synchronous native project to `new SchemaDetector(project)` when supplying native ASTs directly to preserve compiler options and virtual dependencies. The caller retains ownership of the API and snapshot.
+
+Direct schema detection reuses one owned compiler session for all type queries in a detection pass and releases it afterward.

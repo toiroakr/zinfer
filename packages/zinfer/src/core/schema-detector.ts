@@ -19,6 +19,10 @@ export class SchemaDetector {
    */
   detectExportedSchemas(sourceFile: SourceFile): DetectedSchema[] {
     if (this.compilerContext) compiler.registerCompilerContext(sourceFile, this.compilerContext);
+    return compiler.runInCompilerSession(sourceFile, () => this.detectSchemas(sourceFile));
+  }
+
+  private detectSchemas(sourceFile: SourceFile): DetectedSchema[] {
     const filePath = compiler.getFilePath(sourceFile);
     const cached = this.cache.get(filePath);
     if (cached) return cached;
