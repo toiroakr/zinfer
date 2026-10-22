@@ -49,6 +49,20 @@ Recursive types may retain references to exported source interfaces.
 use the extractor's `getSchemaNames(filePath)` to discover schemas without managing
 compiler ASTs.
 
+When supplying a native source file directly, pass its originating synchronous
+native project to preserve compiler options such as `paths` and virtual files:
+
+```typescript
+const detector = new SchemaDetector(nativeProject);
+const source = nativeProject.program.getSourceFile(filePath)!;
+const names = detector.getSchemaNames(source);
+```
+
+The project must come from the pinned `typescript-native/sync` API. Keep its API
+and snapshot alive during detection; the caller retains ownership and disposes
+them afterward. Omitting the project uses default compiler options for foreign
+source files.
+
 ## Installation
 
 ```bash

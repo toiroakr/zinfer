@@ -1,3 +1,6 @@
+import { resolve } from "node:path";
+import { API, ModuleKind, ModuleResolutionKind } from "typescript-native/sync";
+import { createFileSystemLayer } from "typescript-native/fs";
 import { expect, it } from "vitest";
 import { Project, ts } from "@zinfer-monorepo/core";
 import { SchemaDetector } from "../src/core/schema-detector.js";
@@ -75,4 +78,34 @@ it("detects a standalone z.properties() call as a schema on legacy Zod Mini (pre
   `,
   );
   expect(new SchemaDetector().getSchemaNames(file)).toEqual(["Properties"]);
+});
+
+it("accepts caller-owned native projects with virtual sources", () => {
+  const file = resolve(import.meta.dirname, "fixtures/native-context.ts");
+  const dependency = resolve(import.meta.dirname, "fixtures/virtual-library.d.ts");
+  const library = resolve(import.meta.dirname, "../node_modules/zod/mini/index.d.ts");
+  using api = new API();
+  using snapshot = api.createSnapshot({
+    fileSystem: createFileSystemLayer([
+      [file, 'import * as z from "zod/mini"; export const ExampleSchema = z.optional(z.string());'],
+      [dependency, `export * from "${library}";`],
+    ]),
+    createPrograms: [
+      {
+        rootFiles: [file],
+        compilerOptions: {
+          strict: true,
+          skipLibCheck: true,
+          module: ModuleKind.ESNext,
+          moduleResolution: ModuleResolutionKind.Bundler,
+          paths: { "zod/mini": [dependency] },
+        },
+      },
+    ],
+  });
+  const project = snapshot.getProject(snapshot.operation.createdPrograms![0].id)!;
+  const source = project.program.getSourceFile(file)!;
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
+  expect(new SchemaDetector(project).getSchemaNames(source)).toEqual(["ExampleSchema"]);
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
 });

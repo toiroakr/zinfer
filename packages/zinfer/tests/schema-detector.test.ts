@@ -1,3 +1,5 @@
+import { API, ModuleKind, ModuleResolutionKind } from "typescript-native/sync";
+import { createFileSystemLayer } from "typescript-native/fs";
 import { describe, it, expect } from "vitest";
 import { resolve } from "path";
 import { Project } from "@zinfer-monorepo/core";
@@ -186,4 +188,37 @@ describe("SchemaDetector", () => {
       expect(names).toMatchSnapshot();
     });
   });
+});
+
+it("preserves configured paths and virtual dependencies from a native project", () => {
+  const file = resolve(fixturesDir, "native-context.ts");
+  const dependency = resolve(fixturesDir, "virtual-zod.d.ts");
+  const zod = resolve(import.meta.dirname, "../node_modules/zod/index.d.ts");
+  using api = new API();
+  using snapshot = api.createSnapshot({
+    fileSystem: createFileSystemLayer([
+      [
+        file,
+        'import { z } from "schema-alias"; export const ExampleSchema = z.string().optional();',
+      ],
+      [dependency, `export { z } from "${zod}";`],
+    ]),
+    createPrograms: [
+      {
+        rootFiles: [file],
+        compilerOptions: {
+          strict: true,
+          skipLibCheck: true,
+          module: ModuleKind.ESNext,
+          moduleResolution: ModuleResolutionKind.Bundler,
+          paths: { "schema-alias": [dependency] },
+        },
+      },
+    ],
+  });
+  const project = snapshot.getProject(snapshot.operation.createdPrograms![0].id)!;
+  const source = project.program.getSourceFile(file)!;
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
+  expect(new SchemaDetector(project).getSchemaNames(source)).toEqual(["ExampleSchema"]);
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
 });

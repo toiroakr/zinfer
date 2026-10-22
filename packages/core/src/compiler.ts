@@ -13,6 +13,7 @@ import {
 } from "typescript-native/sync";
 import { createFileSystemLayer } from "typescript-native/fs";
 
+export type { Project as NativeProject } from "typescript-native/sync";
 export type {
   SourceFile,
   VariableDeclaration,
@@ -49,7 +50,16 @@ function current(source: ast.SourceFile): ast.SourceFile {
   return owner(source).getSourceFile(source.fileName) ?? source;
 }
 
+export function registerCompilerContext(
+  source: ast.SourceFile,
+  nativeProject: NativeProject,
+): void {
+  const project = new Project({ nativeProject });
+  project.adoptSource(source);
+}
+
 interface ProjectOptions {
+  nativeProject?: NativeProject;
   tsConfigFilePath?: string;
   compilerOptions?: RawCompilerOptions;
 }
@@ -138,7 +148,11 @@ export class Project {
   }
 
   getSourceFile(fileName: string): ast.SourceFile | undefined {
-    return this.files.get(fileKey(fileName));
+    const source =
+      this.config.nativeProject?.program.getSourceFile(fileName) ??
+      this.files.get(fileKey(fileName));
+    if (source) owners.set(source, this);
+    return source;
   }
 
   addSourceFileAtPath(fileName: string): ast.SourceFile {
@@ -156,6 +170,7 @@ export class Project {
   }
 
   program(node: ast.Node): NativeProject {
+    if (this.config.nativeProject) return this.config.nativeProject;
     const file = node.getSourceFile().fileName;
     if (this.native && this.root === file && this.programRevision === this.revision)
       return this.native;

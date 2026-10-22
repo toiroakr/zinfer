@@ -2,9 +2,13 @@ import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
-import { API } from "typescript-native/sync";
+import { createFileSystemLayer } from "typescript-native/fs";
+import { API, ModuleKind, ModuleResolutionKind } from "typescript-native/sync";
 import {
   Project,
+  registerCompilerContext,
+  getImportDeclarations,
+  getModuleSpecifierSourceFile,
   TypeFormatFlags,
   addStatements,
   getExportedDeclarations,
@@ -139,4 +143,35 @@ it("recognizes local type exports without inventing an original-name export for 
   );
   expect(isExported(getInterface(source, "Tree")!)).toBe(true);
   expect(isExported(getInterface(source, "PrivateTree")!)).toBe(false);
+});
+
+it("uses the caller's native context for virtual imports without disposing it", () => {
+  const file = join(directory(), "main.ts");
+  const dependency = join(directory(), "dependency.ts");
+  using api = new API();
+  using snapshot = api.createSnapshot({
+    fileSystem: createFileSystemLayer([
+      [file, 'import { value } from "configured-alias"; export type Result = typeof value;'],
+      [dependency, 'export const value = "configured" as const;'],
+    ]),
+    createPrograms: [
+      {
+        rootFiles: [file],
+        compilerOptions: {
+          strict: true,
+          module: ModuleKind.ESNext,
+          moduleResolution: ModuleResolutionKind.Bundler,
+          paths: { "configured-alias": [dependency] },
+        },
+      },
+    ],
+  });
+  const project = snapshot.getProject(snapshot.operation.createdPrograms![0].id)!;
+  const source = project.program.getSourceFile(file)!;
+  registerCompilerContext(source, project);
+  expect(typeOf(getTypeAlias(source, "Result")!).getText()).toBe('"configured"');
+  const imported = getModuleSpecifierSourceFile(getImportDeclarations(source)[0])!;
+  expect(imported.fileName).toBe(dependency);
+  expect(typeOf(getVariableDeclaration(imported, "value")!).getText()).toBe('"configured"');
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
 });

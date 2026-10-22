@@ -28,6 +28,8 @@ const SCHEMA_TYPE_ANNOTATION_PATTERN = new RegExp(
  * Detects Valibot schemas in TypeScript source files.
  */
 export class SchemaDetector {
+  constructor(private readonly compilerContext?: compiler.NativeProject) {}
+
   private cache = new Map<string, DetectedSchema[]>();
 
   /**
@@ -37,6 +39,7 @@ export class SchemaDetector {
    * @returns Array of detected schema information (including non-exported schemas)
    */
   detectExportedSchemas(sourceFile: SourceFile): DetectedSchema[] {
+    if (this.compilerContext) compiler.registerCompilerContext(sourceFile, this.compilerContext);
     const filePath = compiler.getFilePath(sourceFile);
     const cached = this.cache.get(filePath);
     if (cached) return cached;

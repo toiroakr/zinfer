@@ -1,3 +1,5 @@
+import { API, ModuleKind, ModuleResolutionKind } from "typescript-native/sync";
+import { createFileSystemLayer } from "typescript-native/fs";
 import { describe, it, expect } from "vitest";
 import { resolve } from "path";
 import { Project } from "@zinfer-monorepo/core";
@@ -141,4 +143,34 @@ describe("SchemaDetector", () => {
       expect(names).toMatchSnapshot();
     });
   });
+});
+
+it("accepts caller-owned native projects with virtual sources", () => {
+  const file = resolve(import.meta.dirname, "fixtures/native-context.ts");
+  const dependency = resolve(import.meta.dirname, "fixtures/virtual-library.d.ts");
+  const library = resolve(import.meta.dirname, "../node_modules/valibot/dist/index.d.mts");
+  using api = new API();
+  using snapshot = api.createSnapshot({
+    fileSystem: createFileSystemLayer([
+      [file, 'import * as v from "valibot"; export const ExampleSchema = v.optional(v.string());'],
+      [dependency, `export * from "${library}";`],
+    ]),
+    createPrograms: [
+      {
+        rootFiles: [file],
+        compilerOptions: {
+          strict: true,
+          skipLibCheck: true,
+          module: ModuleKind.ESNext,
+          moduleResolution: ModuleResolutionKind.Bundler,
+          paths: { valibot: [dependency] },
+        },
+      },
+    ],
+  });
+  const project = snapshot.getProject(snapshot.operation.createdPrograms![0].id)!;
+  const source = project.program.getSourceFile(file)!;
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
+  expect(new SchemaDetector(project).getSchemaNames(source)).toEqual(["ExampleSchema"]);
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
 });
