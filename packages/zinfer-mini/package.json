@@ -1,6 +1,6 @@
 {
   "name": "zinfer-mini",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Extract input/output types from zod/mini schemas",
   "keywords": [
     "schema",
