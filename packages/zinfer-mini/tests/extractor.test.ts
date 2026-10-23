@@ -1,3 +1,4 @@
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { resolve, basename } from "pathe";
 import { ZodMiniTypeExtractor } from "../src/core/extractor.js";
@@ -9,10 +10,7 @@ import { execPath } from "process";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
 const snapshotsDir = resolve(import.meta.dirname, "__file_snapshots__");
-const tsgoPath = resolve(
-  import.meta.dirname,
-  "../node_modules/@typescript/native-preview/bin/tsgo",
-);
+const nativeTscPath = resolve(import.meta.dirname, "../node_modules/typescript-native/bin/tsc");
 const mapName = createNameMapper({ removeSuffix: "Schema" });
 
 /**
@@ -58,7 +56,7 @@ afterAll(() => {
   let output = "";
   let execError: unknown;
   try {
-    execFileSync(execPath, [tsgoPath, "--noEmit", "-p", tsconfigPath], {
+    execFileSync(execPath, [nativeTscPath, "--noEmit", "-p", tsconfigPath], {
       stdio: "pipe",
       encoding: "utf-8",
     });
@@ -389,4 +387,51 @@ describe("described-schema.ts - descriptions", () => {
       "The user's display name",
     );
   });
+});
+
+it.each(["Tree", "PublicTree"])(
+  "keeps a valid recursive fallback for local export %s",
+  (exportedName) => {
+    const dir = mkdtempSync(resolve(fixturesDir, "local-type-export-"));
+    try {
+      const filePath = resolve(dir, "schema.ts");
+      writeFileSync(
+        resolve(dir, "types.ts"),
+        [
+          "interface Tree<T> { value: T; children: Tree<T>[]; } export type Root = { make<T>(): Tree<T>; };",
+          `export type { Tree as ${exportedName} };`,
+        ].join("\n"),
+      );
+      writeFileSync(
+        filePath,
+        [
+          'import type { Root } from "./types";',
+          'import * as z from "zod/mini"; export const TreeSchema: z.ZodMiniType<Root> = z.any();',
+        ].join("\n"),
+      );
+      const result = new ZodMiniTypeExtractor().extractAll(filePath, {
+        inlineTypeReferences: "local",
+      })[0];
+      expect(result.output).toContain(`).${exportedName}`);
+      expect(result.output).not.toMatch(/: Tree</);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
+
+it("can retry extraction after the caller interrupts an operation", () => {
+  const extractor = new ZodMiniTypeExtractor();
+  const filePath = resolve(fixturesDir, "basic-schema.ts");
+  expect(() =>
+    extractor.extractAll(filePath, {
+      get importableFiles(): Set<string> {
+        throw new Error("interrupted");
+      },
+    }),
+  ).toThrow("interrupted");
+  const results = extractor.extractAll(filePath);
+  expect(results.find((result) => result.schemaName === "UserSchema")?.output).toContain(
+    "name: string",
+  );
 });

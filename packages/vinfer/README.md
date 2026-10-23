@@ -7,7 +7,7 @@ vinfer is the Valibot counterpart of [zinfer](https://github.com/toiroakr/zinfer
 ## Features
 
 - Extract `v.InferInput<T>` / `v.InferOutput<T>` types as text from Valibot schemas
-- Accurate type analysis using the TypeScript Compiler API (ts-morph)
+- Accurate type analysis using the TypeScript 7.1 native compiler API
 - Non-invasive: does not modify original source files
 - Works with both `import * as v from "valibot"` and named imports
 - Handles circular references (`v.lazy()`, getter patterns)
@@ -22,6 +22,34 @@ Verified against Valibot 1.5.0, including code-point validations, KSUID,
 `values`/`notValues`, schema caching, and synchronous/asynchronous pipes.
 Input and output types follow Valibot's inference; `awaitAsync()` unwraps
 promise output types instead of preserving a reference to the promise schema.
+
+## TypeScript compiler
+
+Type analysis uses TypeScript 7.1 Beta, installed under the `typescript-native`
+package alias independently of your project's `typescript` version. The native
+compiler executable for your platform must be installed with optional dependencies
+enabled. The CLI and extraction helpers keep source changes in memory and release
+compiler resources after each operation.
+
+Generated property and literal-union ordering can differ from previous releases.
+Recursive types may retain references to exported source interfaces.
+`SchemaDetector` now accepts native TypeScript AST nodes instead of ts-morph nodes;
+use the extractor's `getSchemaNames(filePath)` to discover schemas without managing
+compiler ASTs.
+
+When supplying a native source file directly, pass its originating synchronous
+native project to preserve compiler options such as `paths` and virtual files:
+
+```typescript
+const detector = new SchemaDetector(nativeProject);
+const source = nativeProject.program.getSourceFile(filePath)!;
+const names = detector.getSchemaNames(source);
+```
+
+The project must come from the pinned `typescript-native/sync` API. Keep its API
+and snapshot alive during detection; the caller retains ownership and disposes
+them afterward. Omitting the project uses default compiler options for foreign
+source files.
 
 ## Installation
 

@@ -1,5 +1,4 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { z } from "zod";
 import { execFileSync } from "child_process";
 import { execPath } from "process";
 import { resolve, join } from "pathe";
@@ -15,25 +14,16 @@ import {
 import { tmpdir } from "os";
 import { runCLI } from "../src/cli-runner.js";
 
-// zod v3's getter-based recursion infers differently than v4's (see
-// extractor.test.ts's lazy-schema.ts comment), independent of anything
-// zinfer does - a recursive+branded schema is only exercised end-to-end
-// under v4.
-const isZodV4 = typeof z.looseObject === "function";
-
 const cliPath = resolve(import.meta.dirname, "../src/cli.ts");
 // The .bin/jiti entry is a POSIX shell script (a .cmd shim on Windows) that
 // execFileSync cannot run directly without a shell; run its real JS entry
 // point through the Node executable instead, which works on every platform.
 const jitiCliPath = resolve(import.meta.dirname, "../node_modules/jiti/lib/jiti-cli.mjs");
 const packageJsonPath = resolve(import.meta.dirname, "../package.json");
-// tsgo's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
+// The compiler's node_modules/.bin entry is a POSIX shell script (a .cmd shim on
 // Windows) that execFileSync cannot run directly without a shell; run its
 // real JS entry point through the Node executable instead.
-const tsgoPath = resolve(
-  import.meta.dirname,
-  "../node_modules/@typescript/native-preview/bin/tsgo",
-);
+const nativeTscPath = resolve(import.meta.dirname, "../node_modules/typescript-native/bin/tsc");
 
 describe("cli --version", () => {
   it("should report the version from package.json instead of a hardcoded value", () => {
@@ -353,8 +343,7 @@ describe("runCLI", () => {
     // Exercises a root-level primitive brand and a whole-object brand
     // combined with a brand nested inside an array field - the shapes
     // __ZinferCanonBrand has to walk correctly. A recursive (self-referential)
-    // branded schema is covered separately (zod v3's getter-based recursion
-    // infers differently than v4's, independent of brandStrategy).
+    // branded schema is covered separately below.
     writeFileSync(
       join(workDir, "schema.ts"),
       `import { z } from "zod";
@@ -378,7 +367,7 @@ export const WrapperSchema = z
     expect(testContent).toContain("__ZinferCanonBrand");
     expect(testContent).toContain("__ZinferZodBrandKey");
 
-    execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+    execFileSync(execPath, [nativeTscPath, "--noEmit", "schema.types.test.ts"], {
       cwd: workDir,
       stdio: "pipe",
       encoding: "utf-8",
@@ -392,7 +381,7 @@ export const WrapperSchema = z
     writeFileSync(join(workDir, "schema.types.ts"), typesContent.replace('"UserId"', '"WrongTag"'));
 
     expect(() =>
-      execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+      execFileSync(execPath, [nativeTscPath, "--noEmit", "schema.types.test.ts"], {
         cwd: workDir,
         stdio: "pipe",
         encoding: "utf-8",
@@ -400,18 +389,16 @@ export const WrapperSchema = z
     ).toThrow();
   });
 
-  it.skipIf(!isZodV4)(
-    "type-checks a companion test for a brand nested inside a recursive (self-referential) schema",
-    async () => {
-      workDir = realpathSync(mkdtempSync(join(tmpdir(), "zinfer-cli-runner-")));
-      symlinkSync(
-        resolve(import.meta.dirname, "../node_modules"),
-        join(workDir, "node_modules"),
-        "junction",
-      );
-      writeFileSync(
-        join(workDir, "schema.ts"),
-        `import { z } from "zod";
+  it("type-checks a companion test for a brand nested inside a recursive (self-referential) schema", async () => {
+    workDir = realpathSync(mkdtempSync(join(tmpdir(), "zinfer-cli-runner-")));
+    symlinkSync(
+      resolve(import.meta.dirname, "../node_modules"),
+      join(workDir, "node_modules"),
+      "junction",
+    );
+    writeFileSync(
+      join(workDir, "schema.ts"),
+      `import { z } from "zod";
 
 export const TreeNodeSchema = z.object({
   value: z.string().brand<"NodeId">(),
@@ -420,22 +407,21 @@ export const TreeNodeSchema = z.object({
   },
 });
 `,
-      );
-      process.chdir(workDir);
+    );
+    process.chdir(workDir);
 
-      await runCLI(["schema.ts"], {
-        outDir: workDir,
-        generateTests: true,
-        brandStrategy: "local-symbol",
-      });
+    await runCLI(["schema.ts"], {
+      outDir: workDir,
+      generateTests: true,
+      brandStrategy: "local-symbol",
+    });
 
-      execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
-        cwd: workDir,
-        stdio: "pipe",
-        encoding: "utf-8",
-      });
-    },
-  );
+    execFileSync(execPath, [nativeTscPath, "--noEmit", "schema.types.test.ts"], {
+      cwd: workDir,
+      stdio: "pipe",
+      encoding: "utf-8",
+    });
+  });
 
   it("type-checks a companion test combining two branded source files via --outFile local-symbol", async () => {
     // Two source files' branded schemas land in one combined types file, so
@@ -463,7 +449,7 @@ export const TreeNodeSchema = z.object({
       brandStrategy: "local-symbol",
     });
 
-    execFileSync(execPath, [tsgoPath, "--noEmit", "all.test.ts"], {
+    execFileSync(execPath, [nativeTscPath, "--noEmit", "all.test.ts"], {
       cwd: workDir,
       stdio: "pipe",
       encoding: "utf-8",
@@ -502,7 +488,7 @@ export const CoordWrapperSchema = z
       brandStrategy: "local-symbol",
     });
 
-    execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+    execFileSync(execPath, [nativeTscPath, "--noEmit", "schema.types.test.ts"], {
       cwd: workDir,
       stdio: "pipe",
       encoding: "utf-8",
@@ -519,7 +505,7 @@ export const CoordWrapperSchema = z
     );
 
     expect(() =>
-      execFileSync(execPath, [tsgoPath, "--noEmit", "schema.types.test.ts"], {
+      execFileSync(execPath, [nativeTscPath, "--noEmit", "schema.types.test.ts"], {
         cwd: workDir,
         stdio: "pipe",
         encoding: "utf-8",

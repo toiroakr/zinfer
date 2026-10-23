@@ -1,4 +1,5 @@
-import { Node, SourceFile, VariableDeclaration } from "ts-morph";
+import * as compiler from "@zinfer-monorepo/core";
+import { Node, SourceFile, VariableDeclaration } from "@zinfer-monorepo/core";
 import { isEscaped } from "./string-scan.js";
 import type { DetectedSchema } from "./types.js";
 
@@ -6,33 +7,40 @@ import type { DetectedSchema } from "./types.js";
  * Detects Zod schemas in TypeScript source files.
  */
 export class SchemaDetector {
+  constructor(private readonly compilerContext?: compiler.NativeProject) {}
+
   private cache = new Map<string, DetectedSchema[]>();
 
   /**
    * Detects all Zod schemas in a source file.
    *
-   * @param sourceFile - The ts-morph SourceFile to analyze
+   * @param sourceFile - The native TypeScript SourceFile to analyze
    * @returns Array of detected schema information (including non-exported schemas)
    */
   detectExportedSchemas(sourceFile: SourceFile): DetectedSchema[] {
-    const filePath = sourceFile.getFilePath();
+    if (this.compilerContext) compiler.registerCompilerContext(sourceFile, this.compilerContext);
+    return compiler.runInCompilerSession(sourceFile, () => this.detectSchemas(sourceFile));
+  }
+
+  private detectSchemas(sourceFile: SourceFile): DetectedSchema[] {
+    const filePath = compiler.getFilePath(sourceFile);
     const cached = this.cache.get(filePath);
     if (cached) return cached;
 
     const schemas: DetectedSchema[] = [];
 
     // Find all variable declarations
-    const variableStatements = sourceFile.getVariableStatements();
+    const variableStatements = compiler.getVariableStatements(sourceFile);
 
     for (const statement of variableStatements) {
-      const isExported = statement.isExported();
+      const isExported = compiler.isExported(statement);
 
-      for (const declaration of statement.getDeclarations()) {
+      for (const declaration of compiler.getDeclarations(statement)) {
         if (this.isZodSchema(declaration)) {
           schemas.push({
-            name: declaration.getName(),
+            name: compiler.getName(declaration),
             isExported,
-            line: declaration.getStartLineNumber(),
+            line: compiler.getStartLineNumber(declaration),
             explicitType: this.extractExplicitType(declaration),
           });
         }
@@ -40,16 +48,16 @@ export class SchemaDetector {
     }
 
     // Also check for re-exports: export { X as Y }
-    const exportDeclarations = sourceFile.getExportDeclarations();
+    const exportDeclarations = compiler.getExportDeclarations(sourceFile);
     for (const exportDecl of exportDeclarations) {
-      const namedExports = exportDecl.getNamedExports();
+      const namedExports = compiler.getNamedExports(exportDecl);
       for (const namedExport of namedExports) {
-        const aliasNode = namedExport.getAliasNode();
-        const exportedName = aliasNode ? aliasNode.getText() : namedExport.getName();
+        const aliasNode = compiler.getAliasNode(namedExport);
+        const exportedName = aliasNode ? aliasNode.getText() : compiler.getName(namedExport);
 
         // Check if the original variable is a Zod schema
-        const originalName = namedExport.getName();
-        const originalDecl = sourceFile.getVariableDeclaration(originalName);
+        const originalName = compiler.getName(namedExport);
+        const originalDecl = compiler.getVariableDeclaration(sourceFile, originalName);
 
         if (originalDecl && this.isZodSchema(originalDecl)) {
           // If the exported name is different from original (alias), add new entry
@@ -58,7 +66,7 @@ export class SchemaDetector {
               schemas.push({
                 name: exportedName,
                 isExported: true,
-                line: namedExport.getStartLineNumber(),
+                line: compiler.getStartLineNumber(namedExport),
                 localName: originalName,
               });
             }
@@ -71,7 +79,7 @@ export class SchemaDetector {
               schemas.push({
                 name: exportedName,
                 isExported: true,
-                line: namedExport.getStartLineNumber(),
+                line: compiler.getStartLineNumber(namedExport),
               });
             }
           }
@@ -224,7 +232,7 @@ export class SchemaDetector {
    */
   private isZodSchema(declaration: VariableDeclaration): boolean {
     // Check for explicit Zod type annotation (z.ZodType<T>, z.ZodSchema<T>, etc.)
-    const typeNode = declaration.getTypeNode();
+    const typeNode = declaration.type;
     if (typeNode) {
       const typeText = typeNode.getText();
       if (
@@ -236,35 +244,34 @@ export class SchemaDetector {
       }
     }
 
-    const initializer = declaration.getInitializer();
+    const initializer = declaration.initializer;
     if (!initializer) {
       return false;
     }
 
     if (Node.isCallExpression(initializer)) {
-      const callee = initializer.getExpression();
+      const callee = initializer.expression;
       // toZod<T>() is a factory; only its second call returns a schema.
-      if (
-        Node.isCallExpression(callee) &&
-        /^z\s*\.\s*toZod$/.test(callee.getExpression().getText())
-      ) {
+      if (Node.isCallExpression(callee) && /^z\s*\.\s*toZod$/.test(callee.expression.getText())) {
         return true;
       }
       if (Node.isPropertyAccessExpression(callee) || Node.isElementAccessExpression(callee)) {
         const member = Node.isPropertyAccessExpression(callee)
-          ? callee.getNameNode()
-          : callee.getArgumentExpression();
-        const method = Node.isStringLiteral(member) ? member.getLiteralValue() : member?.getText();
+          ? callee.name
+          : callee.argumentExpression;
+        const method = Node.isStringLiteral(member)
+          ? compiler.getLiteralValue(member)
+          : member?.getText();
         // Parsed data can itself have every field of a schema, so check the operation first.
         if (
           method &&
           SchemaDetector.ZOD_VALUE_METHODS.has(method) &&
-          this.hasSchemaType(callee.getExpression())
+          this.hasSchemaType(callee.expression)
         ) {
           return false;
         }
         // A builder prefix does not imply that the final method returns a schema.
-        if (Node.isCallExpression(callee.getExpression())) {
+        if (Node.isCallExpression(callee.expression)) {
           return this.hasSchemaType(initializer);
         }
       }
@@ -290,13 +297,13 @@ export class SchemaDetector {
       return true;
     }
 
-    // Detect method chains by their result type, including Zod 3 schemas.
+    // Detect method chains by their result type.
     // Unrelated APIs with the same method names must not become schemas.
     return this.hasSchemaType(initializer);
   }
 
   private hasSchemaType(expression: Node): boolean {
-    const type = expression.getType();
+    const type = compiler.typeOf(expression);
     return (
       type.getProperty("_input") !== undefined &&
       (type.getProperty("_zod") !== undefined || type.getProperty("_def") !== undefined)
@@ -306,7 +313,7 @@ export class SchemaDetector {
   /**
    * Gets all schema names from a source file.
    *
-   * @param sourceFile - The ts-morph SourceFile to analyze
+   * @param sourceFile - The native TypeScript SourceFile to analyze
    * @returns Array of schema names
    */
   getSchemaNames(sourceFile: SourceFile): string[] {
@@ -320,7 +327,7 @@ export class SchemaDetector {
    * @returns The explicit type string if found, undefined otherwise
    */
   private extractExplicitType(declaration: VariableDeclaration): string | undefined {
-    const typeNode = declaration.getTypeNode();
+    const typeNode = declaration.type;
     if (!typeNode) {
       return undefined;
     }

@@ -32,18 +32,18 @@ export type UserInput = {
   id: string;
   address: AddressInput;
   previousAddresses: AddressInput[];
+  billingAddress?: AddressInput;
   tag: TagInput;
   petTag: LabelInput;
-  billingAddress?: AddressInput;
 };
 
 export type UserOutput = {
   id: string;
   address: AddressOutput;
   previousAddresses: AddressOutput[];
+  billingAddress?: AddressOutput;
   tag: TagOutput;
   petTag: LabelOutput;
-  billingAddress?: AddressOutput;
 };
 
 export type CatInput = {

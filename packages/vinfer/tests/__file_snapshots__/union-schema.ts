@@ -24,6 +24,6 @@ export type StringOrNumberInput = string | number;
 
 export type StringOrNumberOutput = string | number;
 
-export type RoleInput = "admin" | "user" | "guest";
+export type RoleInput = "admin" | "guest" | "user";
 
-export type RoleOutput = "admin" | "user" | "guest";
+export type RoleOutput = "admin" | "guest" | "user";

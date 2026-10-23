@@ -34,12 +34,11 @@
     "build": "tsdown",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsgo --noEmit",
+    "typecheck": "node node_modules/typescript-native/bin/tsc --noEmit",
     "typecheck:tsc": "tsc --noEmit",
     "lint": "oxlint",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
-    "knip": "knip",
     "generate:type-tests": "node ./dist/cli.js 'tests/fixtures/*.ts' --outDir tests/__file_snapshots__ --outPattern '[name].ts' --generate-tests --suffix Schema"
   },
   "dependencies": {
@@ -47,16 +46,15 @@
     "glob": "^13.0.6",
     "jiti": "^2.7.0",
     "pathe": "^2.0.3",
-    "ts-morph": "^28.0.0"
+    "typescript-native": "catalog:"
   },
   "devDependencies": {
     "@types/node": "25.9.9",
-    "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "@zinfer-monorepo/core": "workspace:*",
     "@zod/mini": "4.6.7",
-    "knip": "6.41.0",
     "oxfmt": "0.73.0",
     "oxlint": "1.88.0",
+    "ts-morph": "^28.0.0",
     "tsdown": "0.23.1",
     "typescript": "7.0.2",
     "vitest": "5.0.5",

@@ -1,4 +1,5 @@
-import { Node, type SourceFile } from "ts-morph";
+import * as compiler from "@zinfer-monorepo/core";
+import { Node, type SourceFile } from "@zinfer-monorepo/core";
 
 /**
  * Module specifiers that are treated as zod/mini. zod ships the mini API as a
@@ -70,28 +71,28 @@ export class ZodMiniBindings {
     const moduleSpecifiers: string[] = [];
     let hasNonMiniZodImport = false;
 
-    for (const importDecl of sourceFile.getImportDeclarations()) {
-      const moduleSpecifier = importDecl.getModuleSpecifierValue();
+    for (const importDecl of compiler.getImportDeclarations(sourceFile)) {
+      const moduleSpecifier = compiler.getModuleSpecifierValue(importDecl);
       if (!ZOD_MINI_MODULES.has(moduleSpecifier)) {
         if (ZOD_MODULE_PATTERN.test(moduleSpecifier)) hasNonMiniZodImport = true;
         continue;
       }
       moduleSpecifiers.push(moduleSpecifier);
 
-      const namespaceImport = importDecl.getNamespaceImport();
+      const namespaceImport = compiler.getNamespaceImport(importDecl);
       if (namespaceImport) {
         namespaceAliases.add(namespaceImport.getText());
       }
 
       // `import z from "zod/mini"` also exposes the whole namespace under esModuleInterop.
-      const defaultImport = importDecl.getDefaultImport();
+      const defaultImport = compiler.getDefaultImport(importDecl);
       if (defaultImport) {
         namespaceAliases.add(defaultImport.getText());
       }
 
-      for (const namedImport of importDecl.getNamedImports()) {
-        const exportName = namedImport.getName();
-        const localName = namedImport.getAliasNode()?.getText() ?? exportName;
+      for (const namedImport of compiler.getNamedImports(importDecl)) {
+        const exportName = compiler.getName(namedImport);
+        const localName = compiler.getAliasNode(namedImport)?.getText() ?? exportName;
         namedImports.set(localName, exportName);
       }
     }
@@ -146,23 +147,23 @@ export class ZodMiniBindings {
   getCallName(node: Node): string | undefined {
     if (!Node.isCallExpression(node)) return undefined;
 
-    const callee = node.getExpression();
+    const callee = node.expression;
 
     if (Node.isPropertyAccessExpression(callee)) {
-      const target = callee.getExpression();
+      const target = callee.expression;
       if (Node.isIdentifier(target) && this.isNamespace(target.getText())) {
-        return callee.getName();
+        return compiler.getName(callee);
       }
       if (Node.isPropertyAccessExpression(target)) {
-        const namespace = target.getExpression();
+        const namespace = target.expression;
         if (Node.isIdentifier(namespace) && this.isNamespace(namespace.getText())) {
-          return `${target.getName()}.${callee.getName()}`;
+          return `${compiler.getName(target)}.${compiler.getName(callee)}`;
         }
       }
       if (Node.isIdentifier(target)) {
         const namespace = this.namedImports.get(target.getText());
         if (namespace === "iso" || namespace === "coerce") {
-          return `${namespace}.${callee.getName()}`;
+          return `${namespace}.${compiler.getName(callee)}`;
         }
       }
       return undefined;

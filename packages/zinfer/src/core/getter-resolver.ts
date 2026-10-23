@@ -1,4 +1,11 @@
-import { SourceFile, SyntaxKind, Node, CallExpression, PropertyAccessExpression } from "ts-morph";
+import * as compiler from "@zinfer-monorepo/core";
+import {
+  SourceFile,
+  SyntaxKind,
+  Node,
+  CallExpression,
+  PropertyAccessExpression,
+} from "@zinfer-monorepo/core";
 import { escapeRegExp } from "./regexp.js";
 import { isEscaped } from "./string-scan.js";
 
@@ -32,19 +39,19 @@ export class GetterResolver {
   /**
    * Analyzes a source file to find getter field mappings.
    *
-   * @param sourceFile - The ts-morph SourceFile to analyze
+   * @param sourceFile - The native TypeScript SourceFile to analyze
    * @returns Map of schema name to field info
    */
   analyzeGetterFields(sourceFile: SourceFile, schemaNames?: Set<string>): GetterFieldMap {
     const result: GetterFieldMap = new Map();
 
-    const statements = sourceFile.getVariableStatements();
+    const statements = compiler.getVariableStatements(sourceFile);
     for (const stmt of statements) {
-      for (const decl of stmt.getDeclarations()) {
-        const schemaName = decl.getName();
+      for (const decl of compiler.getDeclarations(stmt)) {
+        const schemaName = compiler.getName(decl);
         if (schemaNames && !schemaNames.has(schemaName)) continue;
 
-        const init = decl.getInitializer();
+        const init = decl.initializer;
         if (!init) continue;
 
         const fieldMap = this.extractGetterFieldsFromAST(init, schemaName);
@@ -65,18 +72,18 @@ export class GetterResolver {
     const fieldMap = new Map<string, GetterFieldInfo>();
 
     // Find all getter declarations within the node
-    const getters = node.getDescendantsOfKind(SyntaxKind.GetAccessor);
+    const getters = compiler.getDescendantsOfKind(node, SyntaxKind.GetAccessor);
 
     for (const getter of getters) {
-      const fieldName = getter.getName();
-      const body = getter.getBody();
+      const fieldName = compiler.getName(getter);
+      const body = getter.body;
       if (!body) continue;
 
       // Find return statement
-      const returnStmt = body.getFirstDescendantByKind(SyntaxKind.ReturnStatement);
+      const returnStmt = compiler.getFirstDescendantByKind(body, SyntaxKind.ReturnStatement);
       if (!returnStmt) continue;
 
-      const returnExpr = returnStmt.getExpression();
+      const returnExpr = returnStmt.expression;
       if (!returnExpr) continue;
 
       const info = this.parseReturnExpressionAST(returnExpr, schemaName);
@@ -102,12 +109,12 @@ export class GetterResolver {
     let currentExpr = expr;
     while (Node.isCallExpression(currentExpr)) {
       const callExpr = currentExpr as CallExpression;
-      const exprNode = callExpr.getExpression();
+      const exprNode = callExpr.expression;
 
       if (Node.isPropertyAccessExpression(exprNode)) {
         const propAccess = exprNode as PropertyAccessExpression;
-        const methodName = propAccess.getName();
-        const baseExpr = propAccess.getExpression();
+        const methodName = compiler.getName(propAccess);
+        const baseExpr = propAccess.expression;
 
         // Check for .optional() or .nullable() on a schema
         if (methodName === "optional" || methodName === "nullable") {
@@ -129,7 +136,7 @@ export class GetterResolver {
 
         // Check for z.array(SchemaName) or z.record(key, SchemaName)
         if (Node.isIdentifier(baseExpr) && baseExpr.getText() === "z") {
-          const args = callExpr.getArguments();
+          const args = callExpr.arguments;
 
           if (methodName === "array" && args.length > 0) {
             isArray = true;

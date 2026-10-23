@@ -4,16 +4,16 @@ export type UserInput = {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "user" | "guest";
   age?: number | undefined;
+  role: "admin" | "guest" | "user";
 };
 
 export type UserOutput = {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "user" | "guest";
   age?: number | undefined;
+  role: "admin" | "guest" | "user";
 };
 
 export type AddressInput = {
@@ -32,12 +32,12 @@ export type AddressOutput = {
 
 export type ProfileInput = {
   user: UserInput;
-  tags: string[];
   address?: AddressInput;
+  tags: string[];
 };
 
 export type ProfileOutput = {
   user: UserOutput;
-  tags: string[];
   address?: AddressOutput;
+  tags: string[];
 };

@@ -1,3 +1,4 @@
+import * as compiler from "@zinfer-monorepo/core";
 import {
   Project,
   SourceFile,
@@ -7,7 +8,7 @@ import {
   type TypeAliasDeclaration,
   type InterfaceDeclaration,
   type ClassDeclaration,
-} from "ts-morph";
+} from "@zinfer-monorepo/core";
 import { resolve as resolvePath, isAbsolute } from "pathe";
 import { realpathSync } from "fs";
 import {
@@ -192,8 +193,8 @@ function absolutizeImportPaths(typeStr: string, sourceDir: string): string {
  */
 function printEnumAsLiteralUnion(enumDecl: EnumDeclaration): string | undefined {
   const values: string[] = [];
-  for (const member of enumDecl.getMembers()) {
-    const value = member.getValue();
+  for (const member of enumDecl.members) {
+    const value = compiler.getValue(member);
     if (typeof value === "string") values.push(`"${value}"`);
     else if (typeof value === "number") values.push(value.toString());
     else return undefined;
@@ -211,7 +212,7 @@ function withOutputFallback(printedOutput: string, printedInput: string): string
 }
 
 /**
- * Removes trailing spaces ts-morph 27+ may add to printed type text. Skips
+ * Removes trailing spaces from printed type text. Skips
  * split/map/join for single-line types (most common case).
  */
 function trimPrintedType(rawType: string): string {
@@ -297,7 +298,7 @@ function modulePathFor(sourceFile: SourceFile): string {
   // Routed through pathe's resolve(), the same normalization
   // absolutizeImportPaths already relies on for its own realpath'd
   // sourceDir, to always land on the forward-slash form.
-  return resolvePath(realpathSync(sourceFile.getFilePath())).replace(
+  return resolvePath(realpathSync(compiler.getFilePath(sourceFile))).replace(
     /\.d\.(ts|mts|cts)$|\.(ts|tsx|mts|cts)$/,
     "",
   );
@@ -354,10 +355,12 @@ export class ValibotTypeExtractor {
    * @returns Array of extraction results for each schema
    */
   extractAll(filePath: string, context: ExtractContext = {}): ExtractResult[] {
-    const sourceFile = this.getOrAddSourceFile(filePath);
-    const schemas = this.schemaDetector.detectExportedSchemas(sourceFile);
+    return this.project.run(() => {
+      const sourceFile = this.getOrAddSourceFile(filePath);
+      const schemas = this.schemaDetector.detectExportedSchemas(sourceFile);
 
-    return this.extractMultipleFromSourceFile(sourceFile, schemas, context);
+      return this.extractMultipleFromSourceFile(sourceFile, schemas, context);
+    });
   }
 
   /**
@@ -372,14 +375,16 @@ export class ValibotTypeExtractor {
     schemaNames: string[],
     context: ExtractContext = {},
   ): ExtractResult[] {
-    const sourceFile = this.getOrAddSourceFile(filePath);
-    const allSchemas = this.schemaDetector.detectExportedSchemas(sourceFile);
-    const schemas = schemaNames.map((name) => {
-      const found = allSchemas.find((s) => s.name === name);
-      return found || { name, isExported: true, line: 0 };
-    });
+    return this.project.run(() => {
+      const sourceFile = this.getOrAddSourceFile(filePath);
+      const allSchemas = this.schemaDetector.detectExportedSchemas(sourceFile);
+      const schemas = schemaNames.map((name) => {
+        const found = allSchemas.find((s) => s.name === name);
+        return found || { name, isExported: true, line: 0 };
+      });
 
-    return this.extractMultipleFromSourceFile(sourceFile, schemas, context);
+      return this.extractMultipleFromSourceFile(sourceFile, schemas, context);
+    });
   }
 
   /**
@@ -402,7 +407,9 @@ export class ValibotTypeExtractor {
    * @returns Array of schema names
    */
   getSchemaNames(filePath: string): string[] {
-    return this.schemaDetector.getSchemaNames(this.getOrAddSourceFile(filePath));
+    return this.project.run(() => {
+      return this.schemaDetector.getSchemaNames(this.getOrAddSourceFile(filePath));
+    });
   }
 
   /**
@@ -881,33 +888,30 @@ export class ValibotTypeExtractor {
    */
   private injectExplicitType(sourceFile: SourceFile, explicitType: string): void {
     // Don't normalize - use the type directly to preserve circular references
-    sourceFile.addStatements([`type __TempExplicit = ${explicitType};`]);
+    compiler.addStatements(sourceFile, [`type __TempExplicit = ${explicitType};`]);
   }
 
   /**
    * Cleans up explicit type temporaries.
    */
   private cleanupExplicitType(sourceFile: SourceFile): void {
-    const typeAlias = sourceFile.getTypeAlias("__TempExplicit");
+    const typeAlias = compiler.getTypeAlias(sourceFile, "__TempExplicit");
     if (typeAlias) {
-      typeAlias.remove();
+      compiler.remove(typeAlias);
     }
   }
 
   /**
-   * Creates a ts-morph Project with appropriate compiler options.
+   * Creates a native compiler project with appropriate compiler options.
    */
   private createProject(tsconfigPath?: string): Project {
     if (tsconfigPath) {
       return new Project({
         tsConfigFilePath: tsconfigPath,
-        skipAddingFilesFromTsConfig: true,
-        skipFileDependencyResolution: true,
       });
     }
 
     return new Project({
-      skipFileDependencyResolution: true,
       compilerOptions: {
         strict: true,
         target: ts.ScriptTarget.ESNext,
@@ -923,8 +927,8 @@ export class ValibotTypeExtractor {
    * Injects the __Normalize type definition into a source file if not already present.
    */
   private ensureNormalizeType(sourceFile: SourceFile): void {
-    if (!sourceFile.getTypeAlias("__Normalize")) {
-      sourceFile.addStatements([NORMALIZE_TYPE_DEFINITION]);
+    if (!compiler.getTypeAlias(sourceFile, "__Normalize")) {
+      compiler.addStatements(sourceFile, [NORMALIZE_TYPE_DEFINITION]);
     }
   }
 
@@ -933,7 +937,8 @@ export class ValibotTypeExtractor {
    */
   private cleanupNormalizeType(sourceFile: SourceFile): void {
     for (const name of NORMALIZE_TYPE_NAMES) {
-      sourceFile.getTypeAlias(name)?.remove();
+      const alias = compiler.getTypeAlias(sourceFile, name);
+      if (alias) compiler.remove(alias);
     }
   }
 
@@ -943,7 +948,7 @@ export class ValibotTypeExtractor {
    * These are added in-memory only and never saved to disk.
    */
   private injectTemporaryTypes(sourceFile: SourceFile, schemaName: string): void {
-    sourceFile.addStatements([
+    compiler.addStatements(sourceFile, [
       createTempTypeAlias(schemaName, "input"),
       createTempTypeAlias(schemaName, "output"),
     ]);
@@ -957,12 +962,12 @@ export class ValibotTypeExtractor {
     typeName: string,
     scope?: TypeReferenceScope,
   ): string {
-    const typeAlias = sourceFile.getTypeAlias(typeName);
+    const typeAlias = compiler.getTypeAlias(sourceFile, typeName);
     if (!typeAlias) {
       throw new Error(`Failed to find type alias: ${typeName}`);
     }
 
-    const type = typeAlias.getType();
+    const type = compiler.typeOf(typeAlias);
 
     // Use TypeFormatFlags to get the fully expanded type without truncation
     // Don't use UseAliasDefinedOutsideCurrentScope to expand enum types
@@ -973,21 +978,21 @@ export class ValibotTypeExtractor {
 
     // Expand enum types: if the type is a single identifier, check if it's an enum
     if (/^[A-Z][a-zA-Z0-9]*$/.test(rawType)) {
-      const enumDecl = sourceFile.getEnum(rawType);
+      const enumDecl = compiler.getEnum(sourceFile, rawType);
       if (enumDecl) {
         rawType = printEnumAsLiteralUnion(enumDecl) ?? rawType;
       }
     }
 
     rawType = collapseRepeatedUndefined(rawType);
-    rawType = absolutizeImportPaths(rawType, sourceFile.getDirectoryPath());
+    rawType = absolutizeImportPaths(rawType, compiler.getDirectoryPath(sourceFile));
 
     if (scope) {
       rawType = this.inlineExternalTypeReferences(
         rawType,
         new Set(),
         scope,
-        sourceFile.getFilePath(),
+        compiler.getFilePath(sourceFile),
       );
     }
 
@@ -1114,17 +1119,17 @@ export class ValibotTypeExtractor {
     visiting: Set<string>,
     scope: TypeReferenceScope,
   ): string | undefined {
-    const typeAlias = targetFile.getTypeAlias(typeName);
+    const typeAlias = compiler.getTypeAlias(targetFile, typeName);
     if (typeAlias) {
       return this.expandExternalDeclaration(targetFile, typeAlias, visiting, scope);
     }
 
-    const iface = targetFile.getInterface(typeName);
+    const iface = compiler.getInterface(targetFile, typeName);
     if (iface) {
       return this.expandExternalDeclaration(targetFile, iface, visiting, scope);
     }
 
-    const enumDecl = targetFile.getEnum(typeName);
+    const enumDecl = compiler.getEnum(targetFile, typeName);
     if (enumDecl) {
       return printEnumAsLiteralUnion(enumDecl);
     }
@@ -1150,11 +1155,16 @@ export class ValibotTypeExtractor {
     scope: TypeReferenceScope,
   ): string {
     const formatFlags = TypeFormatFlags.NoTruncation | TypeFormatFlags.InTypeAlias;
-    let text = declaration.getType().getText(declaration, formatFlags);
+    let text = compiler.typeOf(declaration).getText(declaration, formatFlags);
     text = trimPrintedType(text);
-    text = absolutizeImportPaths(text, targetFile.getDirectoryPath());
+    text = absolutizeImportPaths(text, compiler.getDirectoryPath(targetFile));
     text = this.promoteBareTypeReferences(text, targetFile, visiting, scope);
-    return this.inlineExternalTypeReferences(text, visiting, scope, targetFile.getFilePath());
+    return this.inlineExternalTypeReferences(
+      text,
+      visiting,
+      scope,
+      compiler.getFilePath(targetFile),
+    );
   }
 
   /**
@@ -1311,27 +1321,28 @@ export class ValibotTypeExtractor {
       });
     };
 
-    for (const typeAlias of targetFile.getTypeAliases()) {
-      addLocal(typeAlias.getName(), typeAlias.isExported());
+    for (const typeAlias of compiler.getTypeAliases(targetFile)) {
+      addLocal(compiler.getName(typeAlias), compiler.isExported(typeAlias));
     }
-    for (const iface of targetFile.getInterfaces()) {
-      addLocal(iface.getName(), iface.isExported());
+    for (const iface of compiler.getInterfaces(targetFile)) {
+      addLocal(compiler.getName(iface), compiler.isExported(iface));
     }
-    for (const enumDecl of targetFile.getEnums()) {
-      addLocal(enumDecl.getName(), enumDecl.isExported());
+    for (const enumDecl of compiler.getEnums(targetFile)) {
+      addLocal(compiler.getName(enumDecl), compiler.isExported(enumDecl));
     }
 
-    for (const importDecl of targetFile.getImportDeclarations()) {
-      const moduleSourceFile = importDecl.getModuleSpecifierSourceFile();
+    for (const importDecl of compiler.getImportDeclarations(targetFile)) {
+      const moduleSourceFile = compiler.getModuleSpecifierSourceFile(importDecl);
       if (!moduleSourceFile) continue;
 
       const modulePath = modulePathFor(moduleSourceFile);
-      for (const namedImport of importDecl.getNamedImports()) {
-        const localName = namedImport.getAliasNode()?.getText() ?? namedImport.getName();
+      for (const namedImport of compiler.getNamedImports(importDecl)) {
+        const localName =
+          compiler.getAliasNode(namedImport)?.getText() ?? compiler.getName(namedImport);
         references.set(localName, {
           file: moduleSourceFile,
           modulePath,
-          exportedName: namedImport.getName(),
+          exportedName: compiler.getName(namedImport),
           hasValidFallback: true,
         });
       }
@@ -1379,12 +1390,7 @@ export class ValibotTypeExtractor {
 
     if (scope !== "all") return undefined;
 
-    const resolved = ts.resolveModuleName(
-      modulePath,
-      containingFilePath,
-      this.project.getCompilerOptions(),
-      ts.sys,
-    ).resolvedModule;
+    const resolved = this.project.resolveModule(modulePath, containingFilePath);
     if (!resolved) return undefined;
 
     return (
@@ -1441,7 +1447,7 @@ export class ValibotTypeExtractor {
     };
 
     if (isImportable) {
-      return { ...resolved, importedFrom: importedSourceFile.getFilePath(), originalName };
+      return { ...resolved, importedFrom: compiler.getFilePath(importedSourceFile), originalName };
     }
     // No file will declare a name for this one, so what it printed is itself
     // the approximation a reference has to be inlined as.
@@ -1454,9 +1460,9 @@ export class ValibotTypeExtractor {
    */
   private cleanupTemporaryTypes(sourceFile: SourceFile): void {
     for (const name of ["__TempInput", "__TempOutput"] as const) {
-      const typeAlias = sourceFile.getTypeAlias(name);
+      const typeAlias = compiler.getTypeAlias(sourceFile, name);
       if (typeAlias) {
-        typeAlias.remove();
+        compiler.remove(typeAlias);
       }
     }
   }
@@ -1480,9 +1486,9 @@ export class ValibotTypeExtractor {
   ): TypeAliasDeclaration | InterfaceDeclaration | ClassDeclaration | undefined {
     if (!this.isValidIdentifier(typeName)) return undefined;
     return (
-      sourceFile.getTypeAlias(typeName) ??
-      sourceFile.getInterface(typeName) ??
-      sourceFile.getClass(typeName)
+      compiler.getTypeAlias(sourceFile, typeName) ??
+      compiler.getInterface(sourceFile, typeName) ??
+      compiler.getClass(sourceFile, typeName)
     );
   }
 
@@ -1571,8 +1577,8 @@ export class ValibotTypeExtractor {
     const declaration = this.getLocalTypeDeclaration(sourceFile, typeName);
     if (!declaration) return null;
 
-    const exportedName = [...sourceFile.getExportedDeclarations()].find(([, declarations]) =>
-      declarations.includes(declaration),
+    const exportedName = [...compiler.getExportedDeclarations(sourceFile)].find(
+      ([, declarations]) => declarations.includes(declaration),
     )?.[0];
     if (!exportedName) return null;
 

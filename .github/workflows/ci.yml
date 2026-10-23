@@ -47,6 +47,33 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+  tsrs:
+    name: tsrs
+    runs-on: ubuntu-slim
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        name: Install pnpm and Node.js
+        with:
+          runtime: node@24.22.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Typecheck (tsrs)
+        run: |
+          pnpm -r exec tsrs --noEmit
+          pnpm --filter @zinfer-monorepo/core exec tsrs --noEmit -p tsconfig.api-coverage.json
+      - name: Test (tsrs compiler API)
+        env:
+          NODE_OPTIONS: --import=${{ github.workspace }}/.github/scripts/use-tsrs.mjs
+        run: pnpm test
+
   peer-floor:
     name: Peer floor (${{ matrix.package }} / ${{ matrix.name }})
     runs-on: ubuntu-slim
@@ -60,7 +87,7 @@ jobs:
           # strictTsc gates the "Typecheck (tsc)" step below. It's false only
           # for zinfer/zinfer-mini rows that actually move the typescript
           # devDependency down to its peer floor (the "typescript" and
-          # "combined" rows): at typescript@5.0.2, tsc --noEmit (unlike tsgo)
+          # "combined" rows): at typescript@5.0.2, tsc --noEmit (unlike native tsc)
           # fails with TS18048 in description-extractor.ts/extractor.ts, an
           # error absent at the pinned typescript devDependency version -
           # zinfer-mini copies these files from zinfer and reproduces the same
@@ -70,7 +97,7 @@ jobs:
           - package: zinfer
             name: zod
             # typescript stays at the devDependencies-pinned version for this row.
-            packages: zod@3.25.76
+            packages: zod@4.3.0
             strictTsc: true
           - package: zinfer
             name: typescript
@@ -82,7 +109,7 @@ jobs:
             name: combined
             # Both peerDependencies lower bounds installed together, since consumers can
             # be at both floors simultaneously.
-            packages: zod@3.25.76 typescript@5.0.2
+            packages: zod@4.3.0 typescript@5.0.2
             strictTsc: false
           - package: vinfer
             name: valibot
@@ -139,7 +166,7 @@ jobs:
         run: pnpm --filter @zinfer-monorepo/core build
       - name: Install peerDependencies lower bound
         run: pnpm --filter ${{ matrix.package }} add -D ${{ matrix.packages }}
-      - name: Typecheck (tsgo)
+      - name: Typecheck (TypeScript 7.1 native)
         run: pnpm --filter ${{ matrix.package }} run typecheck
       - name: Typecheck (tsc)
         if: matrix.strictTsc

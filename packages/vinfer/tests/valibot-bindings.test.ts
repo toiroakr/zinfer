@@ -1,9 +1,10 @@
+import * as compiler from "@zinfer-monorepo/core";
 import { describe, it, expect } from "vitest";
-import { Project, Node } from "ts-morph";
+import { Project, Node } from "@zinfer-monorepo/core";
 import { ValibotBindings } from "../src/core/valibot-bindings.js";
 
 function bindingsFor(source: string) {
-  const project = new Project();
+  using project = new Project();
   const sourceFile = project.createSourceFile(`bindings-${Math.random()}.ts`, source);
   return { bindings: ValibotBindings.from(sourceFile), sourceFile };
 }
@@ -13,7 +14,7 @@ function bindingsFor(source: string) {
  */
 function initializerOf(source: string, name: string) {
   const { bindings, sourceFile } = bindingsFor(source);
-  const initializer = sourceFile.getVariableDeclarationOrThrow(name).getInitializerOrThrow();
+  const initializer = compiler.getVariableDeclaration(sourceFile, name)!.initializer!;
   return { bindings, initializer };
 }
 
@@ -158,7 +159,7 @@ describe("ValibotBindings", () => {
   });
 
   it("caches bindings per source file", () => {
-    const project = new Project();
+    using project = new Project();
     const sourceFile = project.createSourceFile("cached.ts", 'import * as v from "valibot";');
     expect(ValibotBindings.from(sourceFile)).toBe(ValibotBindings.from(sourceFile));
   });

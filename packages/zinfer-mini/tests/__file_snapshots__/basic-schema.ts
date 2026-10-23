@@ -3,13 +3,13 @@
 export type UserInput = {
   id: string;
   name: string;
-  email: string | null;
   age?: number | undefined;
+  email: string | null;
 };
 
 export type UserOutput = {
   id: string;
   name: string;
-  email: string | null;
   age?: number | undefined;
+  email: string | null;
 };

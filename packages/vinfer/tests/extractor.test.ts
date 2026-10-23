@@ -1,3 +1,4 @@
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { resolve, basename } from "pathe";
 import { ValibotTypeExtractor, type ExtractContext } from "../src/core/extractor.js";
@@ -5,10 +6,12 @@ import { generateDeclarationFile, relativizeImportPaths } from "../src/core/type
 import { createNameMapper } from "../src/core/name-mapper.js";
 import { DescriptionExtractor } from "../src/core/description-extractor.js";
 import { execFileSync } from "child_process";
+import { execPath } from "process";
 import { existsSync, readdirSync } from "fs";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
 const snapshotsDir = resolve(import.meta.dirname, "__file_snapshots__");
+const nativeTscPath = resolve(import.meta.dirname, "../node_modules/typescript-native/bin/tsc");
 const mapName = createNameMapper({ removeSuffix: "Schema" });
 
 /**
@@ -84,7 +87,7 @@ function typeCheckSnapshots(): TypeError[] {
   let output = "";
 
   try {
-    execFileSync("npx", ["tsgo", "--noEmit", "-p", tsconfigPath], {
+    execFileSync(execPath, [nativeTscPath, "--noEmit", "-p", tsconfigPath], {
       stdio: "pipe",
       encoding: "utf-8",
       cwd: resolve(import.meta.dirname, ".."),
@@ -900,7 +903,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
       // the arrow's `=>` (which has no matching `<` to close) rather than
       // letting it desync the bracket depth. A desync would silently drop
       // the wrapping parens instead of failing to compile, so this checks
-      // the exact string rather than relying on tsgo to catch it.
+      // the exact string rather than relying on native tsc to catch it.
       expect(chain?.input).toContain("format: (((value: string) => string) | null)");
     });
 
@@ -1134,7 +1137,7 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
   createSchemaTest(extractor, "inline-external-types/qualified/schema");
 
   // The tests above assert on individual substrings of the raw extracted
-  // type; none of them get run through tsgo. These mirror createSchemaTest
+  // type; none of them get run through native tsc. These mirror createSchemaTest
   // but with the flag on, so the afterAll sweep below actually type-checks
   // the novel output shapes this feature produces - parenthesized unions,
   // the cycle fallback, and multi-file expansion - the same way every other
@@ -1570,3 +1573,34 @@ describe("ValibotTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 });
+
+it.each(["Tree", "PublicTree"])(
+  "keeps a valid recursive fallback for local export %s",
+  (exportedName) => {
+    const dir = mkdtempSync(resolve(fixturesDir, "local-type-export-"));
+    try {
+      const filePath = resolve(dir, "schema.ts");
+      writeFileSync(
+        resolve(dir, "types.ts"),
+        [
+          "interface Tree<T> { value: T; children: Tree<T>[]; } export type Root = { make<T>(): Tree<T>; };",
+          `export type { Tree as ${exportedName} };`,
+        ].join("\n"),
+      );
+      writeFileSync(
+        filePath,
+        [
+          'import type { Root } from "./types";',
+          'import * as v from "valibot"; export const TreeSchema: v.GenericSchema<Root, Root> = v.any();',
+        ].join("\n"),
+      );
+      const result = new ValibotTypeExtractor().extractAll(filePath, {
+        inlineTypeReferences: "local",
+      })[0];
+      expect(result.output).toContain(`).${exportedName}`);
+      expect(result.output).not.toMatch(/: Tree</);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);

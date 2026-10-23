@@ -1,9 +1,12 @@
-import { expect, it } from "vitest";
-import { Project, ts } from "ts-morph";
+import { resolve } from "node:path";
+import { API, ModuleKind, ModuleResolutionKind } from "typescript-native/sync";
+import { createFileSystemLayer } from "typescript-native/fs";
+import { expect, it, vi } from "vitest";
+import { Project, ts } from "@zinfer-monorepo/core";
 import { SchemaDetector } from "../src/core/schema-detector.js";
 
 it("detects current Mini schema builders and nested namespaces", () => {
-  const project = new Project();
+  using project = new Project();
   const file = project.createSourceFile(
     "current-mini.ts",
     `
@@ -37,7 +40,7 @@ it("detects current Mini schema builders and nested namespaces", () => {
 });
 
 it("does not detect a standalone z.properties() call as a schema", () => {
-  const project = new Project();
+  using project = new Project();
   const file = project.createSourceFile(
     "standalone-mini-properties.ts",
     `
@@ -53,8 +56,7 @@ it("detects a standalone z.properties() call as a schema on legacy Zod Mini (pre
   // check. This stubs zod/mini's module shape as it was on 4.6.0-4.6.2,
   // where properties() returned a schema (exposing .parse()), to keep this
   // branch covered without pinning a second zod version for the whole suite.
-  const project = new Project({
-    useInMemoryFileSystem: true,
+  using project = new Project({
     compilerOptions: { moduleResolution: ts.ModuleResolutionKind.Bundler },
   });
   project.createSourceFile(
@@ -76,4 +78,52 @@ it("detects a standalone z.properties() call as a schema on legacy Zod Mini (pre
   `,
   );
   expect(new SchemaDetector().getSchemaNames(file)).toEqual(["Properties"]);
+});
+
+it("accepts caller-owned native projects with virtual sources", () => {
+  const file = resolve(import.meta.dirname, "fixtures/native-context.ts");
+  const dependency = resolve(import.meta.dirname, "fixtures/virtual-library.d.ts");
+  const library = resolve(import.meta.dirname, "../node_modules/zod/mini/index.d.ts");
+  using api = new API();
+  using snapshot = api.createSnapshot({
+    fileSystem: createFileSystemLayer([
+      [file, 'import * as z from "zod/mini"; export const ExampleSchema = z.optional(z.string());'],
+      [dependency, `export * from "${library}";`],
+    ]),
+    createPrograms: [
+      {
+        rootFiles: [file],
+        compilerOptions: {
+          strict: true,
+          skipLibCheck: true,
+          module: ModuleKind.ESNext,
+          moduleResolution: ModuleResolutionKind.Bundler,
+          paths: { "zod/mini": [dependency] },
+        },
+      },
+    ],
+  });
+  const project = snapshot.getProject(snapshot.operation.createdPrograms![0].id)!;
+  const source = project.program.getSourceFile(file)!;
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
+  expect(new SchemaDetector(project).getSchemaNames(source)).toEqual(["ExampleSchema"]);
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
+});
+
+it("reuses one owned compiler session for Mini apply detection", () => {
+  using api = new API();
+  using lease = api.createSourceFile(
+    resolve(import.meta.dirname, "fixtures/native-session.ts"),
+    'import * as z from "zod/mini"; const wrapper = { apply: () => z.optional(z.string()) }; export const FirstSchema = wrapper.apply(); export const SecondSchema = wrapper.apply();',
+  );
+  const snapshots = vi.spyOn(API.prototype, "createSnapshot", "get");
+  try {
+    expect(new SchemaDetector().getSchemaNames(lease.sourceFile)).toEqual([
+      "FirstSchema",
+      "SecondSchema",
+    ]);
+    expect(snapshots).toHaveBeenCalledTimes(1);
+  } finally {
+    snapshots.mockRestore();
+  }
 });

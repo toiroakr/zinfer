@@ -1,6 +1,8 @@
+import { API, ModuleKind, ModuleResolutionKind } from "typescript-native/sync";
+import { createFileSystemLayer } from "typescript-native/fs";
 import { describe, it, expect } from "vitest";
 import { resolve } from "path";
-import { Project } from "ts-morph";
+import { Project } from "@zinfer-monorepo/core";
 import { SchemaDetector } from "../src/core/schema-detector.js";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
@@ -9,12 +11,12 @@ describe("SchemaDetector", () => {
   const detector = new SchemaDetector();
 
   function getSourceFile(filename: string) {
-    const project = new Project();
+    using project = new Project();
     return project.addSourceFileAtPath(resolve(fixturesDir, filename));
   }
 
   function createSourceFile(filename: string, content: string) {
-    const project = new Project();
+    using project = new Project();
     return project.createSourceFile(filename, content);
   }
 
@@ -141,4 +143,36 @@ describe("SchemaDetector", () => {
       expect(names).toMatchSnapshot();
     });
   });
+});
+
+it("accepts caller-owned native projects with virtual sources", () => {
+  const file = resolve(import.meta.dirname, "fixtures/native-context.ts");
+  const dependency = resolve(import.meta.dirname, "fixtures/virtual-library.d.ts");
+  using api = new API();
+  using snapshot = api.createSnapshot({
+    fileSystem: createFileSystemLayer([
+      [
+        file,
+        'import * as v from "schema-alias"; export const ExampleSchema = v.optional(v.string());',
+      ],
+      [dependency, 'export * from "valibot";'],
+    ]),
+    createPrograms: [
+      {
+        rootFiles: [file],
+        compilerOptions: {
+          strict: true,
+          skipLibCheck: true,
+          module: ModuleKind.ESNext,
+          moduleResolution: ModuleResolutionKind.Bundler,
+          paths: { "schema-alias": [dependency] },
+        },
+      },
+    ],
+  });
+  const project = snapshot.getProject(snapshot.operation.createdPrograms![0].id)!;
+  const source = project.program.getSourceFile(file)!;
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
+  expect(new SchemaDetector(project).getSchemaNames(source)).toEqual(["ExampleSchema"]);
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
 });

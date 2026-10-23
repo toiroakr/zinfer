@@ -10,16 +10,18 @@
     "lint": "pnpm -r lint",
     "format": "pnpm -r format",
     "format:check": "pnpm -r format:check",
-    "knip": "pnpm -r knip",
+    "knip": "knip",
     "changeset": "changeset",
     "release": "pnpm -r build && changeset publish",
     "test:api": "pnpm --filter @zinfer-monorepo/core test:api"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",
+    "knip": "6.41.0",
     "lefthook": "2.2.2",
     "oxfmt": "0.73.0",
-    "oxlint": "1.88.0"
+    "oxlint": "1.88.0",
+    "tsrs": "0.18.0-ts7.1.0-dev.20260929"
   },
   "packageManager": "pnpm@12.14.0"
 }

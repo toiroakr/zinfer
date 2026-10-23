@@ -50,9 +50,9 @@ export type RequiredUserOutput = {
   age: number;
 };
 
-export type UserKeyInput = "id" | "name" | "email" | "age";
+export type UserKeyInput = "age" | "email" | "id" | "name";
 
-export type UserKeyOutput = "id" | "name" | "email" | "age";
+export type UserKeyOutput = "age" | "email" | "id" | "name";
 
 export type NestedInput = {
   user: {

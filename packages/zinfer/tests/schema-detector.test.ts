@@ -1,6 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { API, ModuleKind, ModuleResolutionKind } from "typescript-native/sync";
+import { createFileSystemLayer } from "typescript-native/fs";
+import { describe, it, expect, vi } from "vitest";
 import { resolve } from "path";
-import { Project } from "ts-morph";
+import { Project } from "@zinfer-monorepo/core";
 import { SchemaDetector } from "../src/core/schema-detector.js";
 
 const fixturesDir = resolve(import.meta.dirname, "fixtures");
@@ -9,12 +11,12 @@ describe("SchemaDetector", () => {
   const detector = new SchemaDetector();
 
   function getSourceFile(filename: string) {
-    const project = new Project();
+    using project = new Project();
     return project.addSourceFileAtPath(resolve(fixturesDir, filename));
   }
 
   it("detects current Zod schema builders", () => {
-    const project = new Project();
+    using project = new Project();
     const sourceFile = project.createSourceFile(
       "current-api.ts",
       `
@@ -40,7 +42,7 @@ describe("SchemaDetector", () => {
   });
 
   it("does not detect a standalone z.properties() call as a schema", () => {
-    const project = new Project();
+    using project = new Project();
     const source = project.createSourceFile(
       "standalone-properties.ts",
       `
@@ -52,7 +54,7 @@ describe("SchemaDetector", () => {
   });
 
   it("does not detect ordinary clone, pipe, or catch calls as schemas", () => {
-    const project = new Project();
+    using project = new Project();
     const source = project.createSourceFile(
       "plain-values.ts",
       `
@@ -66,7 +68,7 @@ describe("SchemaDetector", () => {
   });
 
   it("distinguishes Zod method chains from ordinary APIs with the same method names", () => {
-    const project = new Project();
+    using project = new Project();
     const source = project.createSourceFile(
       resolve(fixturesDir, "method-results.ts"),
       `
@@ -83,7 +85,7 @@ describe("SchemaDetector", () => {
   });
 
   it("excludes parsed values while preserving schema-returning method chains", () => {
-    const project = new Project();
+    using project = new Project();
     const source = project.createSourceFile(
       resolve(fixturesDir, "parsed-values.ts"),
       `
@@ -148,7 +150,7 @@ describe("SchemaDetector", () => {
       // Inline source keeps the line breaks that formatters like prettier
       // insert between "z" and the builder method, which fixtures on disk
       // would lose to this repository's own formatter.
-      const project = new Project();
+      using project = new Project();
       const sourceFile = project.createSourceFile(
         "multiline-schema.ts",
         [
@@ -186,4 +188,55 @@ describe("SchemaDetector", () => {
       expect(names).toMatchSnapshot();
     });
   });
+});
+
+it("preserves configured paths and virtual dependencies from a native project", () => {
+  const file = resolve(fixturesDir, "native-context.ts");
+  const dependency = resolve(fixturesDir, "virtual-zod.d.ts");
+  const zod = resolve(import.meta.dirname, "../node_modules/zod/index.d.ts");
+  using api = new API();
+  using snapshot = api.createSnapshot({
+    fileSystem: createFileSystemLayer([
+      [
+        file,
+        'import { z } from "schema-alias"; export const ExampleSchema = z.string().optional();',
+      ],
+      [dependency, `export { z } from "${zod}";`],
+    ]),
+    createPrograms: [
+      {
+        rootFiles: [file],
+        compilerOptions: {
+          strict: true,
+          skipLibCheck: true,
+          module: ModuleKind.ESNext,
+          moduleResolution: ModuleResolutionKind.Bundler,
+          paths: { "schema-alias": [dependency] },
+        },
+      },
+    ],
+  });
+  const project = snapshot.getProject(snapshot.operation.createdPrograms![0].id)!;
+  const source = project.program.getSourceFile(file)!;
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
+  expect(new SchemaDetector(project).getSchemaNames(source)).toEqual(["ExampleSchema"]);
+  expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
+});
+
+it("reuses one owned compiler session for a complete detection pass", () => {
+  using api = new API();
+  using lease = api.createSourceFile(
+    resolve(fixturesDir, "native-session.ts"),
+    'import { z } from "zod"; export const FirstSchema = z.string().optional(); export const SecondSchema = z.number().nullable();',
+  );
+  const snapshots = vi.spyOn(API.prototype, "createSnapshot", "get");
+  try {
+    expect(new SchemaDetector().getSchemaNames(lease.sourceFile)).toEqual([
+      "FirstSchema",
+      "SecondSchema",
+    ]);
+    expect(snapshots).toHaveBeenCalledTimes(1);
+  } finally {
+    snapshots.mockRestore();
+  }
 });
