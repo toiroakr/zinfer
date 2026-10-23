@@ -18,6 +18,7 @@ export type {
   SourceFile,
   VariableDeclaration,
   ImportDeclaration,
+  ExportDeclaration,
   CallExpression,
   PropertyAccessExpression,
   TypeAliasDeclaration,

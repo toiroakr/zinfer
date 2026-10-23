@@ -1,5 +1,5 @@
 import * as compiler from "./compiler.js";
-import { SourceFile, ImportDeclaration, Project } from "./compiler.js";
+import { SourceFile, ImportDeclaration, ExportDeclaration, Project } from "./compiler.js";
 import { join } from "pathe";
 import { logDebugError } from "./logger.js";
 import type { DetectedSchema } from "./types.js";
@@ -147,7 +147,12 @@ export class ImportResolver {
 
       if (namedExports.length === 0) {
         // This is "export * from './module'" - follow it
-        const reExportedFile = this.resolveModuleSpecifier(sourceFile, moduleSpecifier, project);
+        const reExportedFile = this.resolveModuleSpecifier(
+          exportDecl,
+          sourceFile,
+          moduleSpecifier,
+          project,
+        );
         if (reExportedFile) {
           const found = this.findSchemaSource(reExportedFile, schemaName, project, visited);
           if (found) {
@@ -163,6 +168,7 @@ export class ImportResolver {
           if (exportedName === schemaName) {
             const originalName = compiler.getName(namedExport);
             const reExportedFile = this.resolveModuleSpecifier(
+              exportDecl,
               sourceFile,
               moduleSpecifier,
               project,
@@ -187,10 +193,13 @@ export class ImportResolver {
    * Resolves a module specifier to a source file.
    */
   private resolveModuleSpecifier(
+    exportDecl: ExportDeclaration,
     fromFile: SourceFile,
     moduleSpecifier: string,
     project: Project,
   ): SourceFile | undefined {
+    const viaProgram = compiler.getModuleSpecifierSourceFile(exportDecl);
+    if (viaProgram) return viaProgram;
     const resolved = project.resolveModule(moduleSpecifier, fromFile.fileName);
     if (resolved) return project.addSourceFileAtPathIfExists(resolved.resolvedFileName);
     const sourceDir = compiler.getDirectoryPath(fromFile);
