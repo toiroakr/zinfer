@@ -297,7 +297,7 @@ export class SchemaDetector {
       return true;
     }
 
-    // Detect method chains by their result type, including Zod 3 schemas.
+    // Detect method chains by their result type.
     // Unrelated APIs with the same method names must not become schemas.
     return this.hasSchemaType(initializer);
   }
