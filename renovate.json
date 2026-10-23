@@ -42,6 +42,11 @@
       "matchPackageNames": ["typescript", "@types/*", "@typescript/*"]
     },
     {
+      "matchDatasources": ["npm"],
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "!/-dev\\./"
+    },
+    {
       "matchDepTypes": ["peerDependencies"],
       "rangeStrategy": "widen",
       "automerge": false
