@@ -2,7 +2,7 @@ packages:
   - "packages/*"
 
 catalog:
-  typescript-native: npm:typescript@7.1.0-beta
+  typescript-native: npm:typescript@7.1.0-dev.20261015.1
 
 allowBuilds:
   esbuild: true
