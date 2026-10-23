@@ -73,7 +73,6 @@ export class Project {
   private api: API | undefined;
   private snapshot: Snapshot | undefined;
   private native: NativeProject | undefined;
-  private root: string | undefined;
   private files = new Map<string, ast.SourceFile>();
   private originals = new Map<string, ast.SourceFile>();
   private revision = 0;
@@ -178,7 +177,11 @@ export class Project {
   program(node: ast.Node): NativeProject {
     if (this.config.nativeProject) return this.config.nativeProject;
     const file = node.getSourceFile().fileName;
-    if (this.native && this.root === file && this.programRevision === this.revision)
+    if (
+      this.native &&
+      this.programRevision === this.revision &&
+      this.native.program.getSourceFile(file)
+    )
       return this.native;
     this.native?.program.dispose();
     this.snapshot?.dispose();
@@ -202,7 +205,6 @@ export class Project {
     });
     const program = this.snapshot.operation.createdPrograms![0];
     this.native = this.snapshot.getProject(program.id)!;
-    this.root = file;
     this.programRevision = this.revision;
     return this.native;
   }

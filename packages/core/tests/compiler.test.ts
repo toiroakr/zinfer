@@ -175,3 +175,16 @@ it("uses the caller's native context for virtual imports without disposing it", 
   expect(typeOf(getVariableDeclaration(imported, "value")!).getText()).toBe('"configured"');
   expect(project.program.getSemanticDiagnostics(file)).toEqual([]);
 });
+
+it("reuses one program when queries alternate between files of the same session", () => {
+  using project = new Project();
+  const first = project.createSourceFile(join(directory(), "first.ts"), "export const a = 1;");
+  const second = project.createSourceFile(join(directory(), "second.ts"), "export const b = 2;");
+  project.run(() => {
+    const programs = [first, second, first].map((source) =>
+      project.query(source, (native) => native),
+    );
+    expect(programs[1]).toBe(programs[0]);
+    expect(programs[2]).toBe(programs[0]);
+  });
+});
