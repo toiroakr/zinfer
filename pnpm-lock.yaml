@@ -162,6 +162,12 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    typescript-native:
+      specifier: npm:typescript@7.1.0-beta
+      version: 7.1.0-beta
+
 importers:
 
   .:
@@ -194,7 +200,7 @@ importers:
         specifier: ^2.0.3
         version: 2.0.3
       typescript-native:
-        specifier: npm:typescript@7.1.0-beta
+        specifier: 'catalog:'
         version: typescript@7.1.0-beta
     devDependencies:
       '@types/node':
@@ -231,7 +237,7 @@ importers:
         specifier: ^2.0.3
         version: 2.0.3
       typescript-native:
-        specifier: npm:typescript@7.1.0-beta
+        specifier: 'catalog:'
         version: typescript@7.1.0-beta
     devDependencies:
       '@types/node':
@@ -277,7 +283,7 @@ importers:
         specifier: ^2.0.3
         version: 2.0.3
       typescript-native:
-        specifier: npm:typescript@7.1.0-beta
+        specifier: 'catalog:'
         version: typescript@7.1.0-beta
     devDependencies:
       '@types/node':
@@ -323,7 +329,7 @@ importers:
         specifier: ^2.0.3
         version: 2.0.3
       typescript-native:
-        specifier: npm:typescript@7.1.0-beta
+        specifier: 'catalog:'
         version: typescript@7.1.0-beta
     devDependencies:
       '@types/node':

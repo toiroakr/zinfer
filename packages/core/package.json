@@ -21,7 +21,7 @@
   "dependencies": {
     "glob": "^13.0.6",
     "pathe": "^2.0.3",
-    "typescript-native": "npm:typescript@7.1.0-beta"
+    "typescript-native": "catalog:"
   },
   "devDependencies": {
     "@types/node": "25.9.9",
