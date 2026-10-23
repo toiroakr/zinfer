@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignoreExportsUsedInFile": true,
+  "workspaces": {
+    ".": { "ignore": [".github/scripts/**"] },
+    "packages/core": { "project": ["src/**/*.ts"] },
+    "packages/vinfer": { "project": ["src/**/*.ts"], "ignoreDependencies": ["glob"] },
+    "packages/zinfer-mini": {
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["glob", "@zod/mini"]
+    },
+    "packages/zinfer": { "project": ["src/**/*.ts"], "ignoreDependencies": ["glob"] }
+  }
+}

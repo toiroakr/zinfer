@@ -169,6 +169,9 @@ importers:
       '@changesets/cli':
         specifier: 3.0.3
         version: 3.0.3
+      knip:
+        specifier: 6.41.0
+        version: 6.41.0
       lefthook:
         specifier: 2.2.2
         version: 2.2.2
@@ -197,9 +200,6 @@ importers:
       '@types/node':
         specifier: 25.9.9
         version: 25.9.9
-      knip:
-        specifier: 6.41.0
-        version: 6.41.0
       oxfmt:
         specifier: 0.73.0
         version: 0.73.0
@@ -240,9 +240,6 @@ importers:
       '@zinfer-monorepo/core':
         specifier: workspace:*
         version: link:../core
-      knip:
-        specifier: 6.41.0
-        version: 6.41.0
       oxfmt:
         specifier: 0.73.0
         version: 0.73.0
@@ -289,9 +286,6 @@ importers:
       '@zinfer-monorepo/core':
         specifier: workspace:*
         version: link:../core
-      knip:
-        specifier: 6.41.0
-        version: 6.41.0
       oxfmt:
         specifier: 0.73.0
         version: 0.73.0
@@ -341,9 +335,6 @@ importers:
       '@zod/mini':
         specifier: 4.6.7
         version: 4.6.7(zod@4.6.7)
-      knip:
-        specifier: 6.41.0
-        version: 6.41.0
       oxfmt:
         specifier: 0.73.0
         version: 0.73.0

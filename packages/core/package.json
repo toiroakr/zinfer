@@ -16,7 +16,6 @@
     "lint": "oxlint",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
-    "knip": "knip",
     "test:api": "vitest run --config api-coverage.config.ts"
   },
   "dependencies": {
@@ -26,7 +25,6 @@
   },
   "devDependencies": {
     "@types/node": "25.9.9",
-    "knip": "6.41.0",
     "oxfmt": "0.73.0",
     "oxlint": "1.88.0",
     "ts-morph": "^28.0.0",

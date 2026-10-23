@@ -39,7 +39,6 @@
     "lint": "oxlint",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
-    "knip": "knip",
     "generate:type-tests": "node ./dist/cli.js 'tests/fixtures/*.ts' --outDir tests/__file_snapshots__ --outPattern '[name].ts' --generate-tests --suffix Schema"
   },
   "dependencies": {
@@ -53,7 +52,6 @@
     "@types/node": "25.9.9",
     "@zinfer-monorepo/core": "workspace:*",
     "@zod/mini": "4.6.7",
-    "knip": "6.41.0",
     "oxfmt": "0.73.0",
     "oxlint": "1.88.0",
     "ts-morph": "^28.0.0",
