@@ -251,7 +251,7 @@ export class SchemaDetector {
       );
       if (!receiverDecl) return false;
       // Guards against a pathological mutual reference between two variable
-      // declarations (invalid at runtime, but not something ts-morph's
+      // declarations (invalid at runtime, but not something the
       // static AST walk rejects on its own) recursing forever.
       const key = `${compiler.getFilePath(receiverDecl.getSourceFile())}:${receiverDecl.getStart()}`;
       if (visitedDeclarations.has(key)) return false;

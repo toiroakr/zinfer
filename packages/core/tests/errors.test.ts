@@ -77,19 +77,4 @@ describe("formatError", () => {
     expect(formatError("boom", messages)).toBe("Error: boom");
     expect(formatError(undefined, messages)).toBe("Error: undefined");
   });
-
-  it("summarizes ts-morph manipulation errors", () => {
-    const output = formatError(
-      new Error("Manipulation error: syntax error\nTS1005: expected"),
-      messages,
-    );
-    expect(output).toContain("Error: Syntax error in source file");
-    expect(output).toContain("Please fix any syntax errors before running testtool.");
-  });
-
-  it("summarizes ts-morph errors without a syntax marker", () => {
-    expect(formatError(new Error("Manipulation error: something else"), messages)).toBe(
-      "Error: Failed to process TypeScript file",
-    );
-  });
 });

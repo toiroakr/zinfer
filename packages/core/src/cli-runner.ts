@@ -596,7 +596,7 @@ function getFilteredResults(
  *   `resolveOutputPath` then derives the output directory from the input
  *   file's own directory, so on a symlinked working directory, this file's
  *   own directory and `result.importedFrom`'s directory (realpath'd by
- *   ts-morph's module resolution in some resolution paths, per #495) can land
+ *   the compiler's module resolution in some resolution paths, per #495) can land
  *   on different symlink bases for what is otherwise the same physical
  *   location. Only the directory is canonicalized. The resulting relative
  *   specifier still resolves correctly from `outputPath`'s own (possibly
@@ -605,7 +605,7 @@ function getFilteredResults(
  * @param outputPathBySource - Every processed file's own actually-written
  *   output path, keyed by that file's realpath. Preferred over recomputing
  *   `resolveOutputPath(result.importedFrom, ...)`: `result.importedFrom`
- *   (from ts-morph's module resolution) can be spelled differently than the
+ *   (from the compiler's module resolution) can be spelled differently than the
  *   declaring file's own `resolvedFiles` entry even when both name the same
  *   physical file (per #495) - since `resolveOutputPath`'s `[dir]`/`[name]`
  *   pattern substitution is itself path-derived, recomputing from a
