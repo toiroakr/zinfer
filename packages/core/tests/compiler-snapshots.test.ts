@@ -11,8 +11,16 @@ vi.mock("typescript-native/sync", async (importOriginal) => {
     constructor(...args: ConstructorParameters<typeof actual.API>) {
       return new Proxy(new actual.API(...args), {
         get(target, key) {
-          if (key === "createSnapshot") counts.snapshotsCreated++;
-          return Reflect.get(target, key, target);
+          const value = Reflect.get(target, key, target);
+          if (key !== "createSnapshot") return value;
+          const method = value as typeof target.createSnapshot;
+          return Object.assign(
+            (...params: Parameters<typeof method>) => {
+              counts.snapshotsCreated++;
+              return method(...params);
+            },
+            { gen: method.gen },
+          );
         },
       });
     }
