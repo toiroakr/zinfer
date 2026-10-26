@@ -34,6 +34,10 @@ export const ts = { ...ast, ModuleKind, ModuleResolutionKind, TypeFormatFlags };
 export type Node = ast.Node;
 export const Node = { ...ast, isTypeReference: ast.isTypeReferenceNode };
 
+function isRootCandidate(fileName: string): boolean {
+  return /\.(?:[cm]?ts|tsx)$/i.test(fileName);
+}
+
 function fileKey(fileName: string): string {
   return resolve(fileName).split(sep).join("/");
 }
@@ -73,8 +77,11 @@ export class Project {
   private api: API | undefined;
   private snapshot: Snapshot | undefined;
   private native: NativeProject | undefined;
-  private programId: Parameters<Snapshot["getProject"]>[0] | undefined;
+  private programId:
+    | NonNullable<Snapshot["operation"]["createdPrograms"]>[number]["id"]
+    | undefined;
   private synced = new Map<string, string>();
+  private rootFiles: string[] = [];
   private files = new Map<string, ast.SourceFile>();
   private originals = new Map<string, ast.SourceFile>();
   private revision = 0;
@@ -182,35 +189,32 @@ export class Project {
     if (this.native && this.native.program.getSourceFile(file)) {
       if (this.programRevision === this.revision) return this.native;
       const changed: [string, ast.SourceFile][] = [];
+      const addedRoots: string[] = [];
       for (const entry of this.files) {
         const [key, source] = entry;
         if (this.synced.get(key) === source.text) continue;
         if (!this.synced.has(key) && this.native.program.getSourceFile(key)?.text === source.text) {
           this.synced.set(key, source.text);
+          if (isRootCandidate(source.fileName) && !this.rootFiles.includes(source.fileName))
+            addedRoots.push(source.fileName);
           continue;
         }
         changed.push(entry);
       }
-      if (changed.every(([key]) => this.synced.has(key))) return this.sync(changed);
+      if (changed.every(([key]) => this.synced.has(key))) return this.sync(changed, addedRoots);
     }
     this.native?.program.dispose();
     this.snapshot?.dispose();
     this.synced = new Map([...this.files].map(([name, source]) => [name, source.text]));
+    this.rootFiles = [
+      file,
+      ...[...this.originals.values()]
+        .filter((source) => source.fileName !== file && isRootCandidate(source.fileName))
+        .map((source) => source.fileName),
+    ];
     this.snapshot = this.client().createSnapshot({
       fileSystem: createFileSystemLayer([...this.synced]),
-      createPrograms: [
-        {
-          rootFiles: [
-            file,
-            ...[...this.originals.values()]
-              .filter(
-                (source) => source.fileName !== file && /\.(?:[cm]?ts|tsx)$/i.test(source.fileName),
-              )
-              .map((source) => source.fileName),
-          ],
-          compilerOptions: this.getCompilerOptions(),
-        },
-      ],
+      createPrograms: [{ rootFiles: this.rootFiles, compilerOptions: this.getCompilerOptions() }],
     });
     const program = this.snapshot.operation.createdPrograms![0];
     this.programId = program.id;
@@ -219,14 +223,24 @@ export class Project {
     return this.native;
   }
 
-  private sync(changed: [string, ast.SourceFile][]): NativeProject {
-    if (changed.length === 0) {
+  private sync(changed: [string, ast.SourceFile][], addedRoots: string[]): NativeProject {
+    if (changed.length === 0 && addedRoots.length === 0) {
       this.programRevision = this.revision;
       return this.native!;
     }
+    this.rootFiles = [...this.rootFiles, ...addedRoots];
     const next = this.snapshot!.update({
       fileSystem: createFileSystemLayer(changed.map(([key, source]) => [key, source.text])),
       fileNotifications: { changed: changed.map(([key]) => key) },
+      ...(addedRoots.length > 0 && {
+        reconfigurePrograms: [
+          {
+            id: this.programId!,
+            rootFiles: this.rootFiles,
+            compilerOptions: this.getCompilerOptions(),
+          },
+        ],
+      }),
       ensurePrograms: true,
     });
     this.native!.program.dispose();

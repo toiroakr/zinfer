@@ -133,3 +133,25 @@ it("keeps the snapshot when a file the program already loaded from disk is added
   });
   expect(counts.snapshotsCreated).toBe(1);
 });
+
+it("keeps an explicitly added global declaration file after the reference to it is removed", () => {
+  using project = new Project();
+  const dir = mkdtempSync(join(tmpdir(), "zinfer-snapshots-"));
+  directories.push(dir);
+  const globals = join(dir, "globals.d.ts");
+  writeFileSync(globals, "declare type GlobalValue = { text: string };");
+  const entryPath = join(dir, "entry.ts");
+  writeFileSync(
+    entryPath,
+    '/// <reference path="./globals.d.ts" />\nexport type Result = GlobalValue;',
+  );
+  const entry = project.addSourceFileAtPath(entryPath);
+  const printResult = () =>
+    typeOf(getTypeAlias(entry, "Result")!).getText(undefined, TypeFormatFlags.InTypeAlias);
+  project.run(() => {
+    expect(printResult()).toBe("{ text: string; }");
+    project.addSourceFileAtPath(globals);
+    project.updateSource(entryPath, "export type Result = GlobalValue;");
+    expect(printResult()).toBe("{ text: string; }");
+  });
+});
