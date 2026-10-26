@@ -50,3 +50,23 @@ it("creates one native snapshot while temporary types are added and removed arou
   });
   expect(counts.snapshotsCreated).toBe(1);
 });
+
+it("reflects an edit of a virtual dependency in its importer without creating another snapshot", () => {
+  using project = new Project();
+  const dir = mkdtempSync(join(tmpdir(), "zinfer-snapshots-"));
+  directories.push(dir);
+  const dependency = join(dir, "dependency.ts");
+  project.createSourceFile(dependency, "export type Value = { text: string };");
+  const importer = project.createSourceFile(
+    join(dir, "importer.ts"),
+    'import type { Value } from "./dependency"; type Result = Value;',
+  );
+  const printResult = () =>
+    typeOf(getTypeAlias(importer, "Result")!).getText(undefined, TypeFormatFlags.InTypeAlias);
+  project.run(() => {
+    expect(printResult()).toBe("{ text: string; }");
+    project.updateSource(dependency, "export type Value = { count: number };");
+    expect(printResult()).toBe("{ count: number; }");
+  });
+  expect(counts.snapshotsCreated).toBe(1);
+});
