@@ -20,8 +20,15 @@ vi.mock("typescript-native/sync", async (importOriginal) => {
   return { ...actual, API: CountingAPI };
 });
 
-const { Project, TypeFormatFlags, addStatements, getTypeAlias, remove, typeOf } =
-  await import("../src/compiler.js");
+const {
+  Project,
+  TypeFormatFlags,
+  addStatements,
+  getTypeAlias,
+  getVariableDeclaration,
+  remove,
+  typeOf,
+} = await import("../src/compiler.js");
 
 const directories: string[] = [];
 afterEach(() => {
@@ -69,4 +76,30 @@ it("reflects an edit of a virtual dependency in its importer without creating an
     expect(printResult()).toBe("{ count: number; }");
   });
   expect(counts.snapshotsCreated).toBe(1);
+});
+
+it("rebuilds the snapshot once when a file is added during a session", () => {
+  using project = new Project();
+  const dir = mkdtempSync(join(tmpdir(), "zinfer-snapshots-"));
+  directories.push(dir);
+  const first = project.createSourceFile(join(dir, "first.ts"), "export const value = 1 as const;");
+  project.run(() => {
+    expect(
+      typeOf(getVariableDeclaration(first, "value")!).getText(
+        undefined,
+        TypeFormatFlags.InTypeAlias,
+      ),
+    ).toBe("1");
+    const second = project.createSourceFile(
+      join(dir, "second.ts"),
+      'import { value } from "./first"; export const doubled = [value, value] as const;',
+    );
+    expect(
+      typeOf(getVariableDeclaration(second, "doubled")!).getText(
+        undefined,
+        TypeFormatFlags.InTypeAlias,
+      ),
+    ).toBe("readonly [1, 1]");
+  });
+  expect(counts.snapshotsCreated).toBe(2);
 });
