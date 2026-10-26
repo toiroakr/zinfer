@@ -73,6 +73,8 @@ export class Project {
   private api: API | undefined;
   private snapshot: Snapshot | undefined;
   private native: NativeProject | undefined;
+  private programId: Parameters<Snapshot["getProject"]>[0] | undefined;
+  private synced = new Map<string, string>();
   private files = new Map<string, ast.SourceFile>();
   private originals = new Map<string, ast.SourceFile>();
   private revision = 0;
@@ -177,18 +179,18 @@ export class Project {
   program(node: ast.Node): NativeProject {
     if (this.config.nativeProject) return this.config.nativeProject;
     const file = node.getSourceFile().fileName;
-    if (
-      this.native &&
-      this.programRevision === this.revision &&
-      this.native.program.getSourceFile(file)
-    )
-      return this.native;
+    if (this.native && this.native.program.getSourceFile(file)) {
+      if (this.programRevision === this.revision) return this.native;
+      const changed = [...this.files].filter(
+        ([key, source]) => this.synced.get(key) !== source.text,
+      );
+      if (changed.every(([key]) => this.synced.has(key))) return this.sync(changed);
+    }
     this.native?.program.dispose();
     this.snapshot?.dispose();
+    this.synced = new Map([...this.files].map(([name, source]) => [name, source.text]));
     this.snapshot = this.client().createSnapshot({
-      fileSystem: createFileSystemLayer(
-        [...this.files].map(([name, source]) => [name, source.text]),
-      ),
+      fileSystem: createFileSystemLayer([...this.synced]),
       createPrograms: [
         {
           rootFiles: [
@@ -204,7 +206,27 @@ export class Project {
       ],
     });
     const program = this.snapshot.operation.createdPrograms![0];
+    this.programId = program.id;
     this.native = this.snapshot.getProject(program.id)!;
+    this.programRevision = this.revision;
+    return this.native;
+  }
+
+  private sync(changed: [string, ast.SourceFile][]): NativeProject {
+    if (changed.length === 0) {
+      this.programRevision = this.revision;
+      return this.native!;
+    }
+    const next = this.snapshot!.update({
+      fileSystem: createFileSystemLayer(changed.map(([key, source]) => [key, source.text])),
+      fileNotifications: { changed: changed.map(([key]) => key) },
+      ensurePrograms: true,
+    });
+    this.native!.program.dispose();
+    this.snapshot!.dispose();
+    this.snapshot = next;
+    this.native = next.getProject(this.programId!)!;
+    for (const [key, source] of changed) this.synced.set(key, source.text);
     this.programRevision = this.revision;
     return this.native;
   }
