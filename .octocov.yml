@@ -1,0 +1,10 @@
+report:
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
+diff:
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
+comment:
+  updatePrevious: true
+summary:
+  if: true

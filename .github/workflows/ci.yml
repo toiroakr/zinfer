@@ -47,6 +47,33 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+  bench:
+    name: Bench
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        name: Install pnpm and Node.js
+        with:
+          runtime: node@24.22.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm -r build
+      - name: Measure zinfer generation
+        run: node packages/zinfer/bench/generation.mjs "$RUNNER_TEMP/zinfer-generation.json"
+      - name: Report metrics
+        uses: k1LoW/octocov-action@a167dc0dee441b7ffc45e1b862ab55ec0d87f278 # v1.5.2
+        env:
+          OCTOCOV_CUSTOM_METRICS_ZINFER_GENERATION: ${{ runner.temp }}/zinfer-generation.json
+
   tsrs:
     name: tsrs
     runs-on: ubuntu-slim

@@ -43,3 +43,6 @@ node_modules/.vite/
 # above.
 !packages/*/tests/fixtures/**/node_modules/
 !packages/*/tests/fixtures/**/node_modules/**
+
+# Benchmark workload (removed by bench/generation.mjs unless it crashes)
+packages/zinfer/bench/.workload-*/
