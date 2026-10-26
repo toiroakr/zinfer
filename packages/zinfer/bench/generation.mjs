@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const FILES = 12;
 const RUNS = 3;
-const MAX_NATIVE_SNAPSHOTS = 20;
+const MAX_NATIVE_SNAPSHOTS = 15;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cli = join(here, "..", "dist", "cli.js");

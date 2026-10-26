@@ -181,9 +181,16 @@ export class Project {
     const file = node.getSourceFile().fileName;
     if (this.native && this.native.program.getSourceFile(file)) {
       if (this.programRevision === this.revision) return this.native;
-      const changed = [...this.files].filter(
-        ([key, source]) => this.synced.get(key) !== source.text,
-      );
+      const changed: [string, ast.SourceFile][] = [];
+      for (const entry of this.files) {
+        const [key, source] = entry;
+        if (this.synced.get(key) === source.text) continue;
+        if (!this.synced.has(key) && this.native.program.getSourceFile(key)?.text === source.text) {
+          this.synced.set(key, source.text);
+          continue;
+        }
+        changed.push(entry);
+      }
       if (changed.every(([key]) => this.synced.has(key))) return this.sync(changed);
     }
     this.native?.program.dispose();

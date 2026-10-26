@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
@@ -102,4 +102,34 @@ it("rebuilds the snapshot once when a file is added during a session", () => {
     ).toBe("readonly [1, 1]");
   });
   expect(counts.snapshotsCreated).toBe(2);
+});
+
+it("keeps the snapshot when a file the program already loaded from disk is added with the same text", () => {
+  using project = new Project();
+  const dir = mkdtempSync(join(tmpdir(), "zinfer-snapshots-"));
+  directories.push(dir);
+  const dependency = join(dir, "dependency.ts");
+  writeFileSync(dependency, "export const value = 1 as const;");
+  const importer = join(dir, "importer.ts");
+  writeFileSync(
+    importer,
+    'import { value } from "./dependency"; export const result = [value] as const;',
+  );
+  const source = project.addSourceFileAtPath(importer);
+  project.run(() => {
+    expect(
+      typeOf(getVariableDeclaration(source, "result")!).getText(
+        undefined,
+        TypeFormatFlags.InTypeAlias,
+      ),
+    ).toBe("readonly [1]");
+    const loaded = project.addSourceFileAtPath(dependency);
+    expect(
+      typeOf(getVariableDeclaration(loaded, "value")!).getText(
+        undefined,
+        TypeFormatFlags.InTypeAlias,
+      ),
+    ).toBe("1");
+  });
+  expect(counts.snapshotsCreated).toBe(1);
 });
