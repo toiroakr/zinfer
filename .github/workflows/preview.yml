@@ -23,7 +23,7 @@ jobs:
       - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         name: Install pnpm and Node.js
         with:
-          runtime: node@24.22.0
+          runtime: node@24.22.1
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build
