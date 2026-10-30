@@ -1163,6 +1163,16 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       expect(config?.output).not.toContain("any");
     });
 
+    it("should keep the array as any[] when the recursive schema is not among the extracted ones", () => {
+      const [config] = extractor.extractMultiple(
+        resolve(fixturesDir, "recursive-array-nested-schema.ts"),
+        ["ConfigSchema"],
+      );
+
+      expect(config.input).toContain("subAttributes?: any[] | null | undefined");
+      expect(config.output).toContain("subAttributes?: any[] | null | undefined");
+    });
+
     it("should leave a deliberate any[] alone in a schema that does not contain the recursive schema", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "recursive-array-nested-schema.ts"),

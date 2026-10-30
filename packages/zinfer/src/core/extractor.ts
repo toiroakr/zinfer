@@ -323,11 +323,37 @@ export class ZodTypeExtractor {
       string,
       {
         declaredName: string;
+        /** Whether the generated file declares the schema's types to point at */
+        isNamed: boolean;
         getterFields: Map<string, GetterFieldInfo>;
         input: string;
         output: string;
       }
     >();
+
+    // A recursive schema left out of this extraction still prints inline inside
+    // the schemas that hold it, so its shape is needed to recognise those copies.
+    for (const [declaredName, getterFields] of this.getterResolver.analyzeGetterFields(
+      sourceFile,
+    )) {
+      if (schemaNames.has(declaredName) || !this.getterResolver.hasSelfReferences(getterFields)) {
+        continue;
+      }
+      this.injectTemporaryTypes(sourceFile, declaredName);
+      try {
+        const input = this.resolveType(sourceFile, "__TempInput", context.inlineTypeReferences);
+        const output = this.resolveType(sourceFile, "__TempOutput", context.inlineTypeReferences);
+        recursiveSchemas.set(declaredName, {
+          declaredName,
+          isNamed: false,
+          getterFields,
+          input,
+          output: output === "any" ? input : output,
+        });
+      } finally {
+        this.cleanupTemporaryTypes(sourceFile);
+      }
+    }
 
     for (const schema of schemas) {
       const { name: schemaName, explicitType, isExported, localName } = schema;
@@ -422,6 +448,7 @@ export class ZodTypeExtractor {
 
           recursiveSchemas.set(schemaName, {
             declaredName,
+            isNamed: true,
             getterFields,
             input: rawInputType,
             output: rawOutputType,
@@ -613,13 +640,13 @@ export class ZodTypeExtractor {
           input,
           recursive.input,
           recursive.getterFields,
-          `${recursiveName}Input`,
+          recursive.isNamed ? `${recursiveName}Input` : "any",
         );
         output = this.getterResolver.restoreInlinedCopies(
           output,
           recursive.output,
           recursive.getterFields,
-          `${recursiveName}Output`,
+          recursive.isNamed ? `${recursiveName}Output` : "any",
         );
       }
 
