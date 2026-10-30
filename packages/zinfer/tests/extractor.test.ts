@@ -1185,6 +1185,12 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       expect(indirect?.input).toMatch(
         /viaGetter: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaInput\[\] \| null \| undefined; \}\[\]/,
       );
+      expect(indirect?.output).toMatch(
+        /list: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaOutput\[\] \| null \| undefined; \}\[\]/,
+      );
+      expect(indirect?.output).toMatch(
+        /viaGetter: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaOutput\[\] \| null \| undefined; \}\[\]/,
+      );
     });
 
     it("should leave a deliberate any[] alone next to the field that holds the recursive schema", () => {
@@ -1197,6 +1203,12 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
         /attribute: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaInput\[\] \| null \| undefined; \}/,
       );
       expect(sibling?.input).toContain(
+        "loose: { name: string; meta?: { subAttributes: string; } | undefined; subAttributes?: any[] | null | undefined; }",
+      );
+      expect(sibling?.output).toMatch(
+        /attribute: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaOutput\[\] \| null \| undefined; \}/,
+      );
+      expect(sibling?.output).toContain(
         "loose: { name: string; meta?: { subAttributes: string; } | undefined; subAttributes?: any[] | null | undefined; }",
       );
     });
