@@ -282,12 +282,27 @@ export class GetterResolver {
   }
 
   /**
-   * Finds the field names under which a schema is written into a shape.
+   * Finds the field names under which a schema is written into a shape,
+   * directly or through local schemas that hold it.
    *
    * An inline copy of the schema can only be printed as the value of such a
    * field, so no other field is ever mistaken for one.
+   *
+   * @param dependencies - The result of `analyzeDependencies`
    */
-  analyzeReferenceSites(sourceFile: SourceFile, schemaName: string): Set<string> {
+  analyzeReferenceSites(
+    sourceFile: SourceFile,
+    schemaName: string,
+    dependencies: Map<string, Set<string>>,
+  ): Set<string> {
+    const holdsSchema = (value: Node): boolean =>
+      [value, ...compiler.getDescendantsOfKind(value, SyntaxKind.Identifier)]
+        .filter(Node.isIdentifier)
+        .some((identifier) => {
+          const name = identifier.getText();
+          return name === schemaName || this.dependsOn(dependencies, name, schemaName);
+        });
+
     const fieldNames = new Set<string>();
     for (const stmt of compiler.getVariableStatements(sourceFile)) {
       for (const decl of compiler.getDeclarations(stmt)) {
@@ -296,15 +311,17 @@ export class GetterResolver {
           decl.initializer,
           SyntaxKind.PropertyAssignment,
         )) {
-          if (!Node.isPropertyAssignment(property)) continue;
-          const value = property.initializer;
-          const mentionsSchema = [
-            value,
-            ...compiler.getDescendantsOfKind(value, SyntaxKind.Identifier),
-          ]
-            .filter(Node.isIdentifier)
-            .some((identifier) => identifier.getText() === schemaName);
-          if (mentionsSchema) fieldNames.add(compiler.getName(property));
+          if (Node.isPropertyAssignment(property) && holdsSchema(property.initializer)) {
+            fieldNames.add(compiler.getName(property));
+          }
+        }
+        for (const getter of compiler.getDescendantsOfKind(
+          decl.initializer,
+          SyntaxKind.GetAccessor,
+        )) {
+          if (Node.isGetAccessorDeclaration(getter) && getter.body && holdsSchema(getter.body)) {
+            fieldNames.add(compiler.getName(getter));
+          }
         }
       }
     }

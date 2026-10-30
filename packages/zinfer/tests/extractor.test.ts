@@ -1173,6 +1173,20 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       expect(config.output).toContain("subAttributes?: any[] | null | undefined");
     });
 
+    it("should restore a copy held through a local alias or under a getter", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "recursive-array-nested-schema.ts"),
+      );
+      const indirect = results.find((r) => r.schemaName === "IndirectSchema");
+
+      expect(indirect?.input).toMatch(
+        /list: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaInput\[\] \| null \| undefined; \}\[\]/,
+      );
+      expect(indirect?.input).toMatch(
+        /viaGetter: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaInput\[\] \| null \| undefined; \}\[\]/,
+      );
+    });
+
     it("should leave a deliberate any[] alone next to the field that holds the recursive schema", () => {
       const results = extractor.extractAll(
         resolve(fixturesDir, "recursive-array-nested-schema.ts"),

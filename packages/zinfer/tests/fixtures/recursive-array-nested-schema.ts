@@ -52,3 +52,18 @@ export const SiblingSchema = z.xor([
   SiblingBaseSchema.extend({ x: z.string() }),
   SiblingBaseSchema.extend({ y: z.string() }),
 ]);
+
+// The recursive schema held through a local alias and under a getter.
+const AttributeListSchema = z.array(AttributeSchema);
+
+const IndirectBaseSchema = z.strictObject({
+  list: AttributeListSchema,
+  get viaGetter() {
+    return z.array(AttributeSchema);
+  },
+});
+
+export const IndirectSchema = z.xor([
+  IndirectBaseSchema.extend({ x: z.string() }),
+  IndirectBaseSchema.extend({ y: z.string() }),
+]);

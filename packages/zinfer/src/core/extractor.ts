@@ -356,7 +356,11 @@ export class ZodTypeExtractor {
         recursiveSchemas.set(declaredName, {
           declaredName,
           isNamed: false,
-          referenceSites: this.getterResolver.analyzeReferenceSites(sourceFile, declaredName),
+          referenceSites: this.getterResolver.analyzeReferenceSites(
+            sourceFile,
+            declaredName,
+            getDependencies(),
+          ),
           getterFields,
           input,
           output: output === "any" ? input : output,
@@ -460,7 +464,11 @@ export class ZodTypeExtractor {
           recursiveSchemas.set(schemaName, {
             declaredName,
             isNamed: true,
-            referenceSites: this.getterResolver.analyzeReferenceSites(sourceFile, declaredName),
+            referenceSites: this.getterResolver.analyzeReferenceSites(
+              sourceFile,
+              declaredName,
+              getDependencies(),
+            ),
             getterFields,
             input: rawInputType,
             output: rawOutputType,
