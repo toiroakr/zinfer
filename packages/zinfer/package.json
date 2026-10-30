@@ -1,6 +1,6 @@
 {
   "name": "zinfer",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Extract input/output types from Zod schemas",
   "keywords": [
     "schema",
