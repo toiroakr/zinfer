@@ -325,6 +325,8 @@ export class ZodTypeExtractor {
         declaredName: string;
         /** Whether the generated file declares the schema's types to point at */
         isNamed: boolean;
+        /** The field names the schema is written under in this file */
+        referenceSites: Set<string>;
         getterFields: Map<string, GetterFieldInfo>;
         input: string;
         output: string;
@@ -354,6 +356,7 @@ export class ZodTypeExtractor {
         recursiveSchemas.set(declaredName, {
           declaredName,
           isNamed: false,
+          referenceSites: this.getterResolver.analyzeReferenceSites(sourceFile, declaredName),
           getterFields,
           input,
           output: output === "any" ? input : output,
@@ -457,6 +460,7 @@ export class ZodTypeExtractor {
           recursiveSchemas.set(schemaName, {
             declaredName,
             isNamed: true,
+            referenceSites: this.getterResolver.analyzeReferenceSites(sourceFile, declaredName),
             getterFields,
             input: rawInputType,
             output: rawOutputType,
@@ -647,12 +651,14 @@ export class ZodTypeExtractor {
           recursive.input,
           recursive.getterFields,
           recursive.isNamed ? `${recursiveName}Input` : "any",
+          recursive.referenceSites,
         );
         output = this.getterResolver.restoreInlinedCopies(
           output,
           recursive.output,
           recursive.getterFields,
           recursive.isNamed ? `${recursiveName}Output` : "any",
+          recursive.referenceSites,
         );
       }
 

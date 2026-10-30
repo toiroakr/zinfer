@@ -282,6 +282,36 @@ export class GetterResolver {
   }
 
   /**
+   * Finds the field names under which a schema is written into a shape.
+   *
+   * An inline copy of the schema can only be printed as the value of such a
+   * field, so no other field is ever mistaken for one.
+   */
+  analyzeReferenceSites(sourceFile: SourceFile, schemaName: string): Set<string> {
+    const fieldNames = new Set<string>();
+    for (const stmt of compiler.getVariableStatements(sourceFile)) {
+      for (const decl of compiler.getDeclarations(stmt)) {
+        if (!decl.initializer) continue;
+        for (const property of compiler.getDescendantsOfKind(
+          decl.initializer,
+          SyntaxKind.PropertyAssignment,
+        )) {
+          if (!Node.isPropertyAssignment(property)) continue;
+          const value = property.initializer;
+          const mentionsSchema = [
+            value,
+            ...compiler.getDescendantsOfKind(value, SyntaxKind.Identifier),
+          ]
+            .filter(Node.isIdentifier)
+            .some((identifier) => identifier.getText() === schemaName);
+          if (mentionsSchema) fieldNames.add(compiler.getName(property));
+        }
+      }
+    }
+    return fieldNames;
+  }
+
+  /**
    * Checks whether a declaration reaches another one by following the
    * identifiers in `dependencies` - however many local schemas lie in between.
    */
@@ -316,13 +346,18 @@ export class GetterResolver {
    *   placeholders are resolved
    * @param getterFields - The recursive schema's getter field info
    * @param typeName - The name to use for self-references
+   * @param referenceSites - The field names the recursive schema is written
+   *   under; a copy printed under any other field is not one
    */
   restoreInlinedCopies(
     typeStr: string,
     selfType: string,
     getterFields: Map<string, GetterFieldInfo>,
     typeName: string,
+    referenceSites: Set<string>,
   ): string {
+    if (referenceSites.size === 0) return typeStr;
+
     const recursionPoints = [...getterFields]
       .filter(([, info]) => info.isSelfRef)
       .flatMap(([fieldName, info]) => {
@@ -342,19 +377,24 @@ export class GetterResolver {
     literals.push(selfType.slice(cursor));
     if (!typeStr.includes(literals[0])) return typeStr;
 
+    const sites = [...referenceSites].map(escapeRegExp).join("|");
+    const copyStart = `((?:^|[{;|(]\\s*)(?:${sites})\\??:\\s*(?:readonly\\s+)?|\\[x: string\\]:\\s*)`;
     const pattern = new RegExp(
-      literals.map(escapeRegExp).join(`(${PLACEHOLDER_VALUE_SOURCE})`),
+      copyStart + literals.map(escapeRegExp).join(`(${PLACEHOLDER_VALUE_SOURCE})`),
       "g",
     );
-    return typeStr.replace(pattern, (_match, ...groups: string[]) =>
-      literals
-        .map((literal, index) => {
-          const point = recursionPoints[index];
-          if (!point) return literal;
-          const value = groups[index];
-          return literal + (rewriteRecursiveValue(value, typeName, point.info, []) ?? value);
-        })
-        .join(""),
+    return typeStr.replace(
+      pattern,
+      (_match, start: string, ...groups: string[]) =>
+        start +
+        literals
+          .map((literal, index) => {
+            const point = recursionPoints[index];
+            if (!point) return literal;
+            const value = groups[index];
+            return literal + (rewriteRecursiveValue(value, typeName, point.info, []) ?? value);
+          })
+          .join(""),
     );
   }
 

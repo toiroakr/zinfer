@@ -36,3 +36,19 @@ export const LooseAttributeSchema = z.strictObject({
   meta: z.strictObject({ subAttributes: z.string() }).optional(),
   subAttributes: z.array(z.any()).nullable().optional(),
 });
+
+// A sibling printed in exactly the same shape as the recursive schema, next to
+// the field that really holds it.
+const SiblingBaseSchema = z.strictObject({
+  attribute: AttributeSchema,
+  loose: z.strictObject({
+    name: z.string(),
+    meta: z.strictObject({ subAttributes: z.string() }).optional(),
+    subAttributes: z.array(z.any()).nullable().optional(),
+  }),
+});
+
+export const SiblingSchema = z.xor([
+  SiblingBaseSchema.extend({ x: z.string() }),
+  SiblingBaseSchema.extend({ y: z.string() }),
+]);
