@@ -331,6 +331,10 @@ export class ZodTypeExtractor {
       }
     >();
 
+    let dependencies: Map<string, Set<string>> | undefined;
+    const getDependencies = () =>
+      (dependencies ??= this.getterResolver.analyzeDependencies(sourceFile));
+
     // A recursive schema left out of this extraction still prints inline inside
     // the schemas that hold it, so its shape is needed to recognise those copies.
     for (const [declaredName, getterFields] of this.getterResolver.analyzeGetterFields(
@@ -339,6 +343,10 @@ export class ZodTypeExtractor {
       if (schemaNames.has(declaredName) || !this.getterResolver.hasSelfReferences(getterFields)) {
         continue;
       }
+      const isHeld = [...schemaNames].some((name) =>
+        this.getterResolver.dependsOn(getDependencies(), name, declaredName),
+      );
+      if (!isHeld) continue;
       this.injectTemporaryTypes(sourceFile, declaredName);
       try {
         const input = this.resolveType(sourceFile, "__TempInput", context.inlineTypeReferences);
@@ -487,10 +495,6 @@ export class ZodTypeExtractor {
     this.cleanupNormalizeType(sourceFile);
 
     const schemasByName = new Map(schemas.map((schema) => [schema.name, schema]));
-    const dependencies =
-      recursiveSchemas.size > 0
-        ? this.getterResolver.analyzeDependencies(sourceFile)
-        : new Map<string, Set<string>>();
     // referenceMap/unionReferenceMap entries carry the identifier as written
     // in the source (the declared/local name), which for an aliased
     // re-export (`export { X as Y }`) differs from the exported name `Y`
@@ -633,7 +637,9 @@ export class ZodTypeExtractor {
         if (recursiveName === schemaName) continue;
         // An inline copy is only a copy when this schema holds the recursive
         // one - another schema may print the same shape from a plain `z.any()`.
-        if (!this.getterResolver.dependsOn(dependencies, declaredName, recursive.declaredName)) {
+        if (
+          !this.getterResolver.dependsOn(getDependencies(), declaredName, recursive.declaredName)
+        ) {
           continue;
         }
         input = this.getterResolver.restoreInlinedCopies(
