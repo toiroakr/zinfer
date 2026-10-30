@@ -16,7 +16,7 @@ import {
   normalizeBrandQualifiers,
 } from "./normalizer.js";
 import { SchemaDetector } from "./schema-detector.js";
-import { GetterResolver } from "./getter-resolver.js";
+import { GetterResolver, type GetterFieldInfo } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver, type ImportedSchemaMap } from "./import-resolver.js";
 import {
@@ -317,6 +317,13 @@ export class ZodTypeExtractor {
     }
 
     // Extract types from local schemas
+    // The printed types of recursive schemas before their recursion points are
+    // resolved - what an inline copy of one is recognised by.
+    const recursiveSchemas = new Map<
+      string,
+      { getterFields: Map<string, GetterFieldInfo>; input: string; output: string }
+    >();
+
     for (const schema of schemas) {
       const { name: schemaName, explicitType, isExported, localName } = schema;
       const declaredName = localName ?? schemaName;
@@ -407,6 +414,12 @@ export class ZodTypeExtractor {
           const outputTypeName = `${schemaName}Output`;
           const rawInputType = inputType;
           const rawOutputType = outputType === "any" ? rawInputType : outputType;
+
+          recursiveSchemas.set(schemaName, {
+            getterFields,
+            input: rawInputType,
+            output: rawOutputType,
+          });
 
           inputType = this.getterResolver.resolveAnyTypes(
             rawInputType,
@@ -577,6 +590,22 @@ export class ZodTypeExtractor {
             output = this.replaceSchemaReference(output, ref, refRaw.output, inlineOutput);
           }
         }
+      }
+
+      for (const [recursiveName, recursive] of recursiveSchemas) {
+        if (recursiveName === schemaName) continue;
+        input = this.getterResolver.restoreInlinedCopies(
+          input,
+          recursive.input,
+          recursive.getterFields,
+          `${recursiveName}Input`,
+        );
+        output = this.getterResolver.restoreInlinedCopies(
+          output,
+          recursive.output,
+          recursive.getterFields,
+          `${recursiveName}Output`,
+        );
       }
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;

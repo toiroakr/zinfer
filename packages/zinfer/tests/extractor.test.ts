@@ -1148,6 +1148,22 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("recursive-array-nested-schema.ts", () => {
+    it("should keep the array wrapper where a recursive array getter is cut off in an inlined copy", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "recursive-array-nested-schema.ts"),
+      );
+      const config = results.find((r) => r.schemaName === "ConfigSchema");
+
+      expect(config?.input).toContain("subAttributes?: AttributeSchemaInput[] | null | undefined");
+      expect(config?.output).toContain(
+        "subAttributes?: AttributeSchemaOutput[] | null | undefined",
+      );
+      expect(config?.input).not.toContain("any");
+      expect(config?.output).not.toContain("any");
+    });
+  });
+
   describe("cross-file-recursive", () => {
     it("should fall back to an index signature, never a bare any, without an importable declaration", () => {
       const results = extractor.extractAll(

@@ -264,6 +264,66 @@ export class GetterResolver {
   }
 
   /**
+   * Restores the recursion point inside inline copies of a recursive schema.
+   *
+   * A schema that holds a recursive schema without naming it (e.g. through
+   * `z.xor([Base.extend(...)])`, which no reference is detected for) prints the
+   * recursive schema's fields inline. There TypeScript gives up on the whole
+   * getter, so `z.array(Self).nullable().optional()` prints as `any | null |
+   * undefined` where the schema's own printed type says `any[] | null |
+   * undefined`. Each copy is found by the schema's own printed type, with only
+   * the recursion points left open, and rebuilt like `resolveAnyTypes` does.
+   *
+   * @param typeStr - The printed type of a schema other than the recursive one
+   * @param selfType - The recursive schema's own printed type, before its
+   *   placeholders are resolved
+   * @param getterFields - The recursive schema's getter field info
+   * @param typeName - The name to use for self-references
+   */
+  restoreInlinedCopies(
+    typeStr: string,
+    selfType: string,
+    getterFields: Map<string, GetterFieldInfo>,
+    typeName: string,
+  ): string {
+    const recursionPoints = [...getterFields]
+      .filter(([, info]) => info.isSelfRef)
+      .flatMap(([fieldName, info]) => {
+        const field = findFieldValue(selfType, fieldName, 0);
+        if (!field || !isAnyPlaceholder(selfType.slice(field.valueStart, field.valueEnd))) {
+          return [];
+        }
+        return [{ ...field, info }];
+      })
+      .sort((a, b) => a.valueStart - b.valueStart);
+    if (recursionPoints.length === 0) return typeStr;
+
+    const literals: string[] = [];
+    let cursor = 0;
+    for (const point of recursionPoints) {
+      if (point.valueStart < cursor) return typeStr;
+      literals.push(selfType.slice(cursor, point.valueStart));
+      cursor = point.valueEnd;
+    }
+    literals.push(selfType.slice(cursor));
+
+    const pattern = new RegExp(
+      literals.map(escapeRegExp).join(`(${PLACEHOLDER_VALUE_SOURCE})`),
+      "g",
+    );
+    return typeStr.replace(pattern, (_match, ...groups: string[]) =>
+      literals
+        .map((literal, index) => {
+          const point = recursionPoints[index];
+          if (!point) return literal;
+          const value = groups[index];
+          return literal + (rewriteRecursiveValue(value, typeName, point.info, []) ?? value);
+        })
+        .join(""),
+    );
+  }
+
+  /**
    * Checks if a schema has getter-based self-references.
    */
   hasSelfReferences(getterFields: Map<string, GetterFieldInfo>): boolean {
@@ -273,6 +333,10 @@ export class GetterResolver {
 
 /** A printed type TypeScript fell back to at a recursion point. */
 const PLACEHOLDER = /^(?:any|unknown)(\[\])?$/;
+
+/** Any printed placeholder value, with the unions `.nullable()`/`.optional()` add. */
+const PLACEHOLDER_VALUE_SOURCE =
+  "(?:readonly\\s+)?(?:(?:any|unknown)(?:\\[\\])?|\\{\\s*\\[x: string\\]:\\s*(?:any|unknown)\\s*;?\\s*\\})(?:\\s*\\|\\s*(?:null|undefined))*";
 
 /** An index signature whose value TypeScript gave up on. */
 const INDEX_SIGNATURE_PLACEHOLDER = /^(\{\s*\[x: string\]:\s*)(?:any|unknown)(\s*;?\s*\})$/;
