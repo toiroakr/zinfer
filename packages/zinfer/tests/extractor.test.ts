@@ -1162,6 +1162,16 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       expect(config?.input).not.toContain("any");
       expect(config?.output).not.toContain("any");
     });
+
+    it("should leave a deliberate any[] alone in a schema that does not contain the recursive schema", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "recursive-array-nested-schema.ts"),
+      );
+      const loose = results.find((r) => r.schemaName === "LooseAttributeSchema");
+
+      expect(loose?.input).toContain("subAttributes?: any[] | null | undefined");
+      expect(loose?.output).toContain("subAttributes?: any[] | null | undefined");
+    });
   });
 
   describe("cross-file-recursive", () => {

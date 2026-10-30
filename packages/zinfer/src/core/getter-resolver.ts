@@ -264,6 +264,43 @@ export class GetterResolver {
   }
 
   /**
+   * Maps each variable declared in a source file to the identifiers its
+   * initializer mentions, for `dependsOn`.
+   */
+  analyzeDependencies(sourceFile: SourceFile): Map<string, Set<string>> {
+    const result = new Map<string, Set<string>>();
+    for (const stmt of compiler.getVariableStatements(sourceFile)) {
+      for (const decl of compiler.getDeclarations(stmt)) {
+        if (!decl.initializer) continue;
+        const identifiers = compiler
+          .getDescendantsOfKind(decl.initializer, SyntaxKind.Identifier)
+          .map((identifier) => identifier.getText());
+        result.set(compiler.getName(decl), new Set(identifiers));
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Checks whether a declaration reaches another one by following the
+   * identifiers in `dependencies` - however many local schemas lie in between.
+   */
+  dependsOn(dependencies: Map<string, Set<string>>, from: string, target: string): boolean {
+    const visited = new Set<string>();
+    const pending = [from];
+    while (pending.length > 0) {
+      const name = pending.pop()!;
+      if (visited.has(name)) continue;
+      visited.add(name);
+      for (const mentioned of dependencies.get(name) ?? []) {
+        if (mentioned === target) return true;
+        pending.push(mentioned);
+      }
+    }
+    return false;
+  }
+
+  /**
    * Restores the recursion point inside inline copies of a recursive schema.
    *
    * A schema that holds a recursive schema without naming it (e.g. through
@@ -289,11 +326,8 @@ export class GetterResolver {
     const recursionPoints = [...getterFields]
       .filter(([, info]) => info.isSelfRef)
       .flatMap(([fieldName, info]) => {
-        const field = findFieldValue(selfType, fieldName, 0);
-        if (!field || !isAnyPlaceholder(selfType.slice(field.valueStart, field.valueEnd))) {
-          return [];
-        }
-        return [{ ...field, info }];
+        const field = findPlaceholderField(selfType, fieldName);
+        return field ? [{ ...field, info }] : [];
       })
       .sort((a, b) => a.valueStart - b.valueStart);
     if (recursionPoints.length === 0) return typeStr;
@@ -306,6 +340,7 @@ export class GetterResolver {
       cursor = point.valueEnd;
     }
     literals.push(selfType.slice(cursor));
+    if (!typeStr.includes(literals[0])) return typeStr;
 
     const pattern = new RegExp(
       literals.map(escapeRegExp).join(`(${PLACEHOLDER_VALUE_SOURCE})`),
@@ -457,6 +492,23 @@ function isInlinedRecursiveCopy(value: string, selfRefFields: string[]): boolean
       searchFrom = nested.valueStart;
     }
   });
+}
+
+/**
+ * Locates the occurrence of a field whose printed type is a placeholder, past
+ * any same-named field nested earlier in the type.
+ */
+function findPlaceholderField(
+  typeStr: string,
+  fieldName: string,
+): { valueStart: number; valueEnd: number } | undefined {
+  let searchFrom = 0;
+  for (;;) {
+    const field = findFieldValue(typeStr, fieldName, searchFrom);
+    if (!field) return undefined;
+    if (isAnyPlaceholder(typeStr.slice(field.valueStart, field.valueEnd))) return field;
+    searchFrom = field.valueStart;
+  }
 }
 
 /**

@@ -321,7 +321,12 @@ export class ZodTypeExtractor {
     // resolved - what an inline copy of one is recognised by.
     const recursiveSchemas = new Map<
       string,
-      { getterFields: Map<string, GetterFieldInfo>; input: string; output: string }
+      {
+        declaredName: string;
+        getterFields: Map<string, GetterFieldInfo>;
+        input: string;
+        output: string;
+      }
     >();
 
     for (const schema of schemas) {
@@ -416,6 +421,7 @@ export class ZodTypeExtractor {
           const rawOutputType = outputType === "any" ? rawInputType : outputType;
 
           recursiveSchemas.set(schemaName, {
+            declaredName,
             getterFields,
             input: rawInputType,
             output: rawOutputType,
@@ -454,6 +460,10 @@ export class ZodTypeExtractor {
     this.cleanupNormalizeType(sourceFile);
 
     const schemasByName = new Map(schemas.map((schema) => [schema.name, schema]));
+    const dependencies =
+      recursiveSchemas.size > 0
+        ? this.getterResolver.analyzeDependencies(sourceFile)
+        : new Map<string, Set<string>>();
     // referenceMap/unionReferenceMap entries carry the identifier as written
     // in the source (the declared/local name), which for an aliased
     // re-export (`export { X as Y }`) differs from the exported name `Y`
@@ -594,6 +604,11 @@ export class ZodTypeExtractor {
 
       for (const [recursiveName, recursive] of recursiveSchemas) {
         if (recursiveName === schemaName) continue;
+        // An inline copy is only a copy when this schema holds the recursive
+        // one - another schema may print the same shape from a plain `z.any()`.
+        if (!this.getterResolver.dependsOn(dependencies, declaredName, recursive.declaredName)) {
+          continue;
+        }
         input = this.getterResolver.restoreInlinedCopies(
           input,
           recursive.input,
