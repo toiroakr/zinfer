@@ -1148,6 +1148,82 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("recursive-array-nested-schema.ts", () => {
+    it("should keep the array wrapper where a recursive array getter is cut off in an inlined copy", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "recursive-array-nested-schema.ts"),
+      );
+      const config = results.find((r) => r.schemaName === "ConfigSchema");
+
+      expect(config?.input).toContain("subAttributes?: AttributeSchemaInput[] | null | undefined");
+      expect(config?.output).toContain(
+        "subAttributes?: AttributeSchemaOutput[] | null | undefined",
+      );
+      expect(config?.input).not.toContain("any");
+      expect(config?.output).not.toContain("any");
+    });
+
+    it("should keep the array as any[] when the recursive schema is not among the extracted ones", () => {
+      const [config] = extractor.extractMultiple(
+        resolve(fixturesDir, "recursive-array-nested-schema.ts"),
+        ["ConfigSchema"],
+      );
+
+      expect(config.input).toContain("subAttributes?: any[] | null | undefined");
+      expect(config.output).toContain("subAttributes?: any[] | null | undefined");
+    });
+
+    it("should restore a copy held through a local alias or under a getter", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "recursive-array-nested-schema.ts"),
+      );
+      const indirect = results.find((r) => r.schemaName === "IndirectSchema");
+
+      expect(indirect?.input).toMatch(
+        /list: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaInput\[\] \| null \| undefined; \}\[\]/,
+      );
+      expect(indirect?.input).toMatch(
+        /viaGetter: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaInput\[\] \| null \| undefined; \}\[\]/,
+      );
+      expect(indirect?.output).toMatch(
+        /list: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaOutput\[\] \| null \| undefined; \}\[\]/,
+      );
+      expect(indirect?.output).toMatch(
+        /viaGetter: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaOutput\[\] \| null \| undefined; \}\[\]/,
+      );
+    });
+
+    it("should leave a deliberate any[] alone next to the field that holds the recursive schema", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "recursive-array-nested-schema.ts"),
+      );
+      const sibling = results.find((r) => r.schemaName === "SiblingSchema");
+
+      expect(sibling?.input).toMatch(
+        /attribute: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaInput\[\] \| null \| undefined; \}/,
+      );
+      expect(sibling?.input).toContain(
+        "loose: { name: string; meta?: { subAttributes: string; } | undefined; subAttributes?: any[] | null | undefined; }",
+      );
+      expect(sibling?.output).toMatch(
+        /attribute: \{[^}]*\}[^}]*subAttributes\?: AttributeSchemaOutput\[\] \| null \| undefined; \}/,
+      );
+      expect(sibling?.output).toContain(
+        "loose: { name: string; meta?: { subAttributes: string; } | undefined; subAttributes?: any[] | null | undefined; }",
+      );
+    });
+
+    it("should leave a deliberate any[] alone in a schema that does not contain the recursive schema", () => {
+      const results = extractor.extractAll(
+        resolve(fixturesDir, "recursive-array-nested-schema.ts"),
+      );
+      const loose = results.find((r) => r.schemaName === "LooseAttributeSchema");
+
+      expect(loose?.input).toContain("subAttributes?: any[] | null | undefined");
+      expect(loose?.output).toContain("subAttributes?: any[] | null | undefined");
+    });
+  });
+
   describe("cross-file-recursive", () => {
     it("should fall back to an index signature, never a bare any, without an importable declaration", () => {
       const results = extractor.extractAll(

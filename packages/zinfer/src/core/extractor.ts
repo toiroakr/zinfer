@@ -16,7 +16,7 @@ import {
   normalizeBrandQualifiers,
 } from "./normalizer.js";
 import { SchemaDetector } from "./schema-detector.js";
-import { GetterResolver } from "./getter-resolver.js";
+import { GetterResolver, type GetterFieldInfo } from "./getter-resolver.js";
 import { SchemaReferenceAnalyzer, type SchemaReferenceInfo } from "./schema-reference-analyzer.js";
 import { ImportResolver, type ImportedSchemaMap } from "./import-resolver.js";
 import {
@@ -317,6 +317,59 @@ export class ZodTypeExtractor {
     }
 
     // Extract types from local schemas
+    // The printed types of recursive schemas before their recursion points are
+    // resolved - what an inline copy of one is recognised by.
+    const recursiveSchemas = new Map<
+      string,
+      {
+        declaredName: string;
+        /** Whether the generated file declares the schema's types to point at */
+        isNamed: boolean;
+        /** The field names the schema is written under in this file */
+        referenceSites: Set<string>;
+        getterFields: Map<string, GetterFieldInfo>;
+        input: string;
+        output: string;
+      }
+    >();
+
+    let dependencies: Map<string, Set<string>> | undefined;
+    const getDependencies = () =>
+      (dependencies ??= this.getterResolver.analyzeDependencies(sourceFile));
+
+    // A recursive schema left out of this extraction still prints inline inside
+    // the schemas that hold it, so its shape is needed to recognise those copies.
+    for (const [declaredName, getterFields] of this.getterResolver.analyzeGetterFields(
+      sourceFile,
+    )) {
+      if (schemaNames.has(declaredName) || !this.getterResolver.hasSelfReferences(getterFields)) {
+        continue;
+      }
+      const isHeld = [...schemaNames].some((name) =>
+        this.getterResolver.dependsOn(getDependencies(), name, declaredName),
+      );
+      if (!isHeld) continue;
+      this.injectTemporaryTypes(sourceFile, declaredName);
+      try {
+        const input = this.resolveType(sourceFile, "__TempInput", context.inlineTypeReferences);
+        const output = this.resolveType(sourceFile, "__TempOutput", context.inlineTypeReferences);
+        recursiveSchemas.set(declaredName, {
+          declaredName,
+          isNamed: false,
+          referenceSites: this.getterResolver.analyzeReferenceSites(
+            sourceFile,
+            declaredName,
+            getDependencies(),
+          ),
+          getterFields,
+          input,
+          output: output === "any" ? input : output,
+        });
+      } finally {
+        this.cleanupTemporaryTypes(sourceFile);
+      }
+    }
+
     for (const schema of schemas) {
       const { name: schemaName, explicitType, isExported, localName } = schema;
       const declaredName = localName ?? schemaName;
@@ -407,6 +460,19 @@ export class ZodTypeExtractor {
           const outputTypeName = `${schemaName}Output`;
           const rawInputType = inputType;
           const rawOutputType = outputType === "any" ? rawInputType : outputType;
+
+          recursiveSchemas.set(schemaName, {
+            declaredName,
+            isNamed: true,
+            referenceSites: this.getterResolver.analyzeReferenceSites(
+              sourceFile,
+              declaredName,
+              getDependencies(),
+            ),
+            getterFields,
+            input: rawInputType,
+            output: rawOutputType,
+          });
 
           inputType = this.getterResolver.resolveAnyTypes(
             rawInputType,
@@ -577,6 +643,31 @@ export class ZodTypeExtractor {
             output = this.replaceSchemaReference(output, ref, refRaw.output, inlineOutput);
           }
         }
+      }
+
+      for (const [recursiveName, recursive] of recursiveSchemas) {
+        if (recursiveName === schemaName) continue;
+        // An inline copy is only a copy when this schema holds the recursive
+        // one - another schema may print the same shape from a plain `z.any()`.
+        if (
+          !this.getterResolver.dependsOn(getDependencies(), declaredName, recursive.declaredName)
+        ) {
+          continue;
+        }
+        input = this.getterResolver.restoreInlinedCopies(
+          input,
+          recursive.input,
+          recursive.getterFields,
+          recursive.isNamed ? `${recursiveName}Input` : "any",
+          recursive.referenceSites,
+        );
+        output = this.getterResolver.restoreInlinedCopies(
+          output,
+          recursive.output,
+          recursive.getterFields,
+          recursive.isNamed ? `${recursiveName}Output` : "any",
+          recursive.referenceSites,
+        );
       }
 
       const explicitType = schemasByName.get(schemaName)?.explicitType;

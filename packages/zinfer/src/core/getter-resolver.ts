@@ -264,6 +264,158 @@ export class GetterResolver {
   }
 
   /**
+   * Maps each variable declared in a source file to the identifiers its
+   * initializer mentions, for `dependsOn`.
+   */
+  analyzeDependencies(sourceFile: SourceFile): Map<string, Set<string>> {
+    const result = new Map<string, Set<string>>();
+    for (const stmt of compiler.getVariableStatements(sourceFile)) {
+      for (const decl of compiler.getDeclarations(stmt)) {
+        if (!decl.initializer) continue;
+        const identifiers = compiler
+          .getDescendantsOfKind(decl.initializer, SyntaxKind.Identifier)
+          .map((identifier) => identifier.getText());
+        result.set(compiler.getName(decl), new Set(identifiers));
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Finds the field names under which a schema is written into a shape,
+   * directly or through local schemas that hold it.
+   *
+   * An inline copy of the schema can only be printed as the value of such a
+   * field, so no other field is ever mistaken for one.
+   *
+   * @param dependencies - The result of `analyzeDependencies`
+   */
+  analyzeReferenceSites(
+    sourceFile: SourceFile,
+    schemaName: string,
+    dependencies: Map<string, Set<string>>,
+  ): Set<string> {
+    const holdsSchema = (value: Node): boolean =>
+      [value, ...compiler.getDescendantsOfKind(value, SyntaxKind.Identifier)]
+        .filter(Node.isIdentifier)
+        .some((identifier) => {
+          const name = identifier.getText();
+          return name === schemaName || this.dependsOn(dependencies, name, schemaName);
+        });
+
+    const fieldNames = new Set<string>();
+    for (const stmt of compiler.getVariableStatements(sourceFile)) {
+      for (const decl of compiler.getDeclarations(stmt)) {
+        if (!decl.initializer) continue;
+        for (const property of compiler.getDescendantsOfKind(
+          decl.initializer,
+          SyntaxKind.PropertyAssignment,
+        )) {
+          if (Node.isPropertyAssignment(property) && holdsSchema(property.initializer)) {
+            fieldNames.add(compiler.getName(property));
+          }
+        }
+        for (const getter of compiler.getDescendantsOfKind(
+          decl.initializer,
+          SyntaxKind.GetAccessor,
+        )) {
+          if (Node.isGetAccessorDeclaration(getter) && getter.body && holdsSchema(getter.body)) {
+            fieldNames.add(compiler.getName(getter));
+          }
+        }
+      }
+    }
+    return fieldNames;
+  }
+
+  /**
+   * Checks whether a declaration reaches another one by following the
+   * identifiers in `dependencies` - however many local schemas lie in between.
+   */
+  dependsOn(dependencies: Map<string, Set<string>>, from: string, target: string): boolean {
+    const visited = new Set<string>();
+    const pending = [from];
+    while (pending.length > 0) {
+      const name = pending.pop()!;
+      if (visited.has(name)) continue;
+      visited.add(name);
+      for (const mentioned of dependencies.get(name) ?? []) {
+        if (mentioned === target) return true;
+        pending.push(mentioned);
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Restores the recursion point inside inline copies of a recursive schema.
+   *
+   * A schema that holds a recursive schema without naming it (e.g. through
+   * `z.xor([Base.extend(...)])`, which no reference is detected for) prints the
+   * recursive schema's fields inline. There TypeScript gives up on the whole
+   * getter, so `z.array(Self).nullable().optional()` prints as `any | null |
+   * undefined` where the schema's own printed type says `any[] | null |
+   * undefined`. Each copy is found by the schema's own printed type, with only
+   * the recursion points left open, and rebuilt like `resolveAnyTypes` does.
+   *
+   * @param typeStr - The printed type of a schema other than the recursive one
+   * @param selfType - The recursive schema's own printed type, before its
+   *   placeholders are resolved
+   * @param getterFields - The recursive schema's getter field info
+   * @param typeName - The name to use for self-references
+   * @param referenceSites - The field names the recursive schema is written
+   *   under; a copy printed under any other field is not one
+   */
+  restoreInlinedCopies(
+    typeStr: string,
+    selfType: string,
+    getterFields: Map<string, GetterFieldInfo>,
+    typeName: string,
+    referenceSites: Set<string>,
+  ): string {
+    if (referenceSites.size === 0) return typeStr;
+
+    const recursionPoints = [...getterFields]
+      .filter(([, info]) => info.isSelfRef)
+      .flatMap(([fieldName, info]) => {
+        const field = findPlaceholderField(selfType, fieldName);
+        return field ? [{ ...field, info }] : [];
+      })
+      .sort((a, b) => a.valueStart - b.valueStart);
+    if (recursionPoints.length === 0) return typeStr;
+
+    const literals: string[] = [];
+    let cursor = 0;
+    for (const point of recursionPoints) {
+      if (point.valueStart < cursor) return typeStr;
+      literals.push(selfType.slice(cursor, point.valueStart));
+      cursor = point.valueEnd;
+    }
+    literals.push(selfType.slice(cursor));
+    if (!typeStr.includes(literals[0])) return typeStr;
+
+    const sites = [...referenceSites].map(escapeRegExp).join("|");
+    const copyStart = `((?:^|[{;|(]\\s*)(?:${sites})\\??:\\s*(?:readonly\\s+)?|\\[x: string\\]:\\s*)`;
+    const pattern = new RegExp(
+      copyStart + literals.map(escapeRegExp).join(`(${PLACEHOLDER_VALUE_SOURCE})`),
+      "g",
+    );
+    return typeStr.replace(
+      pattern,
+      (_match, start: string, ...groups: string[]) =>
+        start +
+        literals
+          .map((literal, index) => {
+            const point = recursionPoints[index];
+            if (!point) return literal;
+            const value = groups[index];
+            return literal + (rewriteRecursiveValue(value, typeName, point.info, []) ?? value);
+          })
+          .join(""),
+    );
+  }
+
+  /**
    * Checks if a schema has getter-based self-references.
    */
   hasSelfReferences(getterFields: Map<string, GetterFieldInfo>): boolean {
@@ -273,6 +425,10 @@ export class GetterResolver {
 
 /** A printed type TypeScript fell back to at a recursion point. */
 const PLACEHOLDER = /^(?:any|unknown)(\[\])?$/;
+
+/** Any printed placeholder value, with the unions `.nullable()`/`.optional()` add. */
+const PLACEHOLDER_VALUE_SOURCE =
+  "(?:readonly\\s+)?(?:(?:any|unknown)(?:\\[\\])?|\\{\\s*\\[x: string\\]:\\s*(?:any|unknown)\\s*;?\\s*\\})(?:\\s*\\|\\s*(?:null|undefined))*";
 
 /** An index signature whose value TypeScript gave up on. */
 const INDEX_SIGNATURE_PLACEHOLDER = /^(\{\s*\[x: string\]:\s*)(?:any|unknown)(\s*;?\s*\})$/;
@@ -393,6 +549,23 @@ function isInlinedRecursiveCopy(value: string, selfRefFields: string[]): boolean
       searchFrom = nested.valueStart;
     }
   });
+}
+
+/**
+ * Locates the occurrence of a field whose printed type is a placeholder, past
+ * any same-named field nested earlier in the type.
+ */
+function findPlaceholderField(
+  typeStr: string,
+  fieldName: string,
+): { valueStart: number; valueEnd: number } | undefined {
+  let searchFrom = 0;
+  for (;;) {
+    const field = findFieldValue(typeStr, fieldName, searchFrom);
+    if (!field) return undefined;
+    if (isAnyPlaceholder(typeStr.slice(field.valueStart, field.valueEnd))) return field;
+    searchFrom = field.valueStart;
+  }
 }
 
 /**
