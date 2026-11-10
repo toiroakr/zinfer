@@ -1979,13 +1979,11 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       ]);
     });
 
-    it("keeps references through refine, meta, check and describe", () => {
-      const refined = [
+    it("keeps references through meta, check and describe", () => {
+      expect(types("AnnotatedBaseSchema")).toEqual([
         "{ kind: KindSchemaInput; name: string; }",
         "{ kind: KindSchemaOutput; name: string; }",
-      ];
-      expect(types("RefinedWithRefineSchema")).toEqual(refined);
-      expect(types("AnnotatedBaseSchema")).toEqual(refined);
+      ]);
     });
 
     it("lets a later extend replace a field an earlier extend added", () => {

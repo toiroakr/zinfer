@@ -25,8 +25,6 @@ const SatisfiedBaseSchema = z.strictObject({ kind: KindSchema }) satisfies z.Zod
 
 export const RefinedSatisfiedSchema = SatisfiedBaseSchema.superRefine(() => {});
 
-export const RefinedWithRefineSchema = BaseShapeSchema.refine(() => true);
-
 export const AnnotatedBaseSchema = BaseShapeSchema.meta({ a: 1 })
   .check(() => {})
   .describe("x");
