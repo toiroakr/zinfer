@@ -1946,13 +1946,13 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
   });
 
   describe("base-schema-reference-schema.ts", () => {
-    it("keeps named references a schema inherits from a same-file base schema", () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "base-schema-reference-schema.ts"));
-      const types = (schemaName: string) => {
-        const result = results.find((r) => r.schemaName === schemaName);
-        return [result?.input, result?.output];
-      };
+    const results = extractor.extractAll(resolve(fixturesDir, "base-schema-reference-schema.ts"));
+    const types = (schemaName: string) => {
+      const result = results.find((r) => r.schemaName === schemaName);
+      return [result?.input, result?.output];
+    };
 
+    it("keeps named references a schema inherits from a same-file base schema", () => {
       expect(types("RefinedBaseSchema")).toEqual([
         "{ kind: KindSchemaInput; name: string; }",
         "{ kind: KindSchemaOutput; name: string; }",
@@ -1979,13 +1979,21 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
       ]);
     });
 
-    it("leaves a chain through a field-changing call or from an imported schema inline", () => {
-      const results = extractor.extractAll(resolve(fixturesDir, "base-schema-reference-schema.ts"));
-      const types = (schemaName: string) => {
-        const result = results.find((r) => r.schemaName === schemaName);
-        return [result?.input, result?.output];
-      };
+    it("keeps references through meta, check and describe", () => {
+      expect(types("AnnotatedBaseSchema")).toEqual([
+        "{ kind: KindSchemaInput; name: string; }",
+        "{ kind: KindSchemaOutput; name: string; }",
+      ]);
+    });
 
+    it("lets a later extend replace a field an earlier extend added", () => {
+      expect(types("DoubleExtendedSchema")).toEqual([
+        "{ kind: KindSchemaInput; name: string; extra: boolean; }",
+        "{ kind: KindSchemaOutput; name: string; extra: boolean; }",
+      ]);
+    });
+
+    it("leaves a chain through a field-changing call or from an imported schema inline", () => {
       expect(types("PartialBaseSchema")).toEqual([
         '{ kind?: "a" | "b" | undefined; name?: string | undefined; }',
         '{ kind?: "a" | "b" | undefined; name?: string | undefined; }',

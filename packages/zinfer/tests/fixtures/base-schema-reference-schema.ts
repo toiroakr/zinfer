@@ -25,6 +25,14 @@ const SatisfiedBaseSchema = z.strictObject({ kind: KindSchema }) satisfies z.Zod
 
 export const RefinedSatisfiedSchema = SatisfiedBaseSchema.superRefine(() => {});
 
+export const AnnotatedBaseSchema = BaseShapeSchema.meta({ a: 1 })
+  .check(() => {})
+  .describe("x");
+
+export const DoubleExtendedSchema = BaseShapeSchema.extend({ extra: KindSchema })
+  .describe("x")
+  .extend({ extra: z.boolean() });
+
 export const PartialBaseSchema = BaseShapeSchema.partial();
 
 export const OmittedBaseSchema = BaseShapeSchema.omit({ name: true });
