@@ -1945,6 +1945,59 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
     });
   });
 
+  describe("base-schema-reference-schema.ts", () => {
+    it("keeps named references a schema inherits from a same-file base schema", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "base-schema-reference-schema.ts"));
+      const types = (schemaName: string) => {
+        const result = results.find((r) => r.schemaName === schemaName);
+        return [result?.input, result?.output];
+      };
+
+      expect(types("RefinedBaseSchema")).toEqual([
+        "{ kind: KindSchemaInput; name: string; }",
+        "{ kind: KindSchemaOutput; name: string; }",
+      ]);
+      expect(types("ExtendedBaseSchema")).toEqual([
+        "{ kind: KindSchemaInput; name: string; extra: KindSchemaInput; }",
+        "{ kind: KindSchemaOutput; name: string; extra: KindSchemaOutput; }",
+      ]);
+      expect(types("OverriddenBaseSchema")).toEqual([
+        '{ name: string; kind: "a"; }',
+        '{ name: string; kind: "a"; }',
+      ]);
+      expect(types("ShapeSpreadSchema")).toEqual([
+        "{ kind: KindSchemaInput; name: string; extra: string; }",
+        "{ kind: KindSchemaOutput; name: string; extra: string; }",
+      ]);
+      expect(types("InlineExtendedSchema")).toEqual([
+        "{ name: string; kind: KindSchemaInput; extra: string; }",
+        "{ name: string; kind: KindSchemaOutput; extra: string; }",
+      ]);
+      expect(types("RefinedSatisfiedSchema")).toEqual([
+        "{ kind: KindSchemaInput; }",
+        "{ kind: KindSchemaOutput; }",
+      ]);
+    });
+
+    it("leaves a chain through a field-changing call or from an imported schema inline", () => {
+      const results = extractor.extractAll(resolve(fixturesDir, "base-schema-reference-schema.ts"));
+      const types = (schemaName: string) => {
+        const result = results.find((r) => r.schemaName === schemaName);
+        return [result?.input, result?.output];
+      };
+
+      expect(types("PartialBaseSchema")).toEqual([
+        '{ kind?: "a" | "b" | undefined; name?: string | undefined; }',
+        '{ kind?: "a" | "b" | undefined; name?: string | undefined; }',
+      ]);
+      expect(types("OmittedBaseSchema")).toEqual(['{ kind: "a" | "b"; }', '{ kind: "a" | "b"; }']);
+      expect(types("RefinedImportedSchema")).toEqual([
+        '{ kind: "c" | "d"; }',
+        '{ kind: "c" | "d"; }',
+      ]);
+    });
+  });
+
   describe("mixed-union-reference-schema.ts", () => {
     it("preserves named references through mixed and non-exported union members", () => {
       const results = extractor.extractAll(resolve(fixturesDir, "mixed-union-reference-schema.ts"));
