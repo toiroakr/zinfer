@@ -54,6 +54,7 @@ export class SchemaReferenceAnalyzer {
   private static readonly TYPE_PRESERVING_METHODS = new Set([
     "describe",
     "meta",
+    "refine",
     "superRefine",
     "check",
   ]);
