@@ -1990,8 +1990,8 @@ describe("ZodTypeExtractor - Generated TypeScript Declarations", () => {
 
     it("lets a later extend replace a field an earlier extend added", () => {
       expect(types("DoubleExtendedSchema")).toEqual([
-        "{ name: string; n: number; kind: boolean; }",
-        "{ name: string; n: number; kind: boolean; }",
+        "{ kind: KindSchemaInput; name: string; extra: boolean; }",
+        "{ kind: KindSchemaOutput; name: string; extra: boolean; }",
       ]);
     });
 

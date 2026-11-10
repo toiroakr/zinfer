@@ -31,9 +31,9 @@ export const AnnotatedBaseSchema = BaseShapeSchema.meta({ a: 1 })
   .check(() => {})
   .describe("x");
 
-export const DoubleExtendedSchema = BaseShapeSchema.extend({ n: z.number() })
+export const DoubleExtendedSchema = BaseShapeSchema.extend({ extra: KindSchema })
   .describe("x")
-  .extend({ kind: z.boolean() });
+  .extend({ extra: z.boolean() });
 
 export const PartialBaseSchema = BaseShapeSchema.partial();
 
