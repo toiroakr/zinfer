@@ -19,7 +19,7 @@
     "test:api": "vitest run --config api-coverage.config.ts"
   },
   "dependencies": {
-    "glob": "^14.0.3",
+    "glob": "^14.0.4",
     "pathe": "^2.0.3",
     "typescript-native": "catalog:"
   },
