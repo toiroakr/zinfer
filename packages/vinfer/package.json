@@ -41,7 +41,7 @@
     "generate:type-tests": "node ./dist/cli.js 'tests/fixtures/*.ts' --outDir tests/__file_snapshots__ --outPattern '[name].ts' --generate-tests --suffix Schema"
   },
   "dependencies": {
-    "commander": "^15.0.0",
+    "commander": "^15.1.0",
     "glob": "^14.0.4",
     "jiti": "^2.7.0",
     "pathe": "^2.0.3",
