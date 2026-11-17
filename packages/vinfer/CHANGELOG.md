@@ -1,5 +1,13 @@
 # vinfer
 
+## 0.4.3
+
+### Patch Changes
+
+- 9ab013c: fix(deps): remove the unused `typescript` peer dependency. The packages analyze types through the bundled `typescript-native`, so the project's own `typescript` is not required.
+- 5aa38b3: fix(deps): update dependency glob to ^14.0.4
+- 3207bb4: fix(deps): update dependency commander to ^15.1.0
+
 ## 0.4.2
 
 ### Patch Changes
