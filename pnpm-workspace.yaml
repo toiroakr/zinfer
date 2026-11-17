@@ -38,4 +38,4 @@ minimumReleaseAgeExclude:
 lockfile:
   format: v13
 
-minimumReleaseAge: 10080
+minimumReleaseAge: 4320
