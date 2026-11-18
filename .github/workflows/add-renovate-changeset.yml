@@ -55,11 +55,30 @@ jobs:
             echo "found=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Set up Node.js
+        if: steps.existing.outputs.found == 'false'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+
+      - name: Detect resolved runtime dependency changes
+        if: steps.existing.outputs.found == 'false'
+        id: lockfile
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -eo pipefail
+          git fetch --no-tags --quiet origin "$BASE_REF"
+          BASE_SHA=$(git merge-base "origin/${BASE_REF}" HEAD)
+          git show "$BASE_SHA:pnpm-lock.yaml" > /tmp/renovate-base-lock.yaml
+          node .github/scripts/lockfile-runtime-diff.mjs --before /tmp/renovate-base-lock.yaml
+
       - name: Detect runtime dependency changes
         if: steps.existing.outputs.found == 'false'
         id: runtime
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
+          LOCK_CHANGED_NAMES: ${{ steps.lockfile.outputs.changed-names }}
         run: |
           set -eo pipefail
           git fetch --no-tags --quiet origin "$BASE_REF"
@@ -71,7 +90,7 @@ jobs:
           # so each workspace package is checked independently; a Renovate PR
           # can touch one or both.
           FILTER='{dependencies, peerDependencies, optionalDependencies}'
-          CHANGED_PACKAGES=""
+          CHANGED_PACKAGES="${LOCK_CHANGED_NAMES}"$'\n'
           for pkg_json in packages/*/package.json; do
             # Private packages (e.g. @zinfer-monorepo/core) are never
             # published, so they never need a changeset entry even when their
@@ -97,6 +116,7 @@ jobs:
             fi
           done
 
+          CHANGED_PACKAGES=$(printf '%s\n' "$CHANGED_PACKAGES" | sed '/^$/d' | sort -u)
           if [ -z "$CHANGED_PACKAGES" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No runtime dependency changes; no changeset needed."
@@ -109,7 +129,7 @@ jobs:
             PKGS_DELIM="ghapkgs_${RANDOM}${RANDOM}${RANDOM}"
             {
               echo "packages<<$PKGS_DELIM"
-              printf '%s' "$CHANGED_PACKAGES"
+              printf '%s\n' "$CHANGED_PACKAGES"
               echo "$PKGS_DELIM"
             } >> "$GITHUB_OUTPUT"
           fi
