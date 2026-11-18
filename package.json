@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "build": "pnpm -r build",
-    "test": "pnpm -r test",
+    "test": "node --test .github/scripts/test-lockfile-runtime-diff.mjs && pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "typecheck:tsc": "pnpm -r typecheck:tsc",
     "lint": "pnpm -r lint",
