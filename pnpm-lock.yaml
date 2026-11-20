@@ -194,8 +194,8 @@ snapshots:
 			"name": "@zinfer-monorepo/core",
 			"dependencies": {
 				"glob": {
-					"specifier": "^14.0.4",
-					"version": "14.0.5",
+					"specifier": "^14.0.6",
+					"version": "14.0.6",
 				},
 				"pathe": {
 					"specifier": "^2.0.3",
@@ -220,8 +220,8 @@ snapshots:
 					"version": "15.1.0",
 				},
 				"glob": {
-					"specifier": "^14.0.4",
-					"version": "14.0.5",
+					"specifier": "^14.0.6",
+					"version": "14.0.6",
 				},
 				"jiti": {
 					"specifier": "^2.7.0",
@@ -253,8 +253,8 @@ snapshots:
 					"version": "15.1.0",
 				},
 				"glob": {
-					"specifier": "^14.0.4",
-					"version": "14.0.5",
+					"specifier": "^14.0.6",
+					"version": "14.0.6",
 				},
 				"jiti": {
 					"specifier": "^2.7.0",
@@ -286,8 +286,8 @@ snapshots:
 					"version": "15.1.0",
 				},
 				"glob": {
-					"specifier": "^14.0.4",
-					"version": "14.0.5",
+					"specifier": "^14.0.6",
+					"version": "14.0.6",
 				},
 				"jiti": {
 					"specifier": "^2.7.0",
@@ -2187,8 +2187,8 @@ snapshots:
 			},
 		},
 
-		"glob@14.0.5": {
-			"integrity": "sha512-nbKW5Sl53DEM5PkmZ5Jwfeyss1ohuqcgOBjOarSjz1fp8W4ss4EOOvKADQRbApD6JmVBX+HkpZYfBez4wXbeQQ==",
+		"glob@14.0.6": {
+			"integrity": "sha512-OwXjVP2svY5EyLY75Vek96C8qK43gqrt4xsZ+qSILdnaEiJPXkd62mcfUSNx/TQErQRdu5uM5kF67sfONragKw==",
 			"engines": {"node": "18 || 20 || >=22"},
 			"dependencies": {
 				"minimatch": "11.0.8",
