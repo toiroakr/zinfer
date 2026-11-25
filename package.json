@@ -23,5 +23,5 @@
     "oxlint": "1.94.0",
     "tsrs": "0.18.0-ts7.1.0-dev.20260929"
   },
-  "packageManager": "pnpm@12.21.0"
+  "packageManager": "pnpm@12.22.0"
 }
